@@ -143,6 +143,7 @@ uv run wolf-game --config 12p_pre_witch_hunter_idiot
 | `l` | 跳到最新一局 |
 | `f` | 切换事件可见范围（全部/公开/狼队/私有/上帝/系统） |
 | `w` | 快速切换狼队视角 |
+| `t` | 开关语音播报（TTS） |
 | `a` | 切换自动刷新 |
 | `Space` | 暂停/恢复自动滚动 |
 | `PgUp`/`PgDn` | 翻页浏览历史 |
@@ -160,6 +161,15 @@ uv run wolf-game --config 12p_pre_witch_hunter_idiot
 - **死因标记**：🔪刀杀 ☠毒杀 🏹枪杀 🗳放逐 💥自爆
 - **技能标记**：🎯被刀目标 💊被救 🧪被毒目标 🔍被验 🎭翻牌
 - **增量刷新**：0.5s 轮询，仅查询新事件，DB 连接复用
+
+### 语音播报（TTS）
+
+按 `t` 开启后，游戏全程语音播报，完全离线（CPU 推理）：
+
+- **主持人旁白**：阶段切换（"天黑请闭眼"）、技能结果、投票结果、胜负宣布
+- **玩家发言**：每人独立音色（12 种），根据角色和场景自动切换情感
+- 基于 ChatTTS，首次启用时加载模型（约 10 秒），后续即时播报
+- 依赖：ChatTTS、sounddevice（自动安装）
 
 ## 数据目录
 
@@ -185,7 +195,7 @@ app/
 │   ├── graph_viz.py        # Mermaid/DOT/PNG 导出
 │   └── rules.py            # 胜负判定（屠边规则）
 ├── domain/                 # 纯数据类型（Role, Phase, GameState, PhaseResult, ...）
-├── services/               # LLM 客户端、动作校验、提示词模板、上下文构建
+├── services/               # LLM 客户端、动作校验、提示词模板、上下文构建、TTS
 ├── infra/                  # SQLite 持久化层（EventBus, repositories）
 ├── ui/                     # Textual TUI（app, db_view, i18n）
 └── configs/                # YAML 游戏配置 + Jinja2 提示词模板
