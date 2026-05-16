@@ -59,44 +59,72 @@ AI 驱动的狼人杀模拟器。所有玩家均为 AI Agent，由 LLM 或本地
 
 ## 快速开始
 
-### 安装
+### 环境要求
+
+- Python >= 3.11
+- [uv](https://docs.astral.sh/uv/) 包管理器
+
+### 安装依赖
 
 ```bash
+# 安装 uv（如果还没有）
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# 克隆项目
+git clone https://github.com/upczww/LycanTUI.git
+cd LycanTUI
+
+# 安装依赖
 uv sync
 ```
 
+依赖项（自动安装）：
+- `PyYAML` — YAML 配置解析
+- `textual` — 终端 TUI 框架
+
 ### 配置 LLM（可选）
 
-创建 `.env` 文件：
+在项目根目录创建 `.env` 文件：
 
 ```dotenv
+# 必填：LLM API 配置
 API_KEY=your_api_key
 API_URL=https://api.deepseek.com/chat/completions
 MODEL_ID=deepseek-chat
-LLM_PROVIDER=openai_compatible
-LLM_ENABLED_PHASES=night_wolf,night_seer,night_witch,day_speech,day_vote,sheriff_election
-LLM_MAX_CALLS_PER_GAME=200
-LLM_MAX_CONCURRENCY=1
+
+# 可选：提供者和行为控制
+LLM_PROVIDER=openai_compatible          # 默认 openai_compatible
+LLM_ENABLED_PHASES=night_wolf,night_seer,night_witch,sheriff_election,day_speech,day_vote,pending_skills
+LLM_MAX_CALLS_PER_GAME=200              # 单局最大 LLM 调用次数，超限自动降级
+LLM_MAX_CONCURRENCY=1                   # 并发调用数
+LLM_TIMEOUT_SECONDS=50                  # 单次调用超时
+LLM_MAX_RETRIES=5                       # 失败重试次数
+
+# 可选：自定义认证头（适配非标准 API）
+# LLM_API_KEY_HEADER=Authorization
+# LLM_API_KEY_PREFIX=Bearer 
+# LLM_EXTRA_HEADERS_JSON={"X-Custom": "value"}
 ```
 
-不配置 `.env` 或使用 `--no-llm` 时，所有决策使用本地随机策略。
+不配置 `.env` 或使用 `--no-llm` 参数时，所有决策使用本地随机策略（无需网络）。
 
-### 运行一局游戏
+### 运行游戏
 
 ```bash
-# 纯本地策略（无需 LLM）
+# CLI 模式：纯本地策略（无需 LLM，即开即玩）
 uv run wolf-game --config 12p_pre_witch_hunter_idiot --no-llm
 
-# 启用 LLM
+# CLI 模式：启用 LLM（需要 .env 配置）
 uv run wolf-game --config 12p_pre_witch_hunter_idiot
+
+# TUI 模式：上帝视角观战界面
+uv run wolf-tui                    # 观看最新一局
+uv run wolf-tui --game-id <id>     # 指定对局
+uv run wolf-tui --lang en          # 英文界面
 ```
 
-### 启动 TUI 观战
-
-```bash
-uv run wolf-tui                # 观看最新一局
-uv run wolf-tui --game-id <id> # 指定对局
-```
+CLI 模式会实时打印所有事件到终端，游戏结束后输出 JSON 摘要。
+TUI 模式启动后可按 `s` 开始新对局，支持实时观战和历史回放。
 
 ### TUI 快捷键
 
