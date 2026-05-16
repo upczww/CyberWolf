@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import sqlite3
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
@@ -16,8 +17,24 @@ from textual.widgets import RichLog, Static
 from app.config import get_llm_settings, get_paths
 from app.engine.bootstrap import bootstrap_and_run_game, list_config_ids
 from app.infra.events import EventBus
-from app.ui.db_view import delete_game_view, load_game_view
+from app.ui.db_view import GameViewCache, delete_game_view
 from app.ui.i18n import I18n, Language, normalize_language
+
+
+def _format_elapsed(started_at: str | None, ended_at: str | None) -> str:
+    if not started_at:
+        return ""
+    try:
+        start = datetime.fromisoformat(started_at)
+        end = datetime.fromisoformat(ended_at) if ended_at else datetime.now(start.tzinfo)
+        delta = int((end - start).total_seconds())
+        if delta < 60:
+            return f"{delta}s"
+        if delta < 3600:
+            return f"{delta // 60}m{delta % 60}s"
+        return f"{delta // 3600}h{(delta % 3600) // 60}m"
+    except (ValueError, TypeError):
+        return ""
 
 
 SCOPE_ORDER = ["all", "public", "wolf_team", "role_private", "god", "system"]
@@ -36,12 +53,12 @@ ROLE_EMOJI = {
     "witch": "🧪",
     "hunter": "🏹",
     "idiot": "🎭",
-    "guard": "🛡️",
+    "guard": "🛡",
     "villager": "👤",
 }
 
 ACTIVE_EMOJI = "🟢"
-DEAD_EMOJI = "☠️"
+DEAD_EMOJI = "💀"
 STRIKETHROUGH = "\u0336"  # combining strikethrough
 PLAYER_COLUMN_SLOTS = 6
 
@@ -61,6 +78,8 @@ class WerewolfApp(App[None]):
         Binding("pagedown", "log_page_down", "下翻"),
         Binding("home", "log_home", "顶部"),
         Binding("end", "log_end", "底部"),
+        Binding("space", "toggle_scroll_pause", "暂停滚动/Pause"),
+        Binding("w", "scope_wolf", "狼视角/Wolf"),
         Binding("q", "quit", "退出/Quit"),
     ]
 
@@ -83,7 +102,7 @@ class WerewolfApp(App[None]):
     }
 
     .players {
-        width: 24;
+        width: 28;
         background: $surface;
     }
 
@@ -111,6 +130,10 @@ class WerewolfApp(App[None]):
         padding: 1 2;
         border: tall $primary;
         background: $surface;
+    }
+
+    #events.filtered {
+        border: tall $error;
     }
 
     #toolbar {
@@ -143,6 +166,9 @@ class WerewolfApp(App[None]):
         self._launch_worker: Worker | None = None
         self._confirming_delete: bool = False
         self._running_game_id: str | None = None
+        self._view_cache = GameViewCache(database)
+        self._event_format_cache: dict[tuple[int, str], Text] = {}  # (seq, lang) -> formatted Text
+        self._scroll_paused: bool = False  # True when user is browsing history
 
     def compose(self) -> ComposeResult:
         yield Static(id="titlebar")
@@ -152,7 +178,7 @@ class WerewolfApp(App[None]):
                     yield Static(id=f"left_player_{index}", classes="player_card")
             with Vertical(id="public_area"):
                 yield Static(id="public_title")
-                yield RichLog(id="events", wrap=True, markup=False, highlight=False)
+                yield RichLog(id="events", wrap=False, markup=False, highlight=False)
             with Vertical(id="right_players", classes="players"):
                 for index in range(PLAYER_COLUMN_SLOTS):
                     yield Static(id=f"right_player_{index}", classes="player_card")
@@ -161,8 +187,11 @@ class WerewolfApp(App[None]):
     def on_mount(self) -> None:
         self._render_static_chrome()
         self.query_one("#events", RichLog).auto_scroll = True
-        self.set_interval(1.0, self.refresh_view)
+        self.set_interval(0.5, self.refresh_view)
         self.refresh_view()
+
+    def on_unmount(self) -> None:
+        self._view_cache.close()
 
     def refresh_view(self) -> None:
         if not self.auto_refresh and self._view is not None:
@@ -195,6 +224,11 @@ class WerewolfApp(App[None]):
     def action_cycle_scope(self) -> None:
         current = SCOPE_ORDER.index(self.event_scope)
         self.event_scope = SCOPE_ORDER[(current + 1) % len(SCOPE_ORDER)]
+        log = self.query_one("#events", RichLog)
+        if self.event_scope == "all":
+            log.remove_class("filtered")
+        else:
+            log.add_class("filtered")
         self._reload_view(force=True)
 
     def action_toggle_auto_refresh(self) -> None:
@@ -204,22 +238,41 @@ class WerewolfApp(App[None]):
     def action_toggle_language(self) -> None:
         self._language = "en" if self._language == "zh" else "zh"
         self._i18n = I18n(self._language)
+        self._event_format_cache.clear()
         self._render_static_chrome()
         if self._view is not None:
             self._render_players(self._view)
             self._render_events(self._view, force=True)
 
     def action_log_page_up(self) -> None:
+        self._scroll_paused = True
         self.query_one("#events", RichLog).action_page_up()
 
     def action_log_page_down(self) -> None:
         self.query_one("#events", RichLog).action_page_down()
 
     def action_log_home(self) -> None:
+        self._scroll_paused = True
         self.query_one("#events", RichLog).action_scroll_home()
 
     def action_log_end(self) -> None:
+        self._scroll_paused = False
         self.query_one("#events", RichLog).action_scroll_end()
+
+    def action_toggle_scroll_pause(self) -> None:
+        self._scroll_paused = not self._scroll_paused
+        if not self._scroll_paused:
+            self.query_one("#events", RichLog).scroll_end(animate=False)
+
+    def action_scope_wolf(self) -> None:
+        """Toggle between wolf_team scope and all."""
+        if self.event_scope == "wolf_team":
+            self.event_scope = "all"
+            self.query_one("#events", RichLog).remove_class("filtered")
+        else:
+            self.event_scope = "wolf_team"
+            self.query_one("#events", RichLog).add_class("filtered")
+        self._reload_view(force=True)
 
     def action_start_game(self) -> None:
         if self._launch_worker is not None and self._launch_worker.state == WorkerState.RUNNING:
@@ -247,6 +300,15 @@ class WerewolfApp(App[None]):
             else:
                 self._confirming_delete = False
                 self._render_static_chrome()
+            event.prevent_default()
+            return
+        # Number keys 1-9: jump to recent game by index
+        if event.key in "123456789" and self._game_ids:
+            idx = int(event.key) - 1
+            if idx < len(self._game_ids):
+                self.selected_game_index = idx
+                self.game_id = self._game_ids[idx]
+                self._reload_view(force=True)
             event.prevent_default()
             return
 
@@ -282,7 +344,22 @@ class WerewolfApp(App[None]):
 
     def _reload_view(self, *, force: bool = False) -> None:
         try:
-            view = load_game_view(self._database, game_id=self.game_id, event_scope=self.event_scope, event_limit=300)
+            if force or self._view is None or self._last_game_id != self.game_id or self._last_scope != self.event_scope:
+                # Full load on game switch, scope change, or force
+                self._view_cache.reset()
+                view = self._view_cache.load_full(
+                    game_id=self.game_id, event_scope=self.event_scope, event_limit=300,
+                )
+            else:
+                # Incremental load — only new events
+                view = self._view_cache.load_incremental()
+                if view is None:
+                    return  # No changes
+                # Merge cached slow fields from previous view
+                if "recent_games" not in view and self._view is not None:
+                    view["recent_games"] = self._view.get("recent_games", [])
+                    view["total_game_count"] = self._view.get("total_game_count", 0)
+                    view["metrics"] = self._view.get("metrics")
         except sqlite3.DatabaseError:
             view = None
 
@@ -299,7 +376,7 @@ class WerewolfApp(App[None]):
         game = view["game"]
         self.game_id = game["id"]
         self.title = f"{self._i18n.t('app.title')} - {game['id'][:8]}"
-        self._game_ids = [row["id"] for row in view["recent_games"]]
+        self._game_ids = [row["id"] for row in view.get("recent_games", [])]
         self._total_game_count = view.get("total_game_count", len(self._game_ids))
         if game["id"] in self._game_ids:
             self.selected_game_index = self._game_ids.index(game["id"])
@@ -333,6 +410,8 @@ class WerewolfApp(App[None]):
             f"{self._i18n.t('status.on') if self.auto_refresh else self._i18n.t('status.off')}"
         )
         text.append(f"  Lang {self._language}")
+        if self._scroll_paused:
+            text.append("  ⏸ PAUSED", style="yellow bold")
         if self._launch_worker is not None and self._launch_worker.state == WorkerState.RUNNING:
             text.append("  worker=running", style="green")
         if extra:
@@ -350,10 +429,22 @@ class WerewolfApp(App[None]):
         phase = game.get("current_phase") or (snapshot["phase"] if snapshot else None)
         if phase:
             text.append(f"  {self._translate_optional('phase', phase)}", style="cyan")
+        elapsed = _format_elapsed(game.get("started_at"), game.get("ended_at"))
+        if elapsed:
+            text.append(f"  {elapsed}", style="dim")
+        # Survival counter: gods / villagers / wolves (屠边局)
+        players = self._view.get("players", [])
+        if players:
+            _GOD_ROLES = {"seer", "witch", "hunter", "idiot", "guard"}
+            gods_alive = sum(1 for p in players if p.get("survived") and p.get("role") in _GOD_ROLES)
+            villagers_alive = sum(1 for p in players if p.get("survived") and p.get("role") == "villager")
+            wolf_alive = sum(1 for p in players if p.get("survived") and (p.get("faction") == "wolf" or p.get("role") == "wolf"))
+            text.append(f"  神{gods_alive}", style="magenta bold")
+            text.append(f" 民{villagers_alive}", style="bold")
+            text.append(f" 狼{wolf_alive}", style="red bold")
         text.append(f"  {self._i18n.enum('status', game['status'])}")
         winner = self._translate_optional("winner", game["winner"])
         if winner != "-":
-            # Find reason from game_ended event
             reason = ""
             for ev in reversed(self._view.get("events", [])):
                 if ev.get("event_type") == "game_ended":
@@ -370,20 +461,22 @@ class WerewolfApp(App[None]):
     def _render_players(self, view: dict[str, Any]) -> None:
         players = sorted(view["players"], key=lambda row: int(row["seat_index"]))
         active_player_id = self._active_player_id(view)
+        acting_role = self._acting_role(view)
         split_at = (len(players) + 1) // 2
-        self._render_player_column("left_player", players[:split_at], active_player_id)
-        self._render_player_column("right_player", players[split_at:], active_player_id)
+        self._render_player_column("left_player", players[:split_at], active_player_id, acting_role)
+        self._render_player_column("right_player", players[split_at:], active_player_id, acting_role)
 
     def _render_player_column(
         self,
         widget_prefix: str,
         players: list[dict[str, Any]],
         active_player_id: int | None = None,
+        acting_role: str | None = None,
     ) -> None:
         for index in range(PLAYER_COLUMN_SLOTS):
             widget = self.query_one(f"#{widget_prefix}_{index}", Static)
             if index < len(players):
-                widget.update(self._player_text(players[index], active_player_id))
+                widget.update(self._player_text(players[index], active_player_id, acting_role))
             else:
                 widget.update("")
 
@@ -391,19 +484,36 @@ class WerewolfApp(App[None]):
     def _strike(text: str) -> str:
         return "".join(c + STRIKETHROUGH for c in text)
 
-    def _player_text(self, row: dict[str, Any], active_player_id: int | None) -> Text:
+    def _player_text(self, row: dict[str, Any], active_player_id: int | None, acting_role: str | None = None) -> Text:
         player_id = int(row["player_id"])
         alive = bool(row["survived"])
         active = alive and active_player_id == player_id
         role = str(row["role"])
-        prefix = f"{ACTIVE_EMOJI} " if active else "  "
-        name = f"{self._i18n.t('player.prefix')}{row['seat_index']}"
+        faction = str(row.get("faction", "good"))
+        is_wolf = faction == "wolf" or role == "wolf"
+        # Highlight players whose role matches current acting phase
+        is_acting = alive and acting_role is not None and (
+            role == acting_role or (acting_role == "wolf" and is_wolf)
+        )
+        prefix = f"{ACTIVE_EMOJI} " if active else ("▸ " if is_acting else "  ")
+        seat = int(row['seat_index'])
+        name = f"{self._i18n.t('player.prefix')}{seat:>2}"
         name_display = self._strike(name) if not alive else name
-        style = "green bold" if active else ("dim" if not alive else "")
+        # Faction-based coloring: wolves are red, good players are default/green
+        if active:
+            style = "green bold"
+        elif not alive:
+            style = "dim"
+        elif is_acting:
+            style = "bright_magenta" if not is_wolf else "bright_red"
+        elif is_wolf:
+            style = "red"
+        else:
+            style = ""
         text = Text()
         text.append(f"{prefix}{ROLE_EMOJI.get(role, '❔')} {name_display}", style=style)
         if not alive:
-            text.append(f" {DEAD_EMOJI}", style="red bold")
+            text.append(f" {DEAD_EMOJI}", style="red bold" if is_wolf else "dim red")
         action_badges = row.get("action_badges")
         if action_badges:
             text.append(f" {action_badges}", style="bold" if alive else "dim")
@@ -412,8 +522,11 @@ class WerewolfApp(App[None]):
         skill_label = row.get("skill_label")
         if skill_label:
             text.append(f"  {skill_label}", style="yellow" if alive else "dim")
-        role_text = self._strike(self._i18n.enum("role", row["role"])) if not alive else self._i18n.enum("role", row["role"])
-        text.append(f"\n   {role_text}", style="dim")
+        # Role name with faction color
+        role_name = self._i18n.enum("role", row["role"])
+        role_text = self._strike(role_name) if not alive else role_name
+        role_style = "red dim" if is_wolf else "dim"
+        text.append(f"\n   {role_text}", style=role_style)
         return text
 
     def _active_player_id(self, view: dict[str, Any]) -> int | None:
@@ -426,6 +539,24 @@ class WerewolfApp(App[None]):
                 if isinstance(value, int):
                     return value
         return None
+
+    @staticmethod
+    def _acting_role(view: dict[str, Any]) -> str | None:
+        """Determine which role is currently acting based on game phase."""
+        phase = view["game"].get("current_phase")
+        if not phase:
+            snapshot = view.get("snapshot")
+            phase = snapshot.get("phase") if snapshot else None
+        if not phase:
+            return None
+        _PHASE_ROLE_MAP = {
+            "night_wolf": "wolf",
+            "night_seer": "seer",
+            "night_witch": "witch",
+            "night_guard": "guard",
+            "pending_skills": "hunter",
+        }
+        return _PHASE_ROLE_MAP.get(phase)
 
     def _render_events(self, view: dict[str, Any], *, force: bool = False) -> None:
         log = self.query_one("#events", RichLog)
@@ -444,12 +575,32 @@ class WerewolfApp(App[None]):
             return
         if not same_stream:
             log.clear()
+            self._event_format_cache.clear()
         for event in events:
-            log.write(self._format_event_rich(event))
+            formatted = self._get_formatted_event(event)
+            if formatted.plain:  # Skip empty (hidden phase_ended)
+                log.write(formatted)
         self._event_seqs = new_seqs
         self._last_scope = self.event_scope
         self._last_game_id = view["game"]["id"]
-        log.scroll_end(animate=False)
+        if not self._scroll_paused:
+            log.scroll_end(animate=False)
+
+    def _get_formatted_event(self, event: dict[str, Any]) -> Text:
+        """Get formatted event text, using cache for already-seen events."""
+        cache_key = (int(event["seq"]), self._language)
+        cached = self._event_format_cache.get(cache_key)
+        if cached is not None:
+            return cached
+        formatted = self._format_event_rich(event)
+        self._event_format_cache[cache_key] = formatted
+        # Keep cache bounded
+        if len(self._event_format_cache) > 400:
+            # Remove oldest entries (lowest seq numbers)
+            keys = sorted(self._event_format_cache.keys())
+            for key in keys[:100]:
+                del self._event_format_cache[key]
+        return formatted
 
     def _translate_optional(self, prefix: str, value: object | None) -> str:
         if value is None or value == "":
@@ -503,7 +654,7 @@ class WerewolfApp(App[None]):
             return self._format_i18n(
                 "event.public_speech_made.detail",
                 player=self._format_player(data.get("player_id")),
-                speech=data.get("speech") or event.get("content") or "",
+                speech=self._truncate(data.get("speech") or event.get("content") or "", 80),
             )
         if event_type == "speaking_started":
             return self._format_i18n(
@@ -518,7 +669,7 @@ class WerewolfApp(App[None]):
             return self._format_i18n(
                 "event.sheriff_campaign.detail",
                 player=self._format_player(data.get("player_id")),
-                speech=data.get("speech") or "",
+                speech=self._truncate(data.get("speech") or "", 80),
             )
         if event_type == "sheriff_declare":
             return self._format_i18n(
@@ -542,14 +693,24 @@ class WerewolfApp(App[None]):
             return self._format_i18n(
                 "event.death_speech.detail",
                 player=self._format_player(data.get("player_id")),
-                speech=data.get("speech") or "",
+                speech=self._truncate(data.get("speech") or "", 80),
+            )
+        if event_type == "vote_cast":
+            return self._format_i18n(
+                "event.vote_cast.detail",
+                voter=self._format_player(data.get("voter_id")),
+                target=self._format_player(data.get("target_id")),
             )
         if event_type == "vote_resolved":
-            return self._format_i18n(
-                "event.vote_resolved.detail",
-                votes=self._format_votes(data.get("votes")),
-                chosen=self._format_player(data.get("chosen")),
-            )
+            votes_data = data.get("votes")
+            chosen = data.get("chosen")
+            votes_text = self._format_votes(votes_data)
+            tally_text = self._format_vote_tally(votes_data)
+            chosen_text = self._format_player(chosen)
+            base = self._format_i18n("event.vote_resolved.detail", votes=votes_text, chosen=chosen_text)
+            if tally_text:
+                return f"{base}\n    📊 {tally_text}"
+            return base
         if content_key == "event.idiot_revealed":
             return self._format_i18n("event.idiot_revealed.detail", player=self._format_player(data.get("actor_id") or data.get("player_id")))
         if content_key == "event.hunter_shot":
@@ -582,6 +743,15 @@ class WerewolfApp(App[None]):
                 return detail
         return str(event.get("content") or "")
 
+    @staticmethod
+    def _truncate(text: str, max_len: int = 80) -> str:
+        """Truncate long text (e.g. LLM speeches) for compact display."""
+        # Replace newlines with spaces for single-line display
+        flat = text.replace("\n", " ").strip()
+        if len(flat) <= max_len:
+            return flat
+        return flat[:max_len] + "…"
+
     def _format_i18n(self, key: str, **kwargs: object) -> str:
         return self._i18n.t(key).format(**kwargs)
 
@@ -599,11 +769,42 @@ class WerewolfApp(App[None]):
     def _format_votes(self, votes: object) -> str:
         if not isinstance(votes, dict) or not votes:
             return "-"
+        sheriff_id = self._view["snapshot"]["state_json"].get("sheriff_id") if self._view and self._view.get("snapshot") and isinstance(self._view["snapshot"].get("state_json"), dict) else None
         parts = []
         for voter, target in sorted(votes.items(), key=lambda item: int(item[0])):
             target_text = self._i18n.t("vote.none") if target is None else self._format_player(target)
-            parts.append(f"{self._format_player(voter)}→{target_text}")
+            voter_text = self._format_player(voter)
+            # Annotate sheriff's vote with weight
+            if sheriff_id is not None and int(voter) == sheriff_id:
+                voter_text = f"{voter_text}♛"
+            parts.append(f"{voter_text}→{target_text}")
         return ("，" if self._language == "zh" else ", ").join(parts)
+
+    def _format_vote_tally(self, votes: object) -> str:
+        """Format vote tally as ranked summary (e.g. 'P3: 4票 > P7: 2票')."""
+        if not isinstance(votes, dict) or not votes:
+            return ""
+        sheriff_id = self._view["snapshot"]["state_json"].get("sheriff_id") if self._view and self._view.get("snapshot") and isinstance(self._view["snapshot"].get("state_json"), dict) else None
+        tally: dict[int, float] = {}
+        abstain = 0
+        for voter, target in votes.items():
+            if target is None:
+                abstain += 1
+                continue
+            weight = 1.5 if sheriff_id is not None and int(voter) == sheriff_id else 1.0
+            target_int = int(target)
+            tally[target_int] = tally.get(target_int, 0) + weight
+        if not tally:
+            return ""
+        ranked = sorted(tally.items(), key=lambda x: -x[1])
+        parts = []
+        for pid, score in ranked:
+            score_str = str(int(score)) if score == int(score) else f"{score:.1f}"
+            parts.append(f"{self._format_player(pid)}:{score_str}票")
+        result = " > ".join(parts)
+        if abstain:
+            result += f" 弃权:{abstain}"
+        return result
 
     def _format_event_plain(self, event: dict[str, Any]) -> str:
         scope_name = self._i18n.enum("scope", event["scope"])
@@ -616,19 +817,45 @@ class WerewolfApp(App[None]):
         scope_tag = self._scope_tag(str(event["scope"]), scope_name)
         header = f"{time_short} #{int(event['seq']):03d} R{event['round']} {scope_tag:<6} {event_type}"
 
+        # Compact phase_started: just a separator line (except day_announce which has content)
         if event_key == "phase_started":
-            return f"\n── {time_short}  R{event['round']}  {phase} ──\n{header}\n    {message}"
+            content_key = str(event.get("content") or "")
+            if content_key == "event.day_announce":
+                return f"\n── R{event['round']}  ☀ {message}  {time_short} ──"
+            data = event.get("data_json") if isinstance(event.get("data_json"), dict) else {}
+            phase_val = data.get("phase", "")
+            prefix = "\n\n" if phase_val == "night_start" else "\n"
+            return f"{prefix}── R{event['round']}  {phase}  {time_short} ──"
+        # Hide phase_ended entirely
         if event_key == "phase_ended":
-            return f"{header}\n    {message}"
-        if event_key in {"sheriff_campaign", "public_speech_made", "death_speech", "speaking_started"}:
+            return ""
+        if event_key == "speaking_started":
+            return ""  # Merged into the speech event that follows
+        if event_key in {"sheriff_campaign", "public_speech_made", "death_speech"}:
             speaker = self._event_player_label(event)
             return f"\n| {header}  {speaker}\n|   {message}"
-        if event_key in {"vote_resolved", "sheriff_elected", "game_ended", "error_raised"}:
+        if event_key == "vote_cast":
+            # Compact vote display — no header
+            data = event.get("data_json") if isinstance(event.get("data_json"), dict) else {}
+            voter_id = data.get("voter_id")
+            voter = self._format_player(voter_id)
+            target = self._format_player(data.get("target_id"))
+            # Show sheriff weight
+            sheriff_id = None
+            if self._view and self._view.get("snapshot") and isinstance(self._view["snapshot"].get("state_json"), dict):
+                sheriff_id = self._view["snapshot"]["state_json"].get("sheriff_id")
+            suffix = " ♛×1.5" if sheriff_id is not None and voter_id == sheriff_id else ""
+            return f"    🗳 {voter} -> {target}{suffix}"
+        if event_key == "game_ended":
+            return f"\n{'=' * 40}\n    🏆 {message}\n{'=' * 40}"
+        if event_key in {"vote_resolved", "sheriff_elected", "error_raised"}:
             return f"{header}\n    >> {message}"
         return f"{header}\n    {message}"
 
     def _format_event_rich(self, event: dict[str, Any]) -> Text:
         plain = self._format_event_plain(event)
+        if not plain:
+            return Text("")  # phase_ended hidden
         text = Text(plain)
         event_key = str(event.get("event_type") or "")
         scope = str(event.get("scope") or "")
@@ -638,10 +865,9 @@ class WerewolfApp(App[None]):
         if scope_start >= 0:
             text.stylize(SCOPE_COLORS.get(scope, "white") + " bold", scope_start, scope_start + len(scope_tag))
         if event_key == "phase_started":
-            first_line_end = plain.find("\n", 1)
-            if first_line_end > 0:
-                text.stylize("cyan bold", 0, first_line_end)
-        if event_key in {"sheriff_campaign", "public_speech_made", "death_speech", "speaking_started"}:
+            # Entire line is a separator — style it all
+            text.stylize("cyan bold", 0, len(plain))
+        elif event_key in {"sheriff_campaign", "public_speech_made", "death_speech"}:
             line_start = 1 if plain.startswith("\n") else 0
             line_end = plain.find("\n", line_start)
             if line_end < 0:
@@ -658,9 +884,13 @@ class WerewolfApp(App[None]):
                 while marker_start >= 0:
                     text.stylize("dim cyan", marker_start + 1, marker_start + 2)
                     marker_start = plain.find(marker, marker_start + 1)
-        if event_key in {"vote_resolved", "sheriff_elected", "game_ended"}:
+        elif event_key == "vote_cast":
+            text.stylize("dim", 0, len(plain))
+        elif event_key == "game_ended":
+            text.stylize("bold green on black", 0, len(plain))
+        elif event_key in {"vote_resolved", "sheriff_elected"}:
             text.stylize("green bold", plain.find(">>") if ">>" in plain else 0, len(plain))
-        if event_key == "error_raised":
+        elif event_key == "error_raised":
             text.stylize("red bold", 0, len(plain))
         return text
 
@@ -718,4 +948,8 @@ class WerewolfApp(App[None]):
     def _on_live_game_event(self, event: object) -> None:
         if getattr(event, "game_id", None) != self.game_id:
             return
-        self._reload_view()
+        try:
+            self.call_from_thread(self._reload_view)
+        except RuntimeError:
+            # Already in the app thread (worker runs in same loop)
+            self._reload_view()

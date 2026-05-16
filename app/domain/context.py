@@ -11,7 +11,7 @@ class PublicContext(TypedDict):
     round: int
     alive_players: list[int]
     public_history: list[dict]
-    public_summary: str
+    public_summary: dict
 
 
 class FactionContext(TypedDict):

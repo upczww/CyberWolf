@@ -77,3 +77,32 @@ def fetch_events(
         """,
         (game_id, scope, limit),
     ).fetchall()
+
+
+def fetch_events_after(
+    conn: sqlite3.Connection,
+    *,
+    game_id: str,
+    after_seq: int,
+    scope: str | None = None,
+) -> list[sqlite3.Row]:
+    """Fetch only events with seq > after_seq (for incremental refresh)."""
+    if scope is None or scope == "all":
+        return conn.execute(
+            """
+            SELECT seq, round, phase, scope, event_type, content, data_json, created_at
+            FROM game_events
+            WHERE game_id = ? AND seq > ?
+            ORDER BY seq ASC
+            """,
+            (game_id, after_seq),
+        ).fetchall()
+    return conn.execute(
+        """
+        SELECT seq, round, phase, scope, event_type, content, data_json, created_at
+        FROM game_events
+        WHERE game_id = ? AND scope = ? AND seq > ?
+        ORDER BY seq ASC
+        """,
+        (game_id, scope, after_seq),
+    ).fetchall()

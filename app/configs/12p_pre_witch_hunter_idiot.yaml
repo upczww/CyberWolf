@@ -36,8 +36,9 @@ phase_order:
   - night_seer
   - night_witch
   - night_resolve
-  - day_announce
+  - pending_skills
   - check_win
+  - day_announce
   - sheriff_election
   - day_speech
   - day_vote

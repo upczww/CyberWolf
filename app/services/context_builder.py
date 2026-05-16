@@ -74,7 +74,7 @@ def _role_specific_state(state: GameState, player_id: int) -> dict:
     return {}
 
 
-def _public_summary(state: GameState) -> str:
+def _public_summary(state: GameState) -> dict:
     alive = alive_player_ids(state)
     dead = [
         {
