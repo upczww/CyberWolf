@@ -5,7 +5,12 @@ description = "AI werewolf simulator with Textual TUI and configurable LLM integ
 readme = "PLAN.md"
 requires-python = ">=3.11"
 dependencies = [
+    "chattts>=0.2.5",
+    "numpy>=2.4.5",
     "PyYAML>=6.0",
+    "requests>=2.34.2",
+    "sounddevice>=0.5.5",
+    "soundfile>=0.13.1",
     "textual>=0.58.0",
 ]
 

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import sqlite3
 from datetime import datetime
 from pathlib import Path
@@ -17,6 +18,7 @@ from textual.widgets import RichLog, Static
 from app.config import get_llm_settings, get_paths
 from app.engine.bootstrap import bootstrap_and_run_game, list_config_ids
 from app.infra.events import EventBus
+from app.services.tts import tts_engine
 from app.ui.db_view import GameViewCache, delete_game_view
 from app.ui.i18n import I18n, Language, normalize_language
 
@@ -80,6 +82,7 @@ class WerewolfApp(App[None]):
         Binding("end", "log_end", "底部"),
         Binding("space", "toggle_scroll_pause", "暂停滚动/Pause"),
         Binding("w", "scope_wolf", "狼视角/Wolf"),
+        Binding("t", "toggle_tts", "语音/TTS"),
         Binding("q", "quit", "退出/Quit"),
     ]
 
@@ -274,6 +277,12 @@ class WerewolfApp(App[None]):
             self.query_one("#events", RichLog).add_class("filtered")
         self._reload_view(force=True)
 
+    def action_toggle_tts(self) -> None:
+        """Toggle TTS on/off."""
+        new_state = tts_engine.toggle()
+        label = "TTS ON" if new_state else "TTS OFF"
+        self._render_static_chrome(extra=label)
+
     def action_start_game(self) -> None:
         if self._launch_worker is not None and self._launch_worker.state == WorkerState.RUNNING:
             return
@@ -410,6 +419,8 @@ class WerewolfApp(App[None]):
             f"{self._i18n.t('status.on') if self.auto_refresh else self._i18n.t('status.off')}"
         )
         text.append(f"  Lang {self._language}")
+        if tts_engine.enabled:
+            text.append("  🔊", style="green bold")
         if self._scroll_paused:
             text.append("  ⏸ PAUSED", style="yellow bold")
         if self._launch_worker is not None and self._launch_worker.state == WorkerState.RUNNING:
@@ -922,6 +933,8 @@ class WerewolfApp(App[None]):
         config_id = self._config_ids[0] if self._config_ids else "12p_pre_witch_hunter_idiot"
         event_bus = EventBus()
         event_bus.subscribe(self._on_live_game_event)
+        event_bus.subscribe(tts_engine.on_event)
+        tts_engine.start_worker(asyncio.get_event_loop())
         boot = await bootstrap_and_run_game(
             paths=self._paths,
             config_id=config_id,
@@ -929,6 +942,8 @@ class WerewolfApp(App[None]):
             event_bus=event_bus,
             on_game_started=self._show_started_game,
         )
+        # Set player roles for TTS voice mapping
+        tts_engine.set_player_roles(boot.state["players"])
         self._running_game_id = boot.state["game_id"]
         self.game_id = boot.state["game_id"]
         self.selected_game_index = 0
