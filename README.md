@@ -108,23 +108,29 @@ LLM_MAX_RETRIES=5                       # 失败重试次数
 
 不配置 `.env` 或使用 `--no-llm` 参数时，所有决策使用本地随机策略（无需网络）。
 
-### 运行游戏
+### 启动 TUI
 
 ```bash
-# CLI 模式：纯本地策略（无需 LLM，即开即玩）
-uv run wolf-game --config 12p_pre_witch_hunter_idiot --no-llm
-
-# CLI 模式：启用 LLM（需要 .env 配置）
-uv run wolf-game --config 12p_pre_witch_hunter_idiot
-
-# TUI 模式：上帝视角观战界面
-uv run wolf-tui                    # 观看最新一局
+uv run wolf-tui                    # 启动观战界面
 uv run wolf-tui --game-id <id>     # 指定对局
 uv run wolf-tui --lang en          # 英文界面
 ```
 
-CLI 模式会实时打印所有事件到终端，游戏结束后输出 JSON 摘要。
-TUI 模式启动后可按 `s` 开始新对局，支持实时观战和历史回放。
+启动后按 `s` 开始新对局，支持实时观战和历史回放。
+
+<details>
+<summary>CLI 模式（调试/自动化用）</summary>
+
+```bash
+# 纯本地策略（无需 LLM）
+uv run wolf-game --config 12p_pre_witch_hunter_idiot --no-llm
+
+# 启用 LLM
+uv run wolf-game --config 12p_pre_witch_hunter_idiot
+```
+
+直接输出事件流到终端，游戏结束后打印 JSON 摘要。适合 CI、批量测试、管道处理。
+</details>
 
 ### TUI 快捷键
 
