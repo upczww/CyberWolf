@@ -51,12 +51,16 @@ ROLE_EMOTION_MAP: dict[tuple[str, str], str] = {
 # 12 fixed seeds for distinct voices
 PLAYER_VOICE_SEEDS = [42, 137, 256, 389, 512, 678, 777, 888, 999, 1024, 1111, 1234]
 
-# Events that should trigger TTS
-_TTS_EVENT_TYPES = {
+# Events where the player "speaks" (use player voice)
+_PLAYER_SPEECH_EVENTS = {
     EventType.PUBLIC_SPEECH_MADE,
     EventType.DEATH_SPEECH,
     EventType.SHERIFF_CAMPAIGN,
 }
+
+# Narrator voice seed (distinct from all player seeds)
+NARRATOR_SEED = 2024
+NARRATOR_PLAYER_ID = 0  # sentinel for narrator
 
 
 class TTSEngine:
@@ -94,21 +98,114 @@ class TTSEngine:
                 self._worker_task = asyncio.ensure_future(self._playback_worker())
 
     def on_event(self, event: GameEvent) -> None:
-        """EventBus callback — queue speech events for TTS."""
+        """EventBus callback — queue speech events and game narration for TTS."""
         if not self._enabled:
             return
-        if event.event_type not in _TTS_EVENT_TYPES:
-            return
         data = event.data or {}
-        text = data.get("speech", "")
+        text = ""
+        player_id = NARRATOR_PLAYER_ID
+        event_type = event.event_type.value
+
+        if event.event_type in _PLAYER_SPEECH_EVENTS:
+            # Player speaks — use their voice
+            text = data.get("speech", "")
+            player_id = data.get("player_id", 0)
+        else:
+            # Game progress narration — use narrator voice
+            text = self._narrate(event)
+
         if not text:
             return
-        player_id = data.get("player_id", 0)
-        event_type = event.event_type.value
         try:
             self._queue.put_nowait((text, player_id, event_type))
         except (asyncio.QueueFull, RuntimeError):
-            pass  # Drop if queue is full or loop closed
+            pass
+
+    @staticmethod
+    def _narrate(event: GameEvent) -> str:
+        """Generate narrator text for game progress events."""
+        data = event.data or {}
+        etype = event.event_type
+
+        if etype == EventType.PHASE_STARTED:
+            phase = data.get("phase", "")
+            _PHASE_NARRATION = {
+                "night_start": "天黑请闭眼。",
+                "night_wolf": "狼人请睁眼。",
+                "night_seer": "预言家请睁眼。",
+                "night_witch": "女巫请睁眼。",
+                "night_resolve": "天亮了。",
+                "sheriff_election": "现在开始警长竞选。",
+                "day_speech": "请按顺序发言。",
+                "day_vote": "发言结束，请投票。",
+            }
+            return _PHASE_NARRATION.get(phase, "")
+
+        if etype == EventType.WOLF_TARGET_SELECTED:
+            target = data.get("target_id")
+            return f"狼人选择刀了{target}号玩家。"
+
+        if etype == EventType.SEER_CHECKED:
+            target = data.get("target_id")
+            result = "狼人" if data.get("result") == "wolf" else "好人"
+            return f"预言家查验{target}号，结果是{result}。"
+
+        if etype == EventType.WITCH_USED_ANTIDOTE:
+            target = data.get("target_id")
+            return f"女巫使用解药，救了{target}号。"
+
+        if etype == EventType.WITCH_USED_POISON:
+            target = data.get("target_id")
+            return f"女巫使用毒药，毒了{target}号。"
+
+        if etype == EventType.PLAYER_DIED:
+            pid = data.get("player_id")
+            cause_text = {"wolf": "被狼人杀害", "poison": "被毒死", "hunter_shot": "被猎人带走", "exile": "被投票放逐", "self_destruct": "自爆"}.get(data.get("cause", ""), "死亡")
+            return f"{pid}号玩家{cause_text}。"
+
+        if etype == EventType.SHERIFF_ELECTED:
+            pid = data.get("player_id")
+            if pid is None:
+                return "无人当选警长。"
+            return f"{pid}号玩家当选警长。"
+
+        if etype == EventType.VOTE_RESOLVED:
+            chosen = data.get("chosen")
+            if chosen is None:
+                return "本轮无人出局。"
+            return f"投票结束，{chosen}号玩家票数最高。"
+
+        if etype == EventType.SHERIFF_TRANSFERRED:
+            target = data.get("target_id")
+            actor = data.get("actor_id")
+            if target is None:
+                return f"{actor}号撕毁了警徽。"
+            return f"警徽移交给{target}号。"
+
+        if etype == EventType.GAME_ENDED:
+            winner = data.get("winner", "")
+            winner_text = "好人阵营" if winner == "good" else "狼人阵营"
+            return f"游戏结束，{winner_text}获胜！"
+
+        if etype == EventType.SKILL_TRIGGERED:
+            content = event.content or ""
+            if content == "event.hunter_shot":
+                actor = data.get("actor_id")
+                target = data.get("target_id")
+                return f"{actor}号猎人开枪带走了{target}号！"
+            if content == "event.idiot_revealed":
+                actor = data.get("actor_id") or data.get("player_id")
+                return f"{actor}号翻牌白痴，免于放逐。"
+
+        if etype == EventType.WOLF_SELF_DESTRUCT:
+            pid = data.get("player_id")
+            return f"{pid}号狼人选择自爆！"
+
+        if etype == EventType.SHERIFF_DECLARE:
+            pid = data.get("player_id")
+            return f"{pid}号举手参选警长。"
+
+        return ""
 
     def _ensure_loaded(self) -> None:
         """Lazy-load ChatTTS model (first call only, ~10s)."""
@@ -146,15 +243,19 @@ class TTSEngine:
         if self._chat is None:
             return
 
-        # Select voice seed for this player
-        seed_idx = (player_id - 1) % len(PLAYER_VOICE_SEEDS)
-        voice_seed = PLAYER_VOICE_SEEDS[seed_idx]
+        # Select voice seed: narrator or player
+        if player_id == NARRATOR_PLAYER_ID:
+            voice_seed = NARRATOR_SEED
+            emotion_key = "serious"
+        else:
+            seed_idx = (player_id - 1) % len(PLAYER_VOICE_SEEDS)
+            voice_seed = PLAYER_VOICE_SEEDS[seed_idx]
+            # Select emotion based on role + event type
+            role = self._player_roles.get(player_id, "villager")
+            if isinstance(role, object) and hasattr(role, "value"):
+                role = role.value
+            emotion_key = ROLE_EMOTION_MAP.get((role, event_type), "neutral")
 
-        # Select emotion based on role + event type
-        role = self._player_roles.get(player_id, "villager")
-        if isinstance(role, object) and hasattr(role, "value"):
-            role = role.value
-        emotion_key = ROLE_EMOTION_MAP.get((role, event_type), "neutral")
         emotion = EMOTION_PRESETS[emotion_key]
 
         # Generate speech with ChatTTS
