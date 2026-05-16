@@ -1,0 +1,86 @@
+config_id: 12p_pre_witch_hunter_idiot
+name: 12人预女猎白
+player_count: 12
+
+roles:
+  - role: wolf
+    count: 4
+    enabled: true
+  - role: seer
+    count: 1
+    enabled: true
+  - role: witch
+    count: 1
+    enabled: true
+  - role: hunter
+    count: 1
+    enabled: true
+  - role: idiot
+    count: 1
+    enabled: true
+  - role: villager
+    count: 4
+    enabled: true
+
+rule_flags:
+  sheriff_enabled: true
+  witch_can_self_save_first_night: false
+  hunter_can_shoot_if_poisoned: false
+  idiot_survives_exile: true
+  second_tie_enters_night: true
+
+phase_order:
+  - setup_game
+  - night_start
+  - night_wolf
+  - night_seer
+  - night_witch
+  - night_resolve
+  - day_announce
+  - check_win
+  - sheriff_election
+  - day_speech
+  - day_vote
+  - day_resolve
+  - pending_skills
+  - check_win
+  - game_over
+
+win_rule: slaughter_side
+
+prompt_profile:
+  prompt_set: default
+  max_public_speech_chars: 1200
+  include_internal_thought: true
+  templates:
+    night_wolf: wolf_night.j2
+    night_seer: seer_night.j2
+    night_witch: witch_antidote.j2
+    day_speech: default_public_speech.j2
+    day_speech:wolf: day_speech_wolf.j2
+    day_speech:seer: day_speech_seer.j2
+    day_speech:witch: day_speech_witch.j2
+    day_speech:hunter: day_speech_hunter.j2
+    day_speech:idiot: day_speech_idiot.j2
+    day_speech:villager: day_speech_villager.j2
+    day_vote: vote.j2
+    day_vote:wolf: vote_wolf.j2
+    sheriff_election: sheriff_campaign.j2
+    sheriff_election:wolf: sheriff_campaign.j2
+  output_modes:
+    night_wolf: tool_call
+    night_seer: tool_call
+    night_witch: tool_call
+    day_speech: json
+
+tool_profile:
+  enabled_tools:
+    - wolf_kill_proposal
+    - seer_check
+    - witch_antidote
+    - witch_poison
+    - public_speech
+    - vote_target
+    - hunter_shoot
+    - sheriff_transfer
+    - wolf_self_destruct

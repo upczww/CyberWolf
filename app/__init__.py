@@ -1,0 +1,1 @@
+"""AI werewolf game package."""

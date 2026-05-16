@@ -1,0 +1,24 @@
+[project]
+name = "wolf"
+version = "0.1.0"
+description = "AI werewolf simulator with Textual TUI and configurable LLM integration."
+readme = "PLAN.md"
+requires-python = ">=3.11"
+dependencies = [
+    "PyYAML>=6.0",
+    "textual>=0.58.0",
+]
+
+[project.scripts]
+wolf-game = "app.main:main"
+wolf-tui = "app.ui.commands:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.uv]
+package = true
+
+[tool.hatch.build.targets.wheel]
+packages = ["app"]
