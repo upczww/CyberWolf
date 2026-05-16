@@ -83,6 +83,7 @@ class WerewolfApp(App[None]):
         Binding("space", "toggle_scroll_pause", "暂停滚动/Pause"),
         Binding("w", "scope_wolf", "狼视角/Wolf"),
         Binding("t", "toggle_tts", "语音/TTS"),
+        Binding("e", "replay", "复盘/Replay"),
         Binding("q", "quit", "退出/Quit"),
     ]
 
@@ -282,6 +283,32 @@ class WerewolfApp(App[None]):
         new_state = tts_engine.toggle()
         label = "TTS ON" if new_state else "TTS OFF"
         self._render_static_chrome(extra=label)
+
+    def action_replay(self) -> None:
+        """Generate replay analysis for current game."""
+        if self.game_id is None:
+            return
+        from app.config import get_llm_settings
+        llm_settings = get_llm_settings()
+        if llm_settings is None:
+            self._render_static_chrome(extra="需要配置 LLM")
+            return
+        self._render_static_chrome(extra="复盘分析中...")
+        self.run_worker(self._do_replay(self.game_id, llm_settings), exclusive=False)
+
+    async def _do_replay(self, game_id: str, llm_settings) -> None:
+        """Run replay generation in background worker."""
+        from app.services.replay import generate_replay, format_replay_for_display
+        result = await generate_replay(self._database, game_id, llm_settings)
+        if result is None:
+            self._render_static_chrome(extra="复盘失败（游戏未结束或LLM错误）")
+            return
+        text = format_replay_for_display(result)
+        log = self.query_one("#events", RichLog)
+        log.write("\n")
+        log.write(text)
+        log.scroll_end(animate=False)
+        self._render_static_chrome(extra="复盘完成")
 
     def action_start_game(self) -> None:
         if self._launch_worker is not None and self._launch_worker.state == WorkerState.RUNNING:
