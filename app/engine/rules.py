@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from app.domain.config import RuntimeConfig
-from app.domain.roles import Faction, Role, ROLE_TO_FACTION
+from app.domain.roles import Role
 from app.domain.state import GameState
 
 

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from app.domain.context import FactionContext, GodContext, PromptContext, PublicContext, RolePrivateContext
+from app.domain.context import FactionContext, PromptContext, PublicContext, RolePrivateContext
 from app.domain.roles import Faction, Role
 from app.domain.state import GameState, alive_player_ids, living_wolves, snapshot_state
 
@@ -43,14 +43,6 @@ def build_prompt_context(state: GameState, *, player_id: int) -> PromptContext:
         public=build_public_context(state),
         faction=build_faction_context(state, player_id=player_id),
         private=build_private_context(state, player_id=player_id),
-    )
-
-
-def build_god_context(state: GameState) -> GodContext:
-    return GodContext(
-        full_state=snapshot_state(state),
-        hidden_roles={player_id: player["role"] for player_id, player in state["players"].items()},
-        debug_notes=[],
     )
 
 

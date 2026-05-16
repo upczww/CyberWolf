@@ -7,7 +7,6 @@ import logging
 import sqlite3
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
-from pathlib import Path
 
 TZ_CN = timezone(timedelta(hours=8))
 from random import Random
@@ -1345,15 +1344,6 @@ def _find_alive_role(state: GameState, role: Role) -> int | None:
         if player["alive"] and player["role"] == role:
             return player_id
     return None
-
-
-def _majority_choice(votes: dict[int, int], rng: Random) -> int:
-    tally: dict[int, int] = {}
-    for target in votes.values():
-        tally[target] = tally.get(target, 0) + 1
-    top = max(tally.values())
-    tied = sorted(target for target, count in tally.items() if count == top)
-    return rng.choice(tied)
 
 
 def _determine_speech_order(state: GameState) -> list[int]:

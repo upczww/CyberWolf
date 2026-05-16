@@ -87,9 +87,6 @@ def living_wolves(state: GameState) -> list[int]:
     ]
 
 
-def enabled_roles(runtime: RuntimeConfig) -> set[Role]:
-    return set(runtime["enabled_roles"])
-
 
 def build_players(runtime: RuntimeConfig, *, seed: int) -> dict[int, PlayerState]:
     roles: list[Role] = []
