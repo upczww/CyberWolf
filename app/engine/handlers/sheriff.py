@@ -6,7 +6,7 @@ from random import Random
 from typing import TYPE_CHECKING, TypeGuard
 
 from app.domain.events import GameEvent
-from app.domain.roles import EventScope, EventType, Faction, Phase, Role
+from app.domain.roles import EventType, Faction, Phase, Role
 from app.domain.state import (
     GameState,
     PhaseResult,

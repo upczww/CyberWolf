@@ -9,7 +9,7 @@ import json
 import logging
 from typing import TYPE_CHECKING, Any
 
-from app.domain.roles import EventScope, EventType, Phase, Role
+from app.domain.roles import Phase, Role
 from app.domain.state import GameState
 from app.services.context_builder import build_prompt_context
 from app.services.llm import TOOL_REGISTRY, LLMCallResult, build_phase_messages, enabled_tools

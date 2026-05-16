@@ -14,9 +14,8 @@ from typing import Any
 from app.infra.db import connect_database
 from app.infra.repositories.events import fetch_events, fetch_events_after
 from app.infra.repositories.games import delete_game, fetch_game, fetch_game_count, fetch_game_players, fetch_latest_game, fetch_recent_games
-from app.infra.repositories.llm_calls import fetch_llm_calls
 from app.infra.repositories.metrics import fetch_game_metrics
-from app.infra.repositories.snapshots import fetch_latest_snapshot, fetch_recent_snapshots
+from app.infra.repositories.snapshots import fetch_latest_snapshot
 
 
 class GameViewCache:

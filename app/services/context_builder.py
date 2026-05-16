@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from app.domain.context import FactionContext, PromptContext, PublicContext, RolePrivateContext
 from app.domain.roles import Faction, Role
-from app.domain.state import GameState, alive_player_ids, living_wolves, snapshot_state
+from app.domain.state import GameState, alive_player_ids, living_wolves
 
 
 def build_public_context(state: GameState) -> PublicContext:

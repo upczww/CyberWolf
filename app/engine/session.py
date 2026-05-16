@@ -36,7 +36,6 @@ from app.infra.repositories.metrics import insert_game_metrics
 from app.infra.repositories.snapshots import insert_snapshot
 from app.services.context_builder import build_prompt_context
 from app.services.llm import LLMClient
-from app.services.prompts import build_prompt_inputs
 
 _log = logging.getLogger(__name__)
 

@@ -6,7 +6,7 @@ from datetime import datetime, timedelta, timezone
 from typing import TYPE_CHECKING
 
 from app.domain.events import GameEvent
-from app.domain.roles import EventScope, EventType, Phase, Role
+from app.domain.roles import EventType, Role
 from app.domain.state import (
     GameState,
     PendingSkill,

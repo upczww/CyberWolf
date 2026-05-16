@@ -5,7 +5,7 @@ import logging
 from typing import TYPE_CHECKING
 
 from app.domain.events import GameEvent
-from app.domain.roles import EventScope, EventType, GameStatus, Phase, Role
+from app.domain.roles import EventType, GameStatus, Phase
 from app.domain.state import (
     GameState,
     PendingSkill,
