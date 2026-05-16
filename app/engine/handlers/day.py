@@ -14,7 +14,7 @@ from app.domain.state import (
     alive_player_ids,
 )
 from app.engine.event_helpers import action_source as _action_source, emit_event, emit_speaking_started, make_event
-from app.engine.llm_bridge import llm_death_speech, llm_decide, llm_speech
+from app.engine.llm_bridge import llm_decide, llm_speech
 from app.services.decisions import resolve_action, validate_tool_call
 
 if TYPE_CHECKING:

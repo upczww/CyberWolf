@@ -8,7 +8,6 @@ from app.domain.events import GameEvent
 from app.domain.roles import EventType, GameStatus, Phase
 from app.domain.state import (
     GameState,
-    PendingSkill,
     PhaseResult,
     alive_player_ids,
     apply_state_patch,
