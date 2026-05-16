@@ -77,12 +77,9 @@ app/
 ## Known Gaps (vs PLAN.md)
 
 - Win condition only checks all-wolves-dead and only-wolves-alive (full "slaughter-side" not yet implemented)
-- Sheriff 1.5x vote weight not implemented
 - Tie-breaking second vote not implemented (currently random pick)
 - No tests exist
-- `reducers.py`, `replay.py`, `summaries.py` are placeholders
 - Only one game config (`12p_pre_witch_hunter_idiot.yaml`)
-- Widget files are empty — rendering inlined in `app.py`
 
 ## Language
 

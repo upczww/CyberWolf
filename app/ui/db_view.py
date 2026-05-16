@@ -7,7 +7,7 @@ from typing import Any
 
 from app.infra.db import connect_database
 from app.infra.repositories.events import fetch_events
-from app.infra.repositories.games import delete_game, fetch_game, fetch_game_players, fetch_latest_game, fetch_recent_games
+from app.infra.repositories.games import delete_game, fetch_game, fetch_game_count, fetch_game_players, fetch_latest_game, fetch_recent_games
 from app.infra.repositories.llm_calls import fetch_llm_calls
 from app.infra.repositories.metrics import fetch_game_metrics
 from app.infra.repositories.snapshots import fetch_latest_snapshot, fetch_recent_snapshots
@@ -34,6 +34,7 @@ def load_game_view(
         metrics = fetch_game_metrics(conn, game_id=gid)
         llm_calls = fetch_llm_calls(conn, game_id=gid, limit=50)
         recent_games = fetch_recent_games(conn, limit=20)
+        total_game_count = fetch_game_count(conn)
         decoded_snapshot = _decode_snapshot(snapshot)
         decoded_game = dict(game)
         _merge_game_from_snapshot(decoded_game, decoded_snapshot)
@@ -46,6 +47,7 @@ def load_game_view(
         return {
             "game": decoded_game,
             "recent_games": [dict(row) for row in recent_games],
+            "total_game_count": total_game_count,
             "players": decoded_players,
             "events": decoded_events,
             "snapshot": decoded_snapshot,
@@ -182,7 +184,7 @@ def _merge_action_badges(
         elif content == "event.hunter_shot":
             _add_badge(badges_by_player, data.get("target_id"), "🏹")
         elif content == "event.idiot_revealed":
-            _add_badge(badges_by_player, data.get("player_id"), "🎭")
+            _add_badge(badges_by_player, data.get("actor_id") or data.get("player_id"), "🎭")
         elif event_type == "wolf_self_destruct":
             _add_badge(badges_by_player, data.get("player_id"), "💥")
         elif event_type == "player_died":

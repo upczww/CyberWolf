@@ -45,6 +45,15 @@ def validate_tool_call(
     if proposed["tool_name"] == "witch_antidote":
         if args.get("use_antidote") and state["witch_antidote_used"]:
             errors.append("antidote already used")
+        if args.get("use_antidote"):
+            wolf_target = state["night_actions"].get("wolf_target")
+            if wolf_target is not None and wolf_target == actor_id:
+                can_self_save = (
+                    state["round"] <= 1
+                    and bool(state["runtime"]["rule_flags"].get("witch_can_self_save_first_night", False))
+                )
+                if not can_self_save:
+                    errors.append("witch cannot self-save after the first night")
 
     if proposed["tool_name"] == "witch_poison":
         poison_target = args.get("target_id")

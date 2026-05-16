@@ -176,6 +176,10 @@ def fetch_recent_games(conn: sqlite3.Connection, *, limit: int = 20) -> list[sql
     ).fetchall()
 
 
+def fetch_game_count(conn: sqlite3.Connection) -> int:
+    return conn.execute("SELECT COUNT(*) FROM games").fetchone()[0]
+
+
 def delete_game(conn: sqlite3.Connection, *, game_id: str) -> None:
     """Delete a game and all related data from the database."""
     conn.execute("DELETE FROM game_events WHERE game_id = ?", (game_id,))

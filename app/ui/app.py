@@ -133,6 +133,7 @@ class WerewolfApp(App[None]):
         self._language: Language = normalize_language(language)
         self._i18n = I18n(self._language)
         self._game_ids: list[str] = []
+        self._total_game_count: int = 0
         self._view: dict[str, Any] | None = None
         self._paths = get_paths()
         self._config_ids = list_config_ids(self._paths.configs)
@@ -299,6 +300,7 @@ class WerewolfApp(App[None]):
         self.game_id = game["id"]
         self.title = f"{self._i18n.t('app.title')} - {game['id'][:8]}"
         self._game_ids = [row["id"] for row in view["recent_games"]]
+        self._total_game_count = view.get("total_game_count", len(self._game_ids))
         if game["id"] in self._game_ids:
             self.selected_game_index = self._game_ids.index(game["id"])
 
@@ -323,7 +325,7 @@ class WerewolfApp(App[None]):
             text.append(f"  {message}", style="yellow")
             return text
         game_short = self.game_id[:8] if self.game_id else "-"
-        game_pos = f"{self.selected_game_index + 1}/{len(self._game_ids)}" if self._game_ids else "-"
+        game_pos = f"{self.selected_game_index + 1}/{self._total_game_count}" if self._game_ids else "-"
         text.append(f"  {self._i18n.t('status.game')} {game_short} ({game_pos})")
         text.append(f"  {self._i18n.t('status.scope')} {self._i18n.enum('scope', self.event_scope)}")
         text.append(
@@ -549,7 +551,7 @@ class WerewolfApp(App[None]):
                 chosen=self._format_player(data.get("chosen")),
             )
         if content_key == "event.idiot_revealed":
-            return self._format_i18n("event.idiot_revealed.detail", player=self._format_player(data.get("player_id")))
+            return self._format_i18n("event.idiot_revealed.detail", player=self._format_player(data.get("actor_id") or data.get("player_id")))
         if content_key == "event.hunter_shot":
             return self._format_i18n(
                 "event.hunter_shot.detail",

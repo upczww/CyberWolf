@@ -493,7 +493,7 @@ async def _handle_night_witch(state: GameState, services: SessionServices) -> Ph
     # --- Decision 1: Antidote (only if antidote available and someone was killed) ---
     use_antidote = False
     if not state["witch_antidote_used"] and wolf_target is not None:
-        can_save_self = bool(state["runtime"]["rule_flags"].get("witch_can_self_save_first_night", False))
+        can_save_self = state["round"] <= 1 and bool(state["runtime"]["rule_flags"].get("witch_can_self_save_first_night", False))
         # Local fallback: decide based on probability
         local_use = wolf_target != witch_id or can_save_self
         local_args = {"use_antidote": local_use and services.rng.random() < 0.35}
@@ -1161,7 +1161,7 @@ async def _handle_day_resolve(state: GameState, services: SessionServices) -> Ph
                 target_players=set(),
                 event_type=EventType.SKILL_TRIGGERED,
                 content="event.idiot_revealed",
-                data={"player_id": target},
+                data={"actor_id": target, "skill": "idiot_reveal"},
             ),
             round_no=state["round"],
         )
