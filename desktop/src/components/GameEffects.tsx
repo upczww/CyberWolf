@@ -52,31 +52,87 @@ export default function GameEffects({ latestEvent }: Props) {
   )
 }
 
-/** Three red claw slashes + screen shake */
+/** Wolf claw swipe — 4 curved claw marks with trailing glow + screen shake */
 function SlashEffect() {
+  // 4 claw marks, slightly curved, from upper-right to lower-left
+  const claws = [
+    { x1: 62, y1: 15, x2: 32, y2: 75, curve: -8 },
+    { x1: 68, y1: 12, x2: 38, y2: 72, curve: -6 },
+    { x1: 74, y1: 10, x2: 44, y2: 70, curve: -4 },
+    { x1: 80, y1: 8, x2: 50, y2: 68, curve: -2 },
+  ]
+
   return (
     <motion.div
       className="fixed inset-0 pointer-events-none z-50"
       initial={{ x: 0 }}
-      animate={{ x: [0, -4, 4, -2, 2, 0] }}
-      transition={{ duration: 0.3 }}
+      animate={{ x: [0, -6, 6, -3, 3, 0] }}
+      transition={{ duration: 0.4 }}
       exit={{ opacity: 0 }}
     >
-      {[0, 1, 2].map((i) => (
+      {/* Dark flash overlay */}
+      <motion.div
+        className="absolute inset-0 bg-red-900/30"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: [0, 0.4, 0] }}
+        transition={{ duration: 0.5 }}
+      />
+
+      {/* SVG claw marks */}
+      <svg className="absolute inset-0 w-full h-full">
+        {claws.map((claw, i) => {
+          const mx = (claw.x1 + claw.x2) / 2 + claw.curve
+          const my = (claw.y1 + claw.y2) / 2
+          const path = `M ${claw.x1}% ${claw.y1}% Q ${mx}% ${my}% ${claw.x2}% ${claw.y2}%`
+          return (
+            <motion.path
+              key={i}
+              d={path}
+              fill="none"
+              stroke="url(#clawGradient)"
+              strokeWidth="4"
+              strokeLinecap="round"
+              filter="url(#clawGlow)"
+              initial={{ pathLength: 0, opacity: 0 }}
+              animate={{ pathLength: [0, 1], opacity: [0, 1, 1, 0.3] }}
+              transition={{ duration: 0.4, delay: i * 0.05, ease: 'easeOut' }}
+            />
+          )
+        })}
+        <defs>
+          <linearGradient id="clawGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stopColor="#ff2222" />
+            <stop offset="50%" stopColor="#cc0000" />
+            <stop offset="100%" stopColor="#660000" />
+          </linearGradient>
+          <filter id="clawGlow">
+            <feGaussianBlur stdDeviation="3" result="blur" />
+            <feMerge>
+              <feMergeNode in="blur" />
+              <feMergeNode in="SourceGraphic" />
+            </feMerge>
+          </filter>
+        </defs>
+      </svg>
+
+      {/* Blood splatter particles */}
+      {Array.from({ length: 8 }).map((_, i) => (
         <motion.div
-          key={i}
-          className="absolute bg-red-500/80 rounded-full"
+          key={`blood-${i}`}
+          className="absolute w-1.5 h-1.5 rounded-full bg-red-600"
           style={{
-            width: '3px',
-            height: '120%',
-            left: `${40 + i * 8}%`,
-            top: '-10%',
-            transform: 'rotate(25deg)',
-            boxShadow: '0 0 15px rgba(220,38,38,0.8)',
+            left: `${45 + Math.random() * 20}%`,
+            top: `${35 + Math.random() * 30}%`,
+            boxShadow: '0 0 4px rgba(220,38,38,0.8)',
           }}
-          initial={{ scaleY: 0, opacity: 0 }}
-          animate={{ scaleY: 1, opacity: [0, 1, 1, 0] }}
-          transition={{ duration: 0.6, delay: i * 0.1 }}
+          initial={{ scale: 0, opacity: 1 }}
+          animate={{
+            scale: [0, 1.5, 0.5],
+            opacity: [0, 1, 0],
+            x: (Math.random() - 0.5) * 60,
+            y: Math.random() * 40 + 10,
+          }}
+          transition={{ duration: 0.6, delay: 0.2 + Math.random() * 0.2 }}
         />
       ))}
     </motion.div>
