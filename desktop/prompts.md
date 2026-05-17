@@ -19,20 +19,22 @@
 | Loading画面 | 1080×1920 | PNG | sRGB | 竖版全屏 |
 | Logo | 1920×480 | PNG (RGBA) | sRGB | 横版透明背景 |
 
-### 动画素材（Sprite Sheet）
+### 动画效果（纯代码实现，无需图片素材）
 
-| 动画 | 单帧尺寸 | 帧数 | Sheet 排列 | Sheet 总尺寸 | 格式 |
-|------|----------|------|-----------|-------------|------|
-| 狼刀攻击 | 256×256 | 8 | 4列×2行 | 1024×512 | PNG (RGBA) |
-| 毒药效果 | 256×256 | 8 | 4列×2行 | 1024×512 | PNG (RGBA) |
-| 解药效果 | 256×256 | 8 | 4列×2行 | 1024×512 | PNG (RGBA) |
-| 预言查验 | 256×256 | 10 | 5列×2行 | 1280×512 | PNG (RGBA) |
-| 猎人开枪 | 256×256 | 8 | 4列×2行 | 1024×512 | PNG (RGBA) |
-| 投票计票 | 256×256 | 8 | 4列×2行 | 1024×512 | PNG (RGBA) |
-| 死亡碎裂 | 256×256 | 12 | 4列×3行 | 1024×768 | PNG (RGBA) |
-| 胜利烟花 | 256×256 | 12 | 4列×3行 | 1024×768 | PNG (RGBA) |
+所有动画效果由 CSS Animation + Framer Motion 在前端代码中实现，60FPS 矢量渲染：
 
-播放帧率：12 FPS（每帧约 83ms）
+| 效果 | 实现方式 |
+|------|----------|
+| 狼刀攻击 | 3条红色斜线 CSS clip-path 滑入 + 屏幕微震 |
+| 毒药效果 | 紫色径向渐变扩散 + 模糊粒子上升 |
+| 解药效果 | 绿色光点粒子螺旋上升 + 暖光脉冲 |
+| 预言查验 | 紫色圆环缩放 + 扫描线从左到右 |
+| 猎人开枪 | 白色线条射出 + 目标冲击波圆环 |
+| 死亡碎裂 | 卡片分裂为多个 clip-path 碎片飞散 + 灰度 |
+| 投票飘落 | 多个纸片 div 旋转下落 |
+| 胜利庆典 | 多点径向爆炸 + 金色粒子雨 |
+| 昼夜切换 | 背景渐变色 2s transition |
+| 行动高亮 | 卡片 ring + pulse + scale |
 
 ### 音效素材
 
@@ -74,10 +76,10 @@
 | 角色立绘（51张） | 200-400KB | ~15MB |
 | 场景背景（7张） | 500KB-1MB | ~5MB |
 | UI 元素（11个） | 50-200KB | ~1.5MB |
-| 动画 Sheet（8张） | 500KB-1MB | ~6MB |
+| 动画效果 | 纯代码，0KB | 0 |
 | 音效（13个） | 50-150KB | ~1.5MB |
 | BGM（6首，短循环 OGG） | 400-600KB | ~3MB |
-| **总计** | | **~32MB** |
+| **总计** | | **~26MB** |
 
 ---
 
@@ -140,20 +142,9 @@
 | `icon_sheriff.png` | 警长竞选/当选 | 128×128 |
 | `icon_explode.png` | 狼人自爆 | 128×128 |
 
-### 动画 Sprite Sheet — `animations/`
+### 动画效果 — 纯代码（无素材文件）
 
-| 文件名 | 动画 | 帧数 | Sheet尺寸 | 单帧 |
-|--------|------|------|-----------|------|
-| `anim_slash.png` | 狼刀攻击 | 8 | 1024×512 | 256×256 |
-| `anim_poison.png` | 毒药效果 | 8 | 1024×512 | 256×256 |
-| `anim_heal.png` | 解药效果 | 8 | 1024×512 | 256×256 |
-| `anim_seer.png` | 查验效果 | 10 | 1280×512 | 256×256 |
-| `anim_shoot.png` | 开枪效果 | 8 | 1024×512 | 256×256 |
-| `anim_vote.png` | 投票计票 | 8 | 1024×512 | 256×256 |
-| `anim_death.png` | 死亡碎裂 | 12 | 1024×768 | 256×256 |
-| `anim_fireworks.png` | 胜利烟花 | 12 | 1024×768 | 256×256 |
-
-排列规则：从左到右、从上到下。第1帧在左上角，最后一帧在右下角。
+所有动画由 CSS + Framer Motion 实现，不需要图片文件。参见「技术规格 - 动画效果」表。
 
 ### 音效 — `sfx/`
 
@@ -623,55 +614,22 @@ Game icon: a dramatic explosion with wolf silhouette at center being torn apart,
 
 ---
 
-## 四、动画素材（Sprite Sheet，每帧 256x256）
+## 四、动画效果（纯代码实现，无需图片素材）
 
-### 4.1 狼刀攻击（8帧）
+所有游戏内动画由 CSS Animation + Framer Motion 在前端实现，60FPS 矢量渲染，不需要生成任何图片。
 
-```
-8-frame sprite sheet animation (arranged in 2x4 grid, each cell 256x256): A wolf claw slash attack sequence - Frame 1: claw shadows gathering from upper-right; Frame 2-3: three parallel red slash marks appearing one by one diagonally; Frame 4-5: blood splatter particles burst from slash marks; Frame 6-7: slash marks glow bright red then begin fading; Frame 8: residual red particles dissipating. Dark transparent background, game VFX style, vibrant red colors, 512x1024 total sheet size
-```
-
-### 4.2 毒药效果（8帧）
-
-```
-8-frame sprite sheet animation (2x4 grid, 256x256 per cell): Poison effect sequence - Frame 1: purple-green droplet falling from above; Frame 2-3: droplet splashes, toxic liquid spreading; Frame 4-5: purple smoke and bubbles rising with skull-shaped vapor forming; Frame 6-7: toxic cloud at maximum with green electricity arcs; Frame 8: smoke dissipating with final purple sparks. Dark transparent background, game VFX, 512x1024 total
-```
-
-### 4.3 解药效果（8帧）
-
-```
-8-frame sprite sheet animation (2x4 grid, 256x256 per cell): Healing antidote effect - Frame 1: golden-green droplets falling like rain; Frame 2-3: warm light circle expanding from center; Frame 4-5: sparkling golden particles swirling upward in helix pattern; Frame 6-7: green leaf shapes and healing crosses appearing; Frame 8: gentle golden glow fading with last sparkles. Dark transparent background, warm colors, game VFX, 512x1024 total
-```
-
-### 4.4 预言家查验（10帧）
-
-```
-10-frame sprite sheet animation (2x5 grid, 256x256 per cell): Seer divination sequence - Frame 1: purple eye symbol begins to open; Frame 2-3: eye fully opens with iris glowing; Frame 4-5: scanning beam of purple light sweeps from left to right; Frame 6: target is illuminated (shows either red wolf aura or green good aura); Frame 7-8: revelation particles burst; Frame 9-10: eye slowly closes with fading afterglow. Dark transparent background, purple mystical theme, game VFX, 512x1280 total
-```
-
-### 4.5 猎人开枪（8帧）
-
-```
-8-frame sprite sheet animation (2x4 grid, 256x256 per cell): Crossbow firing sequence - Frame 1: crossbow silhouette pulls taut; Frame 2: muzzle flash and bolt launches with bright white-orange flash; Frame 3-4: bolt streaking across with silver trail and motion blur; Frame 5-6: impact burst with sparks and force ring expanding; Frame 7-8: dissipating smoke and falling debris particles. Dark transparent background, silver and orange colors, game VFX, 512x1024 total
-```
-
-### 4.6 投票计票（8帧）
-
-```
-8-frame sprite sheet animation (2x4 grid, 256x256 per cell): Vote counting sequence - Frame 1-2: multiple paper slips floating downward gently; Frame 3-4: papers accumulating in a pile; Frame 5: wooden gavel appears above; Frame 6: gavel strikes down with impact ring; Frame 7-8: papers burst upward then settle with golden verdict light. Dark transparent background, warm paper and gold colors, game VFX, 512x1024 total
-```
-
-### 4.7 死亡碎裂（12帧）
-
-```
-12-frame sprite sheet animation (3x4 grid, 256x256 per cell): Portrait shatter death effect - Frame 1-2: crack lines appearing on a glass-like surface; Frame 3-4: major fractures spreading rapidly; Frame 5-6: pieces beginning to separate and float outward; Frame 7-8: fragments flying outward with trail effects; Frame 9-10: fragments getting smaller and desaturating to gray; Frame 11-12: final particles fading into nothing. Dark transparent background, glass/crystal breaking effect, game VFX, 768x1024 total
-```
-
-### 4.8 胜利庆典（12帧）
-
-```
-12-frame sprite sheet animation (3x4 grid, 256x256 per cell): Victory celebration fireworks - Frame 1-2: rocket trails shooting upward (golden); Frame 3-4: first explosion burst in gold and red; Frame 5-6: cascading sparks falling like willow branches; Frame 7-8: second explosion in different position; Frame 9-10: combined sparkle rain with star shapes; Frame 11-12: final gentle fade with floating embers. Dark transparent background, celebratory gold and red, game VFX, 768x1024 total
-```
+| 效果 | 代码实现方式 | 触发时机 | 配合音效 |
+|------|-------------|----------|----------|
+| 狼刀攻击 | 3 条红色 `clip-path` 斜线依次滑入 + `transform: translate` 屏幕微震 | `wolf_target_selected` | `sfx_wolf_kill.mp3` |
+| 毒药效果 | 紫色 `radial-gradient` 从中心扩散 + 多个紫色圆点 div 上升漂浮 | `witch_used_poison` | `sfx_poison.mp3` |
+| 解药效果 | 绿色光点粒子（20个 div）螺旋上升 + 中心暖黄 `box-shadow` 脉冲 | `witch_used_antidote` | `sfx_antidote.mp3` |
+| 预言查验 | 紫色圆环 `border` 缩放 + 水平扫描线（`linear-gradient` 平移） | `seer_checked` | `sfx_seer_check.mp3` |
+| 猎人开枪 | 白色线条从左射向目标 + 目标处圆环 `scale` 冲击波 | `hunter_shot` | `sfx_hunter_shoot.mp3` |
+| 死亡碎裂 | 卡片克隆为 6-9 个 `clip-path` 碎片 + 各自随机方向 `translate` + `opacity` 消失 | `player_died` | 无 |
+| 投票飘落 | 8-12 个纸片 div 从上方随机位置旋转下落（`rotate` + `translateY`） | `vote_resolved` | `sfx_vote_result.mp3` |
+| 胜利庆典 | 多点（5-8个）径向金色爆炸（`scale` + `opacity`）+ 粒子雨下落 | `game_ended` | `sfx_victory_*.mp3` |
+| 昼夜切换 | 背景容器 `background` 渐变色 `transition: 2s` | phase 变化 | `sfx_night_fall/dawn.mp3` |
+| 行动高亮 | 卡片 `ring-2 ring-yellow-400` + `animate-pulse` + `scale-110` | 当前行动角色 | 无 |
 
 ---
 
@@ -883,15 +841,7 @@ desktop/public/assets/
 │       ├── ballot_vote.png
 │       ├── sheriff_star.png
 │       └── self_destruct.png
-├── animations/                     # 动画帧（Sprite Sheet）
-│   ├── slash_8f.png                # 狼刀 8帧
-│   ├── poison_8f.png               # 毒药 8帧
-│   ├── heal_8f.png                 # 解药 8帧
-│   ├── seer_10f.png                # 查验 10帧
-│   ├── shoot_8f.png                # 开枪 8帧
-│   ├── vote_8f.png                 # 投票 8帧
-│   ├── death_12f.png               # 死亡碎裂 12帧
-│   └── fireworks_12f.png           # 胜利烟花 12帧
+│   # 动画效果由代码实现，无需图片文件
 ├── sfx/                            # 音效
 │   ├── phase_night.mp3             # 天黑 3s
 │   ├── phase_dawn.mp3              # 天亮 3s

@@ -5,6 +5,7 @@ import { apiGet } from './hooks/useApi'
 import Background from './components/Background'
 import CircularTable from './components/CircularTable'
 import EventFeed from './components/EventFeed'
+import GameEffects from './components/GameEffects'
 import PhaseBar from './components/PhaseBar'
 import Toolbar from './components/Toolbar'
 import GameList from './components/GameList'
@@ -55,6 +56,9 @@ export default function App() {
     <div className="h-screen flex flex-col relative overflow-hidden">
       {/* Animated background */}
       <Background phase={phase} />
+
+      {/* Game event effects (slash, poison, heal, etc.) */}
+      <GameEffects latestEvent={events.length > 0 ? events[events.length - 1] : null} />
 
       {/* Phase bar */}
       <PhaseBar phase={phase} round={round} winner={winner} players={players} />
