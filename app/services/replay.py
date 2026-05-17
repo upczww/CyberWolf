@@ -207,18 +207,20 @@ async def generate_replay(
     user_content = json.dumps(context, ensure_ascii=False, indent=None)
 
     # Call LLM
-    provider = get_provider(llm_settings)
+    import asyncio
+    provider = get_provider(llm_settings.provider_name)
     payload = provider.build_payload(
+        settings=llm_settings,
         messages=[
             {"role": "system", "content": _SYSTEM_PROMPT},
             {"role": "user", "content": user_content},
         ],
-        tools=None,
+        tools=[],
         force_tool=False,
     )
 
     try:
-        response = await provider.call_api(payload)
+        response = await asyncio.to_thread(provider.post_json, llm_settings, payload)
     except Exception as exc:
         _log.error("Replay LLM call failed: %s", exc)
         return None
