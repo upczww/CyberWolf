@@ -1,4 +1,4 @@
-import { useCallback, useEffect } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useGameStore } from './stores/game'
 import { useGameWS } from './hooks/useGameWS'
 import { apiGet } from './hooks/useApi'
@@ -7,11 +7,13 @@ import CircularTable from './components/CircularTable'
 import EventFeed from './components/EventFeed'
 import GameEffects from './components/GameEffects'
 import PhaseBar from './components/PhaseBar'
+import MusicStudio from './components/MusicStudio'
 import Toolbar from './components/Toolbar'
 import GameList from './components/GameList'
 
 export default function App() {
   const { gameId, players, events, phase, round, winner, setGameId, setPlayers, setEvents, setPhase, setRound, setStatus, setWinner, reset } = useGameStore()
+  const [showMusicStudio, setShowMusicStudio] = useState(false)
 
   useGameWS(gameId)
 
@@ -83,7 +85,10 @@ export default function App() {
       </div>
 
       {/* Toolbar */}
-      <Toolbar onGameStarted={handleGameStarted} />
+      <Toolbar onGameStarted={handleGameStarted} onOpenMusic={() => setShowMusicStudio(true)} />
+
+      {/* Music Studio modal */}
+      {showMusicStudio && <MusicStudio onClose={() => setShowMusicStudio(false)} />}
     </div>
   )
 }

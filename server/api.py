@@ -13,6 +13,7 @@ from typing import Any
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 from app.config import AppPaths, get_llm_settings, get_paths
@@ -49,12 +50,22 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="LycanTUI API", lifespan=lifespan)
+
+# Mount music generator router
+from server.music import router as music_router
+app.include_router(music_router)
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Serve generated assets (BGM, avatars, etc.)
+_assets_dir = Path(__file__).resolve().parents[1] / "desktop" / "public" / "assets"
+_assets_dir.mkdir(parents=True, exist_ok=True)
+app.mount("/assets", StaticFiles(directory=str(_assets_dir)), name="assets")
 
 
 # ---------------------------------------------------------------------------

@@ -4,9 +4,10 @@ import { apiPost, apiDelete } from '../hooks/useApi'
 
 interface Props {
   onGameStarted: (gameId: string) => void
+  onOpenMusic?: () => void
 }
 
-export default function Toolbar({ onGameStarted }: Props) {
+export default function Toolbar({ onGameStarted, onOpenMusic }: Props) {
   const { gameId, status, loading, connected } = useGameStore()
   const [replaying, setReplaying] = useState(false)
   const [replayText, setReplayText] = useState<string | null>(null)
@@ -72,6 +73,14 @@ export default function Toolbar({ onGameStarted }: Props) {
         >
           {replaying ? '⏳ 分析中...' : '📊 复盘'}
         </button>
+        {onOpenMusic && (
+          <button
+            onClick={onOpenMusic}
+            className="px-4 py-1.5 bg-amber-600/80 hover:bg-amber-500/80 rounded-lg text-sm font-medium backdrop-blur-sm transition-colors"
+          >
+            🎵 BGM
+          </button>
+        )}
         <button
           onClick={deleteGame}
           disabled={!gameId}

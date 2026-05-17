@@ -1777,9 +1777,12 @@ dependencies = [
     { name = "numpy" },
     { name = "pyyaml" },
     { name = "requests" },
+    { name = "scipy" },
     { name = "sounddevice" },
     { name = "soundfile" },
     { name = "textual" },
+    { name = "torch" },
+    { name = "transformers" },
     { name = "uvicorn" },
 ]
 
@@ -1790,8 +1793,11 @@ requires-dist = [
     { name = "numpy", specifier = ">=2.4.5" },
     { name = "pyyaml", specifier = ">=6.0" },
     { name = "requests", specifier = ">=2.34.2" },
+    { name = "scipy", specifier = ">=1.17.1" },
     { name = "sounddevice", specifier = ">=0.5.5" },
     { name = "soundfile", specifier = ">=0.13.1" },
     { name = "textual", specifier = ">=0.58.0" },
+    { name = "torch", specifier = ">=2.12.0" },
+    { name = "transformers", specifier = ">=5.8.1" },
     { name = "uvicorn", specifier = ">=0.47.0" },
 ]
