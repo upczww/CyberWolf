@@ -179,10 +179,10 @@
 
 ## 全局风格统一指令
 
-所有图像素材在提示词前加上以下统一风格前缀：
+所有角色卡牌素材在提示词前加上以下统一风格前缀：
 
 ```
-Style: classic Werewolf card game cartoon illustration, fairy tale storybook aesthetic, cel-shaded with bold outlines, warm saturated colors, soft rounded character designs, whimsical and slightly spooky, similar to "One Night Ultimate Werewolf" or "The Werewolves of Miller's Hollow" card art. Characters have exaggerated expressive features, big eyes, simple but charming proportions. Background elements are simplified and stylized like picture book illustrations.
+Style: dark gothic fairy-tale character card, vintage hand-drawn storybook illustration, scratchy ink line art, messy uneven black outlines, grotesque but cute caricature, oversized head and eyes, cel-shaded flat colors, old parchment background, muted yellow-green glow, sepia brown shadows, dirty paper grain, watercolor stains, black irregular decorative border, bottom blank nameplate, eerie humorous fantasy board game aesthetic, 2D illustration, vertical card layout, high detail
 ```
 
 ---
@@ -200,7 +200,7 @@ Style: classic Werewolf card game cartoon illustration, fairy tale storybook aes
 ### 1.1 狼人 — `wolf.png`
 
 ```
-Cartoon wolf character for classic werewolf board game card, a gray wolf with large cunning amber eyes, pointed ears perked up, fluffy gray fur, sharp white fangs showing in a sly grin, round soft body proportions like a children's storybook Big Bad Wolf, sitting upright with tail curled around paws, confident and charming but slightly menacing, front-facing full body, fairy tale illustration style, bold black outlines, cel-shaded, saturated colors, moonlit blue-purple background glow, 512x512, transparent background
+dark gothic fairy-tale character card, vintage hand-drawn storybook illustration, scratchy ink line art, messy uneven black outlines, grotesque but cute caricature werewolf, a sinister gray wolf with oversized glowing amber eyes, pointed ears, sharp jagged fangs in a wide cunning grin, fluffy wild fur with scratchy ink texture, hunched predatory pose facing viewer, front paws together scheming, bushy tail curled, narrow menacing but charming face, old parchment background, muted blue-purple moonlit glow, sepia brown shadows, dirty paper grain, watercolor stains, cel-shaded flat colors, black irregular decorative border, bottom blank nameplate, eerie humorous fantasy board game aesthetic, 2D illustration, vertical card layout, high detail
 ```
 
 ---
@@ -208,7 +208,7 @@ Cartoon wolf character for classic werewolf board game card, a gray wolf with la
 ### 1.2 预言家 — `seer.png`
 
 ```
-Cartoon fortune teller character for werewolf board game card, cute elderly woman with oversized glowing purple eyes, long flowing white hair, wearing a tall pointed wizard hat decorated with stars and moons, deep purple robe with constellation patterns, holding a glowing crystal ball between both hands, tiny floating stars around her, kind knowing smile, front-facing full body, fairy tale storybook illustration, bold black outlines, cel-shaded, warm purple tones, whimsical, 512x512, transparent background
+dark gothic fairy-tale character card, vintage hand-drawn storybook illustration, scratchy ink line art, messy uneven black outlines, grotesque but cute caricature fortune teller, oversized head and glowing violet eyes that pierce through darkness, wild flowing white hair, wearing a tall crooked wizard hat covered in star and moon symbols, tattered indigo robes with constellation embroidery, clutching a cracked crystal ball emanating eerie purple light, hunched mysterious pose, knowing unsettling smile, narrow wizened face, old parchment background, muted purple mystic glow, sepia brown shadows, dirty paper grain, watercolor stains, cel-shaded flat colors, black irregular decorative border, bottom blank nameplate, eerie humorous fantasy board game aesthetic, 2D illustration, vertical card layout, high detail
 ```
 
 ---
@@ -216,7 +216,7 @@ Cartoon fortune teller character for werewolf board game card, cute elderly woma
 ### 1.3 女巫 — `witch.png`
 
 ```
-Cartoon witch character for werewolf board game card, cute young woman with heterochromia - one green eye one purple eye, short black bob hair with bangs, wearing a pointy witch hat with tiny bat ornament, emerald green dress with apron, two potion bottles dangling from belt - one glowing green one glowing purple, playful mysterious smirk, front-facing full body, fairy tale storybook illustration, bold black outlines, cel-shaded, saturated colors, whimsical, 512x512, transparent background
+dark gothic fairy-tale character card, vintage hand-drawn storybook illustration, scratchy ink line art, messy uneven black outlines, grotesque but cute caricature witch, oversized head with heterochromia eyes - one vivid green one deep purple, messy short black bob hair with crooked bangs, wearing a bent pointy witch hat with tiny bat clinging to the brim, tattered emerald dress with stained apron, two potion bottles hanging from rope belt - one bubbling green one smoking purple, mischievous knowing smirk, hunched slightly forward pose, narrow impish face, old parchment background, muted green-purple dual glow, sepia brown shadows, dirty paper grain, watercolor stains, cel-shaded flat colors, black irregular decorative border, bottom blank nameplate, eerie humorous fantasy board game aesthetic, 2D illustration, vertical card layout, high detail
 ```
 
 ---
@@ -224,7 +224,7 @@ Cartoon witch character for werewolf board game card, cute young woman with hete
 ### 1.4 猎人 — `hunter.png`
 
 ```
-Cartoon hunter character for werewolf board game card, stocky rugged man with exaggerated square jaw, wearing a hunter's cap with feather, leather eyepatch over one eye, brown leather vest, carrying a comically oversized crossbow on back, piece of wheat straw in mouth, one good eye alert and determined, muscular but rounded cute proportions, confident wide stance, front-facing full body, fairy tale storybook illustration, bold black outlines, cel-shaded, warm earth tones, 512x512, transparent background
+dark gothic fairy-tale character card, vintage hand-drawn storybook illustration, scratchy ink line art, messy uneven black outlines, grotesque but cute caricature hunter, oversized head and eyes, narrow face, weary paranoid expression, messy hair and beard, patched medieval leather coat, large double-barrel shotgun pointing toward the viewer, hunched compact pose, old parchment background, muted yellow-green glow, sepia brown shadows, dirty paper grain, watercolor stains, cel-shaded flat colors, black irregular decorative border, bottom blank nameplate, eerie humorous fantasy board game aesthetic, 2D illustration, vertical card layout, high detail
 ```
 
 ---
@@ -232,7 +232,7 @@ Cartoon hunter character for werewolf board game card, stocky rugged man with ex
 ### 1.5 白痴 — `idiot.png`
 
 ```
-Cartoon village fool / jester character for werewolf board game card, cheerful round-faced young person with permanently happy curved-moon eyes, wearing a colorful jester cap with jingling bells, clothes covered in mismatched colorful patches, hugging a stuffed teddy bear to chest, rosy cheeks, gap-toothed innocent grin, carefree oblivious posture, front-facing full body, fairy tale storybook illustration, bold black outlines, cel-shaded, bright cheerful colors, 512x512, transparent background
+dark gothic fairy-tale character card, vintage hand-drawn storybook illustration, scratchy ink line art, messy uneven black outlines, grotesque but cute caricature village idiot, oversized round head with permanently happy vacant curved-moon eyes, gap-toothed dopey grin, wearing a floppy colorful jester cap with tarnished bells, mismatched patched rags in faded colors, clutching a ratty stuffed toy to chest, oblivious carefree slouched pose, drooling slightly, narrow childlike face, old parchment background, muted warm golden glow, sepia brown shadows, dirty paper grain, watercolor stains, cel-shaded flat colors, black irregular decorative border, bottom blank nameplate, eerie humorous fantasy board game aesthetic, 2D illustration, vertical card layout, high detail
 ```
 
 ---
@@ -240,7 +240,7 @@ Cartoon village fool / jester character for werewolf board game card, cheerful r
 ### 1.6 村民 — `villager.png`
 
 ```
-Cartoon villager character for werewolf board game card, friendly round-faced person in simple brown peasant clothing, wearing a straw hat, holding a small lantern, big earnest eyes showing mix of nervousness and bravery, simple and honest appearance, an "everyman" character, front-facing full body, fairy tale storybook illustration, bold black outlines, cel-shaded, warm earth tones, 512x512, transparent background
+dark gothic fairy-tale character card, vintage hand-drawn storybook illustration, scratchy ink line art, messy uneven black outlines, grotesque but cute caricature peasant villager, oversized head with big worried earnest eyes, plain round anxious face, wearing a worn straw hat and simple patched brown tunic, holding a flickering lantern nervously in both hands, hunched timid posture, looking over shoulder fearfully, an ordinary frightened everyman, old parchment background, muted warm amber lantern glow, sepia brown shadows, dirty paper grain, watercolor stains, cel-shaded flat colors, black irregular decorative border, bottom blank nameplate, eerie humorous fantasy board game aesthetic, 2D illustration, vertical card layout, high detail
 ```
 
 ---
