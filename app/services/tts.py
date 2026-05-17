@@ -237,7 +237,7 @@ class TTSEngine:
                 _log.warning("TTS playback failed: %s", exc)
 
     def _synthesize_and_play(self, text: str, player_id: int, event_type: str) -> None:
-        """Synthesize speech and play it (blocking, runs in thread)."""
+        """Synthesize speech sentence-by-sentence for low-latency playback."""
         if self._chat is None:
             self._ensure_loaded()
         if self._chat is None:
@@ -250,7 +250,6 @@ class TTSEngine:
         else:
             seed_idx = (player_id - 1) % len(PLAYER_VOICE_SEEDS)
             voice_seed = PLAYER_VOICE_SEEDS[seed_idx]
-            # Select emotion based on role + event type
             role = self._player_roles.get(player_id, "villager")
             if isinstance(role, object) and hasattr(role, "value"):
                 role = role.value
@@ -258,7 +257,6 @@ class TTSEngine:
 
         emotion = EMOTION_PRESETS[emotion_key]
 
-        # Generate speech with ChatTTS
         import torch
         params_infer = self._chat.InferCodeParams(
             spk_emb=self._get_speaker_embedding(voice_seed),
@@ -272,21 +270,23 @@ class TTSEngine:
             top_K=emotion["top_K"],
         )
 
-        # Truncate long text for TTS (max ~200 chars)
-        tts_text = text[:200] + "..." if len(text) > 200 else text
+        # Split into sentences for streaming playback
+        sentences = _split_sentences(text[:300])
 
-        wavs = self._chat.infer(
-            [tts_text],
-            params_infer_code=params_infer,
-            params_refine_text=params_refine,
-        )
-
-        if wavs and len(wavs) > 0 and wavs[0] is not None:
-            audio_data = wavs[0]
-            if isinstance(audio_data, torch.Tensor):
-                audio_data = audio_data.numpy()
-            audio_data = (audio_data * 32767).astype(np.int16)
-            self._play_audio(audio_data, sample_rate=24000)
+        for sentence in sentences:
+            if not sentence.strip():
+                continue
+            wavs = self._chat.infer(
+                [sentence],
+                params_infer_code=params_infer,
+                params_refine_text=params_refine,
+            )
+            if wavs and len(wavs) > 0 and wavs[0] is not None:
+                audio_data = wavs[0]
+                if isinstance(audio_data, torch.Tensor):
+                    audio_data = audio_data.numpy()
+                audio_data = (audio_data * 32767).astype(np.int16)
+                self._play_audio(audio_data, sample_rate=24000)
 
     def _get_speaker_embedding(self, seed: int) -> Any:
         """Generate a deterministic speaker embedding from seed."""
@@ -323,6 +323,32 @@ class TTSEngine:
                 return
             except (FileNotFoundError, subprocess.CalledProcessError, subprocess.TimeoutExpired):
                 continue
+
+
+def _split_sentences(text: str) -> list[str]:
+    """Split text into sentences at Chinese/English punctuation boundaries.
+
+    Short text (<40 chars) is kept as-is for minimal latency.
+    """
+    if len(text) <= 40:
+        return [text]
+    import re
+    # Split at sentence-ending punctuation (keep punctuation with sentence)
+    parts = re.split(r'(?<=[。！？；\n.!?;])', text)
+    # Merge very short fragments with previous
+    sentences = []
+    buf = ""
+    for part in parts:
+        buf += part
+        if len(buf) >= 15:
+            sentences.append(buf)
+            buf = ""
+    if buf:
+        if sentences:
+            sentences[-1] += buf
+        else:
+            sentences.append(buf)
+    return sentences
 
 
 # Singleton instance
