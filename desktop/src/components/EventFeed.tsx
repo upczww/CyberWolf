@@ -73,7 +73,7 @@ export default function EventFeed({ events }: Props) {
   }, [events.length])
 
   return (
-    <div className="flex-1 overflow-y-auto p-4 space-y-1 font-mono text-sm">
+    <div className="flex-1 overflow-y-auto p-3 space-y-0.5 font-mono text-xs">
       {events.map((ev, i) => {
         const { text, highlight } = formatEvent(ev)
         if (!text) return null
@@ -81,9 +81,8 @@ export default function EventFeed({ events }: Props) {
         return (
           <div
             key={i}
-            className={`${scopeColor} ${highlight ? 'font-bold text-base' : ''}`}
+            className={`${scopeColor} ${highlight ? 'font-bold text-sm py-1 border-t border-white/5 mt-1' : ''}`}
           >
-            {highlight && <hr className="border-gray-700 my-1" />}
             {text}
           </div>
         )
