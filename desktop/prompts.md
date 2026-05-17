@@ -73,13 +73,13 @@
 
 | 类别 | 单个约 | 总计约 |
 |------|--------|--------|
-| 角色立绘（24张） | 200-400KB | ~7MB |
+| 角色立绘（6张） | 200-400KB | ~2MB |
 | 场景背景（7张） | 500KB-1MB | ~5MB |
 | UI 元素（11个） | 50-200KB | ~1.5MB |
 | 动画效果 | 纯代码，0KB | 0 |
 | 音效（13个） | 50-150KB | ~1.5MB |
 | BGM（6首，短循环 OGG） | 400-600KB | ~3MB |
-| **总计** | | **~18MB** |
+| **总计** | | **~13MB** |
 
 ---
 
@@ -89,16 +89,22 @@
 
 ### 角色立绘 — `avatars/`
 
-| 角色 | 文件名（4个状态） | 备注 |
-|------|-------------------|------|
-| 狼人 | `wolf_normal.png` `wolf_speaking.png` `wolf_dead.png` `wolf_accused.png` | 4狼共用 |
-| 预言家 | `seer_normal.png` `seer_speaking.png` `seer_dead.png` `seer_accused.png` | |
-| 女巫 | `witch_normal.png` `witch_speaking.png` `witch_dead.png` `witch_accused.png` | |
-| 猎人 | `hunter_normal.png` `hunter_speaking.png` `hunter_dead.png` `hunter_accused.png` | |
-| 白痴 | `idiot_normal.png` `idiot_speaking.png` `idiot_dead.png` `idiot_accused.png` | |
-| 村民 | `villager_normal.png` `villager_speaking.png` `villager_dead.png` `villager_accused.png` | 4民共用 |
+| 角色 | 文件名 | 备注 |
+|------|--------|------|
+| 狼人 | `wolf.png` | 4狼共用 |
+| 预言家 | `seer.png` | |
+| 女巫 | `witch.png` | |
+| 猎人 | `hunter.png` | |
+| 白痴 | `idiot.png` | |
+| 村民 | `villager.png` | 4民共用 |
 
-**总计：24 张**
+**总计：6 张**
+
+前端状态区分（CSS）：
+- 发言中：`scale(1.1)` + 白色 `ring` 光圈 + 上下微浮动画
+- 死亡：`grayscale(1)` + `opacity(0.5)` + 💀 叠加
+- 被指控：`animate-shake` + 红色 `ring` + `scale(0.95)`
+- 行动中：金色 `ring` + `animate-pulse`
 
 ### 场景背景 — `backgrounds/`
 
@@ -181,173 +187,60 @@ Style: classic Werewolf card game cartoon illustration, fairy tale storybook aes
 
 ---
 
-## 一、角色立绘（6 种角色，每角色 4 个状态）
+## 一、角色立绘（6 种角色，每角色 1 张）
 
-狼人共用一个形象，村民共用一个形象。共 6 种角色 × 4 状态 = 24 张。
+狼人共用一个形象，村民共用一个形象。共 **6 张**。
+不同状态（发言、死亡、被指控）由前端 CSS 实现（滤镜、缩放、抖动、灰度）。
 
-每个角色需要以下 4 种状态的立绘：
-- **Normal** — 默认状态
-- **Speaking** — 发言中
-- **Dead** — 死亡（X 眼或灰色）
-- **Accused** — 被指控/紧张
-
-尺寸统一：512x768，半身竖版，透明背景
-风格：经典狼人杀卡牌插画，童话绘本风，粗描边，圆润比例，大眼睛，表情夸张
+尺寸统一：512x512，正面全身，透明背景
+风格：经典狼人杀卡牌插画，童话绘本风，粗描边，圆润比例，大眼睛，色彩饱和
 
 ---
 
-### 1.1 狼人（4人共用同一形象）
+### 1.1 狼人 — `wolf.png`
 
-**外貌设定：** 经典童话风格的狼，灰色毛皮，大大的琥珀色眼睛带狡猾光芒，尖耳朵，露齿坏笑，圆润但有威胁感的身体比例，类似《小红帽》中大灰狼的卡通形象。不穿衣服，纯动物形态。
-
-**Normal:**
 ```
-Cartoon wolf character in classic fairy tale board game card style, a gray wolf with large cunning amber eyes, pointed ears perked up alertly, fluffy gray fur, sharp white fangs showing in a sly grin, round soft body proportions like a children's storybook Big Bad Wolf, sitting with tail curled around paws, confident predatory posture but cute and charming, fairy tale illustration style, bold black outlines, cel-shaded, moonlit blue-purple tones, 512x768, transparent background
-```
-
-**Speaking:**
-```
-Cartoon wolf character at village meeting disguised (wearing a tiny unconvincing sheep hat on head), gray wolf with big amber eyes trying to look innocent, one paw raised as if making a point, mouth open showing fangs while attempting a friendly smile, sweat drop on forehead, sheep disguise hat comically small, fairy tale storybook illustration, bold outlines, cel-shaded, 512x768, transparent background
-```
-
-**Dead:**
-```
-Cartoon wolf character defeated, gray wolf lying on back with X-shaped eyes and tongue hanging out comically, paws up in the air, tail flat, a small cartoon ghost of a wolf pup rising above, desaturated muted blue-gray colors, fairy tale storybook illustration, bold outlines, cel-shaded, 512x768, transparent background
-```
-
-**Accused:**
-```
-Cartoon wolf character being accused and panicking, gray wolf with ears flat against head, amber eyes huge and darting nervously, both front paws raised in "wasn't me!" defense, tail tucked between hind legs, sweat drops flying, fur standing on end, sharp-toothed nervous grin, fairy tale storybook illustration, bold outlines, cel-shaded, 512x768, transparent background
+Cartoon wolf character for classic werewolf board game card, a gray wolf with large cunning amber eyes, pointed ears perked up, fluffy gray fur, sharp white fangs showing in a sly grin, round soft body proportions like a children's storybook Big Bad Wolf, sitting upright with tail curled around paws, confident and charming but slightly menacing, front-facing full body, fairy tale illustration style, bold black outlines, cel-shaded, saturated colors, moonlit blue-purple background glow, 512x512, transparent background
 ```
 
 ---
 
-### 1.2 预言家
+### 1.2 预言家 — `seer.png`
 
-**外貌设定：** 卡通神秘老奶奶形象，戴尖顶星月巫师帽，大大的发光紫色眼睛，白色长发飘逸，穿深紫色星辰图案长袍，手捧水晶球，周围有小星星飘浮，慈祥但全知的感觉。
-
-**Normal:**
 ```
-Cartoon fortune teller character for board game card, cute elderly woman with oversized glowing purple eyes, long flowing white hair, wearing a tall pointed wizard hat decorated with stars and moons, deep purple robe with constellation patterns, holding a small crystal ball between both hands that glows softly, tiny floating stars around her, kind knowing smile, fairy tale storybook illustration, bold black outlines, cel-shaded, warm colors, whimsical, 512x768, transparent background
-```
-
-**Speaking:**
-```
-Cartoon fortune teller revealing truth, elderly woman with purple eyes blazing bright, wizard hat slightly askew from excitement, white hair blowing in magical wind, crystal ball held high in one hand shooting beam of purple light, other hand pointing forward dramatically, mouth open announcing with authority, magical sparkles everywhere, fairy tale storybook illustration, bold outlines, cel-shaded, 512x768, transparent background
-```
-
-**Dead:**
-```
-Cartoon fortune teller defeated, cute elderly woman with closed eyes and peaceful smile, wizard hat fallen beside her, crystal ball cracked with last purple spark fading, white hair spread like a halo, small fading stars dissipating around her, muted desaturated colors, fairy tale storybook illustration, bold outlines, cel-shaded, 512x768, transparent background
-```
-
-**Accused:**
-```
-Cartoon fortune teller being doubted, elderly woman with purple eyes intense and frustrated, wizard hat puffing steam, clutching crystal ball protectively to chest, foot stomping, expression of "I'm telling the truth!", small lightning bolts of purple energy crackling around her in annoyance, fairy tale storybook illustration, bold outlines, cel-shaded, 512x768, transparent background
+Cartoon fortune teller character for werewolf board game card, cute elderly woman with oversized glowing purple eyes, long flowing white hair, wearing a tall pointed wizard hat decorated with stars and moons, deep purple robe with constellation patterns, holding a glowing crystal ball between both hands, tiny floating stars around her, kind knowing smile, front-facing full body, fairy tale storybook illustration, bold black outlines, cel-shaded, warm purple tones, whimsical, 512x512, transparent background
 ```
 
 ---
 
-### 1.3 女巫
+### 1.3 女巫 — `witch.png`
 
-**外貌设定：** 卡通年轻女巫形象，尖帽子（帽子上有小蝙蝠装饰），一只眼睛绿色一只紫色，短黑发俏皮，穿翠绿连衣裙+围裙，腰间挂两个瓶子（绿色+紫色），带点恶作剧气质的可爱感。
-
-**Normal:**
 ```
-Cartoon witch character for board game card, cute young woman with heterochromia - one green eye one purple eye, short black bob hair with bangs, wearing a pointy witch hat with tiny bat ornament on top, emerald green dress with apron, two potion bottles dangling from belt - one glowing green one glowing purple, playful mysterious smirk, one hand on hip, fairy tale storybook illustration, bold black outlines, cel-shaded, saturated colors, whimsical, 512x768, transparent background
-```
-
-**Speaking:**
-```
-Cartoon witch explaining at meeting, cute young woman with heterochromia eyes, witch hat, black bob hair, green dress, holding up the green potion bottle in demonstration, other hand on chin thoughtfully, mouth open explaining carefully, cautious expression, fairy tale storybook illustration, bold outlines, cel-shaded, 512x768, transparent background
-```
-
-**Dead:**
-```
-Cartoon witch defeated, cute young woman with closed eyes, witch hat fallen off beside her, both potion bottles broken with green and purple liquid pooling and mixing into pretty swirls, black hair messy over face, small potion bubble floating away, muted colors, fairy tale storybook illustration, bold outlines, cel-shaded, 512x768, transparent background
-```
-
-**Accused:**
-```
-Cartoon witch being accused, heterochromia eyes wide with indignation, witch hat crooked, black bob hair frazzled, holding both potion bottles protectively behind her back, cheeks puffed in protest, "hmph!" expression, tiny bat on hat also looking offended, fairy tale storybook illustration, bold outlines, cel-shaded, 512x768, transparent background
+Cartoon witch character for werewolf board game card, cute young woman with heterochromia - one green eye one purple eye, short black bob hair with bangs, wearing a pointy witch hat with tiny bat ornament, emerald green dress with apron, two potion bottles dangling from belt - one glowing green one glowing purple, playful mysterious smirk, front-facing full body, fairy tale storybook illustration, bold black outlines, cel-shaded, saturated colors, whimsical, 512x512, transparent background
 ```
 
 ---
 
-### 1.4 猎人
+### 1.4 猎人 — `hunter.png`
 
-**外貌设定：** 卡通硬汉猎人，方下巴，戴猎人帽（有羽毛），穿棕色皮背心，背着巨大的弩弓（比例夸张地大），一只眼睛有眼罩，嘴里叼着麦秆，壮实但可爱的比例。
-
-**Normal:**
 ```
-Cartoon hunter character for board game card, stocky rugged man with exaggerated square jaw, wearing a hunter's cap with feather, leather eyepatch over one eye, brown leather vest, carrying a comically oversized crossbow on back, piece of wheat straw in mouth, one good eye alert and determined, muscular but rounded cute proportions, confident wide stance, fairy tale storybook illustration, bold black outlines, cel-shaded, warm earth tones, 512x768, transparent background
-```
-
-**Speaking:**
-```
-Cartoon hunter giving testimony, stocky man with eyepatch, hunter cap, leather vest, fist slamming on table with impact star effect, wheat straw bouncing, one eye burning with conviction, mouth open speaking bluntly, oversized crossbow on back wobbling from the table slam, fairy tale storybook illustration, bold outlines, cel-shaded, 512x768, transparent background
-```
-
-**Dead:**
-```
-Cartoon hunter defeated in heroic last stand pose, stocky man with eyepatch, lying with crossbow aimed forward as if he fired one last shot, trail of the bolt still visible, hunter cap fallen nearby with feather, proud defiant expression even with X-eyes, small medal/star floating above him, muted colors, fairy tale storybook illustration, bold outlines, cel-shaded, 512x768, transparent background
-```
-
-**Accused:**
-```
-Cartoon hunter being accused, stocky man with eyepatch widened in surprise, hunter cap askew, leather vest, wheat straw dropped from open mouth, pointing at himself "ME?!" with exaggerated shock, crossbow on back rattling, fairy tale storybook illustration, bold outlines, cel-shaded, 512x768, transparent background
+Cartoon hunter character for werewolf board game card, stocky rugged man with exaggerated square jaw, wearing a hunter's cap with feather, leather eyepatch over one eye, brown leather vest, carrying a comically oversized crossbow on back, piece of wheat straw in mouth, one good eye alert and determined, muscular but rounded cute proportions, confident wide stance, front-facing full body, fairy tale storybook illustration, bold black outlines, cel-shaded, warm earth tones, 512x512, transparent background
 ```
 
 ---
 
-### 1.5 白痴
+### 1.5 白痴 — `idiot.png`
 
-**外貌设定：** 卡通天真小丑/傻瓜形象，戴彩色小丑帽（铃铛叮当响），圆圆脸蛋，永远在傻笑，穿满是彩色补丁的衣服，手里抱着布偶熊，眼睛是开心的弯月形。
-
-**Normal:**
 ```
-Cartoon village fool / jester character for board game card, cheerful round-faced young person with permanently happy curved-moon eyes, wearing a colorful jester cap with jingling bells, clothes covered in mismatched colorful patches - red blue green yellow, hugging a stuffed teddy bear to chest, rosy cheeks, gap-toothed innocent grin, slightly tilted head, carefree oblivious posture, fairy tale storybook illustration, bold black outlines, cel-shaded, bright cheerful colors, 512x768, transparent background
-```
-
-**Speaking:**
-```
-Cartoon village fool trying to speak, round happy face now with confused spiral eyes, jester cap bells jingling, one hand scratching head while other holds teddy bear, mouth in confused "O" shape, question marks floating above head, tilted head, adorably clueless, fairy tale storybook illustration, bold outlines, cel-shaded, 512x768, transparent background
-```
-
-**Dead:**
-```
-Cartoon village fool sleeping peacefully (looks the same as being dead), round face with happy sleeping expression (not X-eyes, just ZZZ), jester cap as pillow, teddy bear clutched in arms, small dream bubbles with candy and flowers, actually looks just like napping, muted warm colors, fairy tale storybook illustration, bold outlines, cel-shaded, 512x768, transparent background
-```
-
-**Accused:**
-```
-Cartoon village fool being accused and revealing identity card, round face with rare clever wink, jester cap bells ringing triumphantly, holding up a glowing "FOOL" card above head with both hands, teddy bear tucked under arm, cheeky knowing grin for once, golden light burst behind the card, surprised exclamation marks from off-screen, fairy tale storybook illustration, bold outlines, cel-shaded, 512x768, transparent background
+Cartoon village fool / jester character for werewolf board game card, cheerful round-faced young person with permanently happy curved-moon eyes, wearing a colorful jester cap with jingling bells, clothes covered in mismatched colorful patches, hugging a stuffed teddy bear to chest, rosy cheeks, gap-toothed innocent grin, carefree oblivious posture, front-facing full body, fairy tale storybook illustration, bold black outlines, cel-shaded, bright cheerful colors, 512x512, transparent background
 ```
 
 ---
 
-### 1.6 村民（4人共用同一形象）
+### 1.6 村民 — `villager.png`
 
-**外貌设定：** 卡通普通村民，圆脸善良相，穿棕色/米色简单农服，戴草帽或头巾，手里拿着火把或小灯笼，表情有点紧张有点勇敢，普通但可爱的路人感。
-
-**Normal:**
 ```
-Cartoon villager character for board game card, friendly round-faced person in simple brown peasant clothing, wearing a straw hat, holding a small torch or lantern, big earnest eyes showing mix of nervousness and bravery, slightly hunched cautious posture, simple and honest appearance, an "everyman" character, fairy tale storybook illustration, bold black outlines, cel-shaded, warm earth tones, 512x768, transparent background
-```
-
-**Speaking:**
-```
-Cartoon villager speaking up bravely at meeting, round-faced person in peasant clothes, straw hat pushed back, one hand raised timidly but determined, torch/lantern set on table, mouth open speaking with visible effort to be brave, slight blush, big earnest eyes, fairy tale storybook illustration, bold outlines, cel-shaded, 512x768, transparent background
-```
-
-**Dead:**
-```
-Cartoon villager defeated, round-faced person with peaceful X-eyes, straw hat fallen nearby, lantern extinguished beside them, simple peasant clothes, a single wilted flower growing where they lay, gentle and sad mood, muted warm colors, fairy tale storybook illustration, bold outlines, cel-shaded, 512x768, transparent background
-```
-
-**Accused:**
-```
-Cartoon villager being accused and panicking, round face with huge shocked eyes and sweat drops, straw hat flying off head, hands waving frantically in denial, torch/lantern shaking, "it's not me!!" panic expression, knees knocking together, fairy tale storybook illustration, bold outlines, cel-shaded, 512x768, transparent background
+Cartoon villager character for werewolf board game card, friendly round-faced person in simple brown peasant clothing, wearing a straw hat, holding a small lantern, big earnest eyes showing mix of nervousness and bravery, simple and honest appearance, an "everyman" character, front-facing full body, fairy tale storybook illustration, bold black outlines, cel-shaded, warm earth tones, 512x512, transparent background
 ```
 
 ---
