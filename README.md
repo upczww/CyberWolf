@@ -190,25 +190,53 @@ data/
 └── contexts/          # 每个玩家每阶段的完整上下文快照
 ```
 
+## 桌面应用（Electron + React）
+
+除 TUI 外，还提供基于 Electron + React 的桌面 GUI：
+
+```bash
+# 1. 启动后端 API server
+uv run uvicorn server.api:app --port 8765
+
+# 2. 启动前端开发服务器
+cd desktop && npm install && npm run dev
+
+# 3.（可选）Electron 桌面模式
+npm run electron:dev
+```
+
+API 端点：
+- `POST /api/games/start` — 开始新局
+- `GET /api/games` — 对局列表
+- `GET /api/games/:id` — 对局详情
+- `DELETE /api/games/:id` — 删除对局
+- `POST /api/games/:id/replay` — AI 复盘
+- `WS /ws/games/:id` — 实时事件流
+
+TUI 和桌面应用可同时运行，共享同一个 SQLite 数据库。
+
 ## 技术架构
 
 ```
-app/
+app/                            # 游戏引擎
 ├── engine/
-│   ├── session.py          # 游戏主循环（~300行），阶段调度 + 事件持久化
-│   ├── handlers/           # 阶段处理器（night/day/sheriff/skills/setup）
-│   ├── llm_bridge.py       # 统一 LLM 决策管道（tool call + retry + fallback）
-│   ├── event_helpers.py    # 事件创建/发布快捷方法
-│   ├── bootstrap.py        # 游戏初始化：配置加载 → 编译 → 建图 → 运行
-│   ├── config_loader.py    # YAML 配置 → RuntimeConfig 编译
-│   ├── graph.py            # 自定义 CompiledGraph（非 LangGraph）
-│   ├── graph_viz.py        # Mermaid/DOT/PNG 导出
-│   └── rules.py            # 胜负判定（屠边规则）
-├── domain/                 # 纯数据类型（Role, Phase, GameState, PhaseResult, ...）
-├── services/               # LLM 客户端、动作校验、提示词模板、上下文构建、TTS
-├── infra/                  # SQLite 持久化层（EventBus, repositories）
-├── ui/                     # Textual TUI（app, db_view, i18n）
-└── configs/                # YAML 游戏配置 + Jinja2 提示词模板
+│   ├── session.py              # 游戏主循环，阶段调度 + 事件持久化
+│   ├── handlers/               # 阶段处理器（night/day/sheriff/skills/setup）
+│   ├── llm_bridge.py           # 统一 LLM 决策管道
+│   ├── event_helpers.py        # 事件创建/发布快捷方法
+│   ├── bootstrap.py            # 游戏初始化
+│   ├── config_loader.py        # YAML → RuntimeConfig
+│   ├── graph.py                # CompiledGraph
+│   └── rules.py                # 胜负判定
+├── domain/                     # 纯数据类型
+├── services/                   # LLM、TTS、复盘、动作校验、提示词
+├── infra/                      # SQLite 持久化层
+├── ui/                         # Textual TUI
+└── configs/                    # YAML 配置 + 提示词模板
+server/                         # FastAPI WebSocket + REST API
+desktop/                        # Electron + React + Vite 桌面前端
+├── electron/main.js            # Electron 主进程（管理 Python sidecar）
+└── src/                        # React 组件（PlayerRing, EventFeed, ...）
 ```
 
 ### 设计模式
@@ -217,6 +245,7 @@ app/
 - **阶段处理器分发**：`PHASE_HANDLERS` dict 映射 Phase → handler，每个返回 PhaseResult
 - **三层动作管线**：ProposedAction → ValidatedAction → ResolvedAction，LLM 输出必须经过校验
 - **信息隔离**：每个玩家只能看到自己视角的信息（公共 + 阵营 + 私有）
-- **事件溯源**：每个阶段边界写入 snapshot + events，TUI 从 DB 读取
-- **实时 live events**：handler 内部 `emit_event` 立即写入 DB + EventBus 通知 TUI
+- **事件溯源**：每个阶段边界写入 snapshot + events，TUI/桌面从 DB 读取
+- **实时 live events**：handler 内部 `emit_event` 立即写入 DB + EventBus → WebSocket 广播
+- **双前端共存**：TUI 直接读 DB，桌面通过 WebSocket + REST API 访问
 - **双链路 LLM**：优先 LLM，失败/超限时回退到本地随机策略
