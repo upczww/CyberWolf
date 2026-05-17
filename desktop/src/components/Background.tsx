@@ -1,4 +1,14 @@
-import { useEffect, useState } from 'react'
+/**
+ * Layered game background:
+ * - Layer 0: Sky gradient (day/night transition via CSS)
+ * - Layer 1: tsParticles (stars at night, dust motes during day)
+ * - Layer 2: Moon/Sun celestial body
+ * - Layer 3: Fog/atmosphere overlay
+ */
+import { useEffect, useMemo, useState, useCallback } from 'react'
+import Particles, { initParticlesEngine } from '@tsparticles/react'
+import { loadSlim } from '@tsparticles/slim'
+import type { ISourceOptions } from '@tsparticles/engine'
 
 interface Props {
   phase: string | null
@@ -10,81 +20,91 @@ const NIGHT_PHASES = new Set([
 
 export default function Background({ phase }: Props) {
   const isNight = phase ? NIGHT_PHASES.has(phase) : true
-  const [stars, setStars] = useState<{ x: number; y: number; size: number; delay: number }[]>([])
+  const [engineReady, setEngineReady] = useState(false)
 
   useEffect(() => {
-    // Generate random stars once
-    const s = Array.from({ length: 40 }, () => ({
-      x: Math.random() * 100,
-      y: Math.random() * 100,
-      size: Math.random() * 2 + 1,
-      delay: Math.random() * 3,
-    }))
-    setStars(s)
+    initParticlesEngine(async (engine) => {
+      await loadSlim(engine)
+    }).then(() => setEngineReady(true))
   }, [])
 
+  const particleOptions: ISourceOptions = useMemo(() => ({
+    fullScreen: false,
+    particles: {
+      number: { value: isNight ? 60 : 15 },
+      color: { value: isNight ? '#ffffff' : '#f5e6d3' },
+      opacity: {
+        value: { min: 0.1, max: isNight ? 0.8 : 0.3 },
+        animation: { enable: true, speed: 0.5, sync: false },
+      },
+      size: {
+        value: { min: 0.5, max: isNight ? 2.5 : 1.5 },
+        animation: { enable: isNight, speed: 1, sync: false },
+      },
+      move: {
+        enable: true,
+        speed: isNight ? 0.2 : 0.5,
+        direction: isNight ? 'none' : 'bottom',
+        outModes: { default: 'out' },
+      },
+      twinkle: {
+        particles: { enable: isNight, frequency: 0.03, color: '#ffffff' },
+      },
+    },
+    detectRetina: true,
+  }), [isNight])
+
   return (
-    <div className="fixed inset-0 -z-10 transition-all duration-[2000ms] overflow-hidden">
-      {/* Sky gradient */}
+    <div className="fixed inset-0 -z-10 overflow-hidden">
+      {/* Layer 0: Sky gradient */}
       <div
-        className={`absolute inset-0 transition-all duration-[2000ms] ${
+        className={`absolute inset-0 transition-all duration-[3000ms] ${
           isNight
-            ? 'bg-gradient-to-b from-[#0a0e27] via-[#1a1a3e] to-[#0d1117]'
-            : 'bg-gradient-to-b from-[#4a90d9] via-[#87ceeb] to-[#f0e68c]'
+            ? 'bg-gradient-to-b from-[#070b1a] via-[#101530] to-[#0d1117]'
+            : 'bg-gradient-to-b from-[#3a7bd5] via-[#6db3f2] to-[#f0e4a8]'
         }`}
       />
 
-      {/* Moon (night) */}
+      {/* Layer 1: tsParticles (stars / dust) */}
+      {engineReady && (
+        <Particles
+          className="absolute inset-0"
+          options={particleOptions}
+        />
+      )}
+
+      {/* Layer 2: Celestial body */}
+      {/* Moon */}
       <div
-        className={`absolute top-8 right-16 w-16 h-16 rounded-full transition-all duration-[2000ms] ${
+        className={`absolute top-8 right-20 w-16 h-16 rounded-full transition-all duration-[3000ms] ${
           isNight
-            ? 'opacity-100 bg-gradient-to-br from-yellow-100 to-yellow-200 shadow-[0_0_40px_rgba(255,255,200,0.4)]'
-            : 'opacity-0 scale-50'
+            ? 'opacity-100 bg-gradient-to-br from-yellow-100 to-yellow-200 shadow-[0_0_50px_rgba(255,255,200,0.4)]'
+            : 'opacity-0 scale-50 translate-y-10'
         }`}
       >
-        {/* Moon craters */}
         <div className="absolute top-3 left-4 w-3 h-3 rounded-full bg-yellow-300/30" />
         <div className="absolute top-7 left-8 w-2 h-2 rounded-full bg-yellow-300/20" />
       </div>
-
-      {/* Sun (day) */}
+      {/* Sun */}
       <div
-        className={`absolute top-8 right-16 w-20 h-20 rounded-full transition-all duration-[2000ms] ${
+        className={`absolute top-10 right-20 w-20 h-20 rounded-full transition-all duration-[3000ms] ${
           isNight
-            ? 'opacity-0 scale-50'
-            : 'opacity-100 bg-gradient-to-br from-yellow-300 to-orange-400 shadow-[0_0_60px_rgba(255,200,0,0.5)]'
+            ? 'opacity-0 scale-50 translate-y-10'
+            : 'opacity-100 bg-gradient-to-br from-yellow-300 to-orange-400 shadow-[0_0_80px_rgba(255,180,0,0.5)]'
         }`}
       />
 
-      {/* Stars (night only) */}
-      {stars.map((star, i) => (
-        <div
-          key={i}
-          className={`absolute rounded-full bg-white transition-opacity duration-[2000ms] ${
-            isNight ? 'opacity-70' : 'opacity-0'
-          }`}
-          style={{
-            left: `${star.x}%`,
-            top: `${star.y}%`,
-            width: `${star.size}px`,
-            height: `${star.size}px`,
-            animation: `twinkle ${2 + star.delay}s ease-in-out infinite`,
-            animationDelay: `${star.delay}s`,
-          }}
-        />
-      ))}
-
-      {/* Ground/fog overlay */}
+      {/* Layer 3: Atmosphere overlay */}
       <div
-        className={`absolute bottom-0 left-0 right-0 h-32 transition-all duration-[2000ms] ${
+        className={`absolute bottom-0 left-0 right-0 h-40 transition-all duration-[3000ms] ${
           isNight
-            ? 'bg-gradient-to-t from-[#0a0e27]/80 to-transparent'
-            : 'bg-gradient-to-t from-[#2d5a27]/30 to-transparent'
+            ? 'bg-gradient-to-t from-black/60 to-transparent'
+            : 'bg-gradient-to-t from-[#1a4a1a]/20 to-transparent'
         }`}
       />
 
-      {/* Dark overlay for readability */}
-      <div className="absolute inset-0 bg-black/40" />
+      {/* Readability overlay */}
+      <div className="absolute inset-0 bg-black/30" />
     </div>
   )
 }
