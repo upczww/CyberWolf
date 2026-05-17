@@ -73,13 +73,13 @@
 
 | 类别 | 单个约 | 总计约 |
 |------|--------|--------|
-| 角色立绘（51张） | 200-400KB | ~15MB |
+| 角色立绘（24张） | 200-400KB | ~7MB |
 | 场景背景（7张） | 500KB-1MB | ~5MB |
 | UI 元素（11个） | 50-200KB | ~1.5MB |
 | 动画效果 | 纯代码，0KB | 0 |
 | 音效（13个） | 50-150KB | ~1.5MB |
 | BGM（6首，短循环 OGG） | 400-600KB | ~3MB |
-| **总计** | | **~26MB** |
+| **总计** | | **~18MB** |
 
 ---
 
@@ -89,22 +89,16 @@
 
 ### 角色立绘 — `avatars/`
 
-| 座位 | 角色 | 文件名 |
-|------|------|--------|
-| 1 | 狼人A 头狼 | `wolf_01_normal.png` `wolf_01_speaking.png` `wolf_01_dead.png` `wolf_01_accused.png` |
-| 2 | 狼人B 潜伏 | `wolf_02_normal.png` `wolf_02_speaking.png` `wolf_02_dead.png` `wolf_02_accused.png` |
-| 3 | 狼人C 暴徒 | `wolf_03_normal.png` `wolf_03_speaking.png` `wolf_03_dead.png` `wolf_03_accused.png` |
-| 4 | 狼人D 军师 | `wolf_04_normal.png` `wolf_04_speaking.png` `wolf_04_dead.png` `wolf_04_accused.png` |
-| 5 | 预言家 | `seer_normal.png` `seer_speaking.png` `seer_dead.png` `seer_accused.png` |
-| 6 | 女巫 | `witch_normal.png` `witch_speaking.png` `witch_antidote.png` `witch_poison.png` `witch_dead.png` |
-| 7 | 猎人 | `hunter_normal.png` `hunter_speaking.png` `hunter_shooting.png` `hunter_dead.png` |
-| 8 | 白痴 | `idiot_normal.png` `idiot_speaking.png` `idiot_reveal.png` `idiot_dead.png` |
-| 9 | 村民A 老村长 | `villager_01_normal.png` `villager_01_speaking.png` `villager_01_dead.png` |
-| 10 | 村民B 农夫 | `villager_02_normal.png` `villager_02_speaking.png` `villager_02_dead.png` |
-| 11 | 村民C 少女 | `villager_03_normal.png` `villager_03_speaking.png` `villager_03_dead.png` |
-| 12 | 村民D 商人 | `villager_04_normal.png` `villager_04_speaking.png` `villager_04_dead.png` |
+| 角色 | 文件名（4个状态） | 备注 |
+|------|-------------------|------|
+| 狼人 | `wolf_normal.png` `wolf_speaking.png` `wolf_dead.png` `wolf_accused.png` | 4狼共用 |
+| 预言家 | `seer_normal.png` `seer_speaking.png` `seer_dead.png` `seer_accused.png` | |
+| 女巫 | `witch_normal.png` `witch_speaking.png` `witch_dead.png` `witch_accused.png` | |
+| 猎人 | `hunter_normal.png` `hunter_speaking.png` `hunter_dead.png` `hunter_accused.png` | |
+| 白痴 | `idiot_normal.png` `idiot_speaking.png` `idiot_dead.png` `idiot_accused.png` | |
+| 村民 | `villager_normal.png` `villager_speaking.png` `villager_dead.png` `villager_accused.png` | 4民共用 |
 
-**总计：51 张**（特殊角色多 1-2 个状态）
+**总计：24 张**
 
 ### 场景背景 — `backgrounds/`
 
@@ -182,318 +176,178 @@
 所有图像素材在提示词前加上以下统一风格前缀：
 
 ```
-Style: dark gothic fantasy mixed with ancient Chinese aesthetics, semi-realistic digital painting, cinematic lighting, rich detail, game art quality. Color palette: deep midnight blue, dark purple, blood crimson, with gold accents for justice/holy elements. Architecture blends Gothic pointed arches with Chinese curved eaves. Characters are East Asian with fantasy elements.
+Style: classic Werewolf card game cartoon illustration, fairy tale storybook aesthetic, cel-shaded with bold outlines, warm saturated colors, soft rounded character designs, whimsical and slightly spooky, similar to "One Night Ultimate Werewolf" or "The Werewolves of Miller's Hollow" card art. Characters have exaggerated expressive features, big eyes, simple but charming proportions. Background elements are simplified and stylized like picture book illustrations.
 ```
 
 ---
 
-## 一、角色立绘（12 个座位，每人 4 个状态）
+## 一、角色立绘（6 种角色，每角色 4 个状态）
+
+狼人共用一个形象，村民共用一个形象。共 6 种角色 × 4 状态 = 24 张。
 
 每个角色需要以下 4 种状态的立绘：
-- **Normal** — 默认状态，平静/警惕表情
-- **Speaking** — 发言中，张嘴/手势，眼神坚定
-- **Dead** — 死亡状态，灰度/闭眼/伤痕
-- **Accused** — 被指控时，紧张/愤怒/辩解
+- **Normal** — 默认状态
+- **Speaking** — 发言中
+- **Dead** — 死亡（X 眼或灰色）
+- **Accused** — 被指控/紧张
 
 尺寸统一：512x768，半身竖版，透明背景
+风格：经典狼人杀卡牌插画，童话绘本风，粗描边，圆润比例，大眼睛，表情夸张
 
 ---
 
-### 1.1 狼人 A — 头狼（男，30岁，领袖气质）
+### 1.1 狼人（4人共用同一形象）
 
-**外貌设定：** 高大东亚男性，锐利琥珀色眼睛，鬓角有灰色短鬓，下巴有短胡茬，穿黑色皮毛大衣，内搭暗红衬衫，左耳有银色狼牙耳坠，气场强大但白天伪装得体。
+**外貌设定：** 经典童话风格的狼，灰色毛皮，大大的琥珀色眼睛带狡猾光芒，尖耳朵，露齿坏笑，圆润但有威胁感的身体比例，类似《小红帽》中大灰狼的卡通形象。不穿衣服，纯动物形态。
 
 **Normal:**
 ```
-Half-body portrait of a werewolf pack leader in human disguise, tall East Asian male age 30, sharp amber eyes with vertical pupils barely visible, gray-streaked temples, short stubble on jaw, wearing a black fur-lined leather coat over dark red shirt, silver wolf-fang earring on left ear, arms crossed confidently, composed predatory expression, moonlit from upper left, dark smoky background, semi-realistic digital painting, gothic-Chinese fantasy style, 512x768, transparent background
+Cartoon wolf character in classic fairy tale board game card style, a gray wolf with large cunning amber eyes, pointed ears perked up alertly, fluffy gray fur, sharp white fangs showing in a sly grin, round soft body proportions like a children's storybook Big Bad Wolf, sitting with tail curled around paws, confident predatory posture but cute and charming, fairy tale illustration style, bold black outlines, cel-shaded, moonlit blue-purple tones, 512x768, transparent background
 ```
 
 **Speaking:**
 ```
-Half-body portrait of a werewolf pack leader giving a speech during village meeting, tall East Asian male age 30, sharp amber eyes intense and focused, gray-streaked temples, short stubble, black fur-lined coat over dark red shirt, silver wolf-fang earring, right hand raised in persuasive gesture, mouth open mid-speech, confident commanding expression, warm candlelight from left, village hall background blurred, semi-realistic digital painting, gothic-Chinese fantasy style, 512x768, transparent background
+Cartoon wolf character at village meeting disguised (wearing a tiny unconvincing sheep hat on head), gray wolf with big amber eyes trying to look innocent, one paw raised as if making a point, mouth open showing fangs while attempting a friendly smile, sweat drop on forehead, sheep disguise hat comically small, fairy tale storybook illustration, bold outlines, cel-shaded, 512x768, transparent background
 ```
 
 **Dead:**
 ```
-Half-body portrait of a dead werewolf leader, tall East Asian male age 30, eyes closed peacefully, gray-streaked temples, face partially transformed showing wolf features - elongated canines visible, fur patches on cheekbones, black coat torn revealing claw wounds on chest, silver wolf-fang earring now tarnished, desaturated cold blue color grading, moonlight from above, mist rising, semi-realistic digital painting, gothic-Chinese fantasy style, 512x768, transparent background
+Cartoon wolf character defeated, gray wolf lying on back with X-shaped eyes and tongue hanging out comically, paws up in the air, tail flat, a small cartoon ghost of a wolf pup rising above, desaturated muted blue-gray colors, fairy tale storybook illustration, bold outlines, cel-shaded, 512x768, transparent background
 ```
 
 **Accused:**
 ```
-Half-body portrait of a werewolf leader being accused in village meeting, tall East Asian male age 30, amber eyes flashing with barely contained fury, jaw clenched, gray-streaked temples, short stubble, black fur-lined coat, silver wolf-fang earring, fists clenched at sides, defensive aggressive posture, shadow of wolf ears flickering behind him, dramatic torchlight from below creating harsh shadows, semi-realistic digital painting, gothic-Chinese fantasy style, 512x768, transparent background
+Cartoon wolf character being accused and panicking, gray wolf with ears flat against head, amber eyes huge and darting nervously, both front paws raised in "wasn't me!" defense, tail tucked between hind legs, sweat drops flying, fur standing on end, sharp-toothed nervous grin, fairy tale storybook illustration, bold outlines, cel-shaded, 512x768, transparent background
 ```
 
 ---
 
-### 1.2 狼人 B — 潜伏者（女，25岁，伪装无辜）
+### 1.2 预言家
 
-**外貌设定：** 娇小东亚女性，圆脸大眼看似无害，长黑发用红色发带束起，穿暗红色传统改良旗袍，袖口有暗纹狼爪图案，笑起来时犬齿微微尖锐。
+**外貌设定：** 卡通神秘老奶奶形象，戴尖顶星月巫师帽，大大的发光紫色眼睛，白色长发飘逸，穿深紫色星辰图案长袍，手捧水晶球，周围有小星星飘浮，慈祥但全知的感觉。
 
 **Normal:**
 ```
-Half-body portrait of a disguised female werewolf, petite East Asian woman age 25, round face with large seemingly innocent eyes, long black hair tied with a crimson ribbon, wearing a dark red modified qipao with subtle wolf-claw embroidery on sleeve cuffs, slightly pointed canines visible in a small closed-mouth smile, hands folded demurely in front, soft moonlight from right, dark background with faint red mist, semi-realistic digital painting, gothic-Chinese fantasy style, 512x768, transparent background
+Cartoon fortune teller character for board game card, cute elderly woman with oversized glowing purple eyes, long flowing white hair, wearing a tall pointed wizard hat decorated with stars and moons, deep purple robe with constellation patterns, holding a small crystal ball between both hands that glows softly, tiny floating stars around her, kind knowing smile, fairy tale storybook illustration, bold black outlines, cel-shaded, warm colors, whimsical, 512x768, transparent background
 ```
 
 **Speaking:**
 ```
-Half-body portrait of a disguised female werewolf speaking at village gathering, petite East Asian woman age 25, large eyes wide with feigned concern, long black hair with crimson ribbon, dark red qipao, one hand touching her chest in a "who me?" gesture, mouth open with slightly visible pointed canines, worried innocent expression that's subtly too perfect, warm interior candlelight, semi-realistic digital painting, gothic-Chinese fantasy style, 512x768, transparent background
+Cartoon fortune teller revealing truth, elderly woman with purple eyes blazing bright, wizard hat slightly askew from excitement, white hair blowing in magical wind, crystal ball held high in one hand shooting beam of purple light, other hand pointing forward dramatically, mouth open announcing with authority, magical sparkles everywhere, fairy tale storybook illustration, bold outlines, cel-shaded, 512x768, transparent background
 ```
 
 **Dead:**
 ```
-Half-body portrait of a dead female werewolf with true form partially revealed, petite East Asian woman age 25, eyes half-open with amber glow fading, hair loose and wild revealing wolf-like ears, dark red qipao torn at shoulders showing fur patches, crimson ribbon fallen around neck like a wound, one clawed hand visible, desaturated blue-gray tones, cold moonlight, semi-realistic digital painting, gothic-Chinese fantasy style, 512x768, transparent background
+Cartoon fortune teller defeated, cute elderly woman with closed eyes and peaceful smile, wizard hat fallen beside her, crystal ball cracked with last purple spark fading, white hair spread like a halo, small fading stars dissipating around her, muted desaturated colors, fairy tale storybook illustration, bold outlines, cel-shaded, 512x768, transparent background
 ```
 
 **Accused:**
 ```
-Half-body portrait of a female werewolf being accused and dropping her innocent act, petite East Asian woman age 25, eyes narrowed with predatory glint breaking through the innocent facade, lips pulled back slightly showing pointed canines, hair partially loose from crimson ribbon, dark red qipao, one hand gripping the table edge with slightly elongated nails, dramatic split lighting - warm torch from left cold moon from right, semi-realistic digital painting, gothic-Chinese fantasy style, 512x768, transparent background
+Cartoon fortune teller being doubted, elderly woman with purple eyes intense and frustrated, wizard hat puffing steam, clutching crystal ball protectively to chest, foot stomping, expression of "I'm telling the truth!", small lightning bolts of purple energy crackling around her in annoyance, fairy tale storybook illustration, bold outlines, cel-shaded, 512x768, transparent background
 ```
 
 ---
 
-### 1.3 狼人 C — 暴徒（男，35岁，肌肉型）
+### 1.3 女巫
 
-**外貌设定：** 魁梧东亚男性，光头，脸上有三道平行旧疤（像爪痕），穿破旧黑色皮甲，露出布满伤疤的手臂，血红色瞳孔，性格暴躁易怒。
+**外貌设定：** 卡通年轻女巫形象，尖帽子（帽子上有小蝙蝠装饰），一只眼睛绿色一只紫色，短黑发俏皮，穿翠绿连衣裙+围裙，腰间挂两个瓶子（绿色+紫色），带点恶作剧气质的可爱感。
 
 **Normal:**
 ```
-Half-body portrait of a brutal werewolf enforcer in human form, burly East Asian male age 35, shaved head, three parallel old scars across left cheek like claw marks, blood-red irises, wearing worn black leather vest over bare scarred muscular arms, heavy jaw set in a perpetual scowl, thick neck with a leather cord necklace bearing a wolf tooth, intimidating posture, harsh moonlight from above casting deep shadows, dark background, semi-realistic digital painting, gothic-Chinese fantasy style, 512x768, transparent background
+Cartoon witch character for board game card, cute young woman with heterochromia - one green eye one purple eye, short black bob hair with bangs, wearing a pointy witch hat with tiny bat ornament on top, emerald green dress with apron, two potion bottles dangling from belt - one glowing green one glowing purple, playful mysterious smirk, one hand on hip, fairy tale storybook illustration, bold black outlines, cel-shaded, saturated colors, whimsical, 512x768, transparent background
 ```
 
 **Speaking:**
 ```
-Half-body portrait of a brutal werewolf enforcer arguing loudly at village meeting, burly East Asian male age 35, shaved head, three claw scars on cheek, blood-red eyes wide with anger, mouth open shouting, veins visible on neck and temple, black leather vest, scarred arms with one fist raised threateningly, pointing aggressively at someone off-screen, dramatic warm torchlight from below, dust particles in air, semi-realistic digital painting, gothic-Chinese fantasy style, 512x768, transparent background
+Cartoon witch explaining at meeting, cute young woman with heterochromia eyes, witch hat, black bob hair, green dress, holding up the green potion bottle in demonstration, other hand on chin thoughtfully, mouth open explaining carefully, cautious expression, fairy tale storybook illustration, bold outlines, cel-shaded, 512x768, transparent background
 ```
 
 **Dead:**
 ```
-Half-body portrait of a dead brutal werewolf, burly East Asian male age 35, shaved head, claw scars on cheek, eyes open and glazed with fading red glow, mouth slightly open showing elongated fangs, black leather vest with crossbow bolt embedded in chest, arms limp with claws partially emerged, pool of dark blood reflection below, cold blue desaturated tones, overhead moonlight, semi-realistic digital painting, gothic-Chinese fantasy style, 512x768, transparent background
+Cartoon witch defeated, cute young woman with closed eyes, witch hat fallen off beside her, both potion bottles broken with green and purple liquid pooling and mixing into pretty swirls, black hair messy over face, small potion bubble floating away, muted colors, fairy tale storybook illustration, bold outlines, cel-shaded, 512x768, transparent background
 ```
 
 **Accused:**
 ```
-Half-body portrait of a brutal werewolf being cornered and accused, burly East Asian male age 35, shaved head, claw scars on cheek, blood-red eyes blazing with rage, baring teeth showing sharp canines, black leather vest, scarred arms tense with veins popping, crouched slightly like about to lunge, shadow on wall behind him shows monstrous wolf silhouette, red-tinted dramatic lighting, semi-realistic digital painting, gothic-Chinese fantasy style, 512x768, transparent background
+Cartoon witch being accused, heterochromia eyes wide with indignation, witch hat crooked, black bob hair frazzled, holding both potion bottles protectively behind her back, cheeks puffed in protest, "hmph!" expression, tiny bat on hat also looking offended, fairy tale storybook illustration, bold outlines, cel-shaded, 512x768, transparent background
 ```
 
 ---
 
-### 1.4 狼人 D — 军师（男，40岁，书生型）
+### 1.4 猎人
 
-**外貌设定：** 瘦高东亚男性，戴圆框眼镜，梳理整齐的黑发，穿深色学者长袍（类似明代文人服），手持折扇，表情冷静从容，狼性隐藏在温文尔雅之下。
+**外貌设定：** 卡通硬汉猎人，方下巴，戴猎人帽（有羽毛），穿棕色皮背心，背着巨大的弩弓（比例夸张地大），一只眼睛有眼罩，嘴里叼着麦秆，壮实但可爱的比例。
 
 **Normal:**
 ```
-Half-body portrait of a cunning werewolf strategist in human form, thin tall East Asian male age 40, round wire-frame glasses, neatly combed black hair in a traditional topknot, wearing dark navy scholar's changshan robe with subtle silver thread patterns, holding a folded black fan in right hand, calm calculating half-smile, one eyebrow slightly raised, composed intellectual demeanor, soft candlelight from left side, study room with bookshelves blurred in background, semi-realistic digital painting, gothic-Chinese fantasy style, 512x768, transparent background
+Cartoon hunter character for board game card, stocky rugged man with exaggerated square jaw, wearing a hunter's cap with feather, leather eyepatch over one eye, brown leather vest, carrying a comically oversized crossbow on back, piece of wheat straw in mouth, one good eye alert and determined, muscular but rounded cute proportions, confident wide stance, fairy tale storybook illustration, bold black outlines, cel-shaded, warm earth tones, 512x768, transparent background
 ```
 
 **Speaking:**
 ```
-Half-body portrait of a werewolf strategist delivering a logical argument at village meeting, thin tall East Asian male age 40, round glasses reflecting firelight, neat topknot, dark navy scholar's robe, fan held open in left hand used for emphasis, right hand index finger raised making a point, mouth open in articulate speech, confident knowing expression, eyes sharp behind glasses, warm study lamp lighting from below-left, semi-realistic digital painting, gothic-Chinese fantasy style, 512x768, transparent background
+Cartoon hunter giving testimony, stocky man with eyepatch, hunter cap, leather vest, fist slamming on table with impact star effect, wheat straw bouncing, one eye burning with conviction, mouth open speaking bluntly, oversized crossbow on back wobbling from the table slam, fairy tale storybook illustration, bold outlines, cel-shaded, 512x768, transparent background
 ```
 
 **Dead:**
 ```
-Half-body portrait of a dead werewolf strategist, thin tall East Asian male age 40, round glasses cracked and askew on face, hair fallen loose from topknot, dark navy robe with spreading bloodstain on chest, folded fan fallen nearby, eyes closed with a final knowing smirk frozen on face, subtle wolf shadow dissolving behind him, cool blue-gray desaturated tones, overhead dim light, semi-realistic digital painting, gothic-Chinese fantasy style, 512x768, transparent background
+Cartoon hunter defeated in heroic last stand pose, stocky man with eyepatch, lying with crossbow aimed forward as if he fired one last shot, trail of the bolt still visible, hunter cap fallen nearby with feather, proud defiant expression even with X-eyes, small medal/star floating above him, muted colors, fairy tale storybook illustration, bold outlines, cel-shaded, 512x768, transparent background
 ```
 
 **Accused:**
 ```
-Half-body portrait of a werewolf strategist calmly facing accusation, thin tall East Asian male age 40, round glasses pushed up on nose, neat topknot slightly loosened, dark navy scholar's robe, fan snapped shut held like a weapon, eyes cold and calculating behind glasses, thin smile that doesn't reach eyes, perfectly composed exterior but shadow behind him warps into wolf shape, dramatic side lighting creating sharp contrasts, semi-realistic digital painting, gothic-Chinese fantasy style, 512x768, transparent background
+Cartoon hunter being accused, stocky man with eyepatch widened in surprise, hunter cap askew, leather vest, wheat straw dropped from open mouth, pointing at himself "ME?!" with exaggerated shock, crossbow on back rattling, fairy tale storybook illustration, bold outlines, cel-shaded, 512x768, transparent background
 ```
 
 ---
 
-### 1.5 预言家（女，60岁，神秘老妇）
+### 1.5 白痴
 
-**外貌设定：** 年迈东亚女性，花白长发披散，深邃紫色瞳孔（通灵之眼），额头有第三只眼纹身（半睁状），穿靛蓝色星辰纹道袍，手持水晶球，周身有淡紫色灵光。
-
-**Normal:**
-```
-Half-body portrait of a village seer / fortune teller, elderly East Asian woman age 60, long silver-white hair flowing freely, deep violet glowing eyes that seem to look through reality, a half-open third eye tattoo on forehead in indigo ink, wearing flowing indigo Taoist robes embroidered with constellation patterns in silver thread, holding a palm-sized crystal orb emanating soft purple light between both hands, serene knowing expression with slight sadness, purple mystical aura around shoulders, moonlight from behind creating silver rim lighting, dark starfield background, semi-realistic digital painting, gothic-Chinese fantasy style, 512x768, transparent background
-```
-
-**Speaking (revealing truth):**
-```
-Half-body portrait of a village seer revealing her divination results, elderly East Asian woman age 60, silver-white hair blowing in supernatural wind, violet eyes blazing with inner light, third eye tattoo on forehead now fully open and glowing bright purple, indigo constellation robes billowing, crystal orb held high in right hand emanating beam of revealing light, left hand pointing forward accusingly, mouth open declaring truth with authority, dramatic purple and white lighting radiating from the crystal, shocked villagers' shadows in background, semi-realistic digital painting, gothic-Chinese fantasy style, 512x768, transparent background
-```
-
-**Dead:**
-```
-Half-body portrait of a dead village seer, elderly East Asian woman age 60, silver-white hair spread around her like a halo, violet eyes dimmed to gray and half-closed, third eye tattoo faded and cracked, indigo constellation robes with wolf claw tears across chest, crystal orb fallen and cracked beside her with last purple spark fading, peaceful accepting expression, surrounded by dissipating constellation particles, cold silver-blue lighting from above, semi-realistic digital painting, gothic-Chinese fantasy style, 512x768, transparent background
-```
-
-**Accused (defending truth):**
-```
-Half-body portrait of a village seer being doubted and passionately defending her divination, elderly East Asian woman age 60, silver-white hair wild and crackling with static energy, violet eyes intense and unwavering, third eye tattoo pulsing with light, indigo robes swirling, crystal orb clutched protectively to chest with both hands, expression of righteous determination mixed with frustration, purple energy arcing around her like lightning, dramatic underlighting from the orb, semi-realistic digital painting, gothic-Chinese fantasy style, 512x768, transparent background
-```
-
----
-
-### 1.6 女巫（女，28岁，神秘药师）
-
-**外貌设定：** 东亚年轻女性，异色瞳（左眼翠绿=解药，右眼暗紫=毒药），黑色短发斜刘海遮住右眼，穿深翠色药师长袍，腰间挂着两个小瓶（绿色解药+紫色毒药），周身有药草和烟雾环绕。
+**外貌设定：** 卡通天真小丑/傻瓜形象，戴彩色小丑帽（铃铛叮当响），圆圆脸蛋，永远在傻笑，穿满是彩色补丁的衣服，手里抱着布偶熊，眼睛是开心的弯月形。
 
 **Normal:**
 ```
-Half-body portrait of a village witch / alchemist, East Asian young woman age 28, heterochromia eyes - left eye vivid emerald green right eye deep amethyst purple, black short asymmetrical hair with side-swept bangs partially covering right eye, wearing deep emerald apothecary robes with leather belt, two small potion bottles hanging from belt - one glowing green one glowing purple, dried herbs tucked in belt pouch, mysterious slight smile, surrounded by wisps of herbal smoke, soft green-purple dual lighting from the potions, dark laboratory background with shelves of bottles, semi-realistic digital painting, gothic-Chinese fantasy style, 512x768, transparent background
+Cartoon village fool / jester character for board game card, cheerful round-faced young person with permanently happy curved-moon eyes, wearing a colorful jester cap with jingling bells, clothes covered in mismatched colorful patches - red blue green yellow, hugging a stuffed teddy bear to chest, rosy cheeks, gap-toothed innocent grin, slightly tilted head, carefree oblivious posture, fairy tale storybook illustration, bold black outlines, cel-shaded, bright cheerful colors, 512x768, transparent background
 ```
 
 **Speaking:**
 ```
-Half-body portrait of a witch speaking carefully at village meeting, East Asian young woman age 28, heterochromia eyes both visible - green left scanning the crowd purple right narrowed, black asymmetrical hair pushed back, emerald robes, holding the green antidote bottle up in demonstration, mouth open explaining with measured words, cautious guarded expression, warm candlelight mixing with green potion glow on her face, semi-realistic digital painting, gothic-Chinese fantasy style, 512x768, transparent background
-```
-
-**Using Antidote:**
-```
-Half-body portrait of a witch using her antidote to save someone, East Asian young woman age 28, green left eye glowing intensely, black hair blown back by magical wind, emerald robes billowing, both hands holding the uncorked green potion bottle above a dying patient (implied below frame), golden-green healing light pouring from bottle, expression of fierce determination and compassion, sparkling particles rising, warm green magical lighting, semi-realistic digital painting, gothic-Chinese fantasy style, 512x768, transparent background
-```
-
-**Using Poison:**
-```
-Half-body portrait of a witch using her poison on a target, East Asian young woman age 28, purple right eye glowing ominously, left eye hidden behind black bangs, emerald robes in shadow, holding the uncorked purple poison vial tilted and dripping, sinister satisfied expression, purple-black toxic smoke curling from the vial, toxic bubbles and skull-shaped vapor, cold purple backlighting, dark ominous atmosphere, semi-realistic digital painting, gothic-Chinese fantasy style, 512x768, transparent background
+Cartoon village fool trying to speak, round happy face now with confused spiral eyes, jester cap bells jingling, one hand scratching head while other holds teddy bear, mouth in confused "O" shape, question marks floating above head, tilted head, adorably clueless, fairy tale storybook illustration, bold outlines, cel-shaded, 512x768, transparent background
 ```
 
 **Dead:**
 ```
-Half-body portrait of a dead witch, East Asian young woman age 28, both heterochromia eyes dimmed and half-closed, black hair fallen over face, emerald robes with claw marks, both potion bottles shattered at her belt with green and purple liquids mixing and evaporating, expression of quiet regret, green and purple particles dissipating around her, cold desaturated tones, dim overhead light, semi-realistic digital painting, gothic-Chinese fantasy style, 512x768, transparent background
+Cartoon village fool sleeping peacefully (looks the same as being dead), round face with happy sleeping expression (not X-eyes, just ZZZ), jester cap as pillow, teddy bear clutched in arms, small dream bubbles with candy and flowers, actually looks just like napping, muted warm colors, fairy tale storybook illustration, bold outlines, cel-shaded, 512x768, transparent background
+```
+
+**Accused:**
+```
+Cartoon village fool being accused and revealing identity card, round face with rare clever wink, jester cap bells ringing triumphantly, holding up a glowing "FOOL" card above head with both hands, teddy bear tucked under arm, cheeky knowing grin for once, golden light burst behind the card, surprised exclamation marks from off-screen, fairy tale storybook illustration, bold outlines, cel-shaded, 512x768, transparent background
 ```
 
 ---
 
-### 1.7 猎人（男，45岁，退伍老兵）
+### 1.6 村民（4人共用同一形象）
 
-**外貌设定：** 中年东亚男性，方脸，左眼有眼罩（战斗旧伤），粗犷短发花白，穿棕色猎装背心+皮护臂，背上斜挎弩弓，脖子上戴银弹项链，浑身散发战场老兵的气息。
+**外貌设定：** 卡通普通村民，圆脸善良相，穿棕色/米色简单农服，戴草帽或头巾，手里拿着火把或小灯笼，表情有点紧张有点勇敢，普通但可爱的路人感。
 
 **Normal:**
 ```
-Half-body portrait of a village hunter / veteran marksman, weathered East Asian male age 45, square jaw, leather eyepatch over left eye with scar extending above and below, grizzled short salt-and-pepper hair, wearing brown leather hunting vest with metal buckles over dark green tunic, leather arm guards on both forearms, crossbow strapped diagonally on back visible over right shoulder, silver bullet necklace on a leather cord, one good eye scanning alertly, veteran's calm confident posture, forest moonlight atmosphere, semi-realistic digital painting, gothic-Chinese fantasy style, 512x768, transparent background
+Cartoon villager character for board game card, friendly round-faced person in simple brown peasant clothing, wearing a straw hat, holding a small torch or lantern, big earnest eyes showing mix of nervousness and bravery, slightly hunched cautious posture, simple and honest appearance, an "everyman" character, fairy tale storybook illustration, bold black outlines, cel-shaded, warm earth tones, 512x768, transparent background
 ```
 
 **Speaking:**
 ```
-Half-body portrait of a hunter veteran giving testimony at village meeting, weathered East Asian male age 45, eyepatch, square jaw set firm, grizzled hair, brown hunting vest, right hand slammed flat on table for emphasis, one good eye burning with conviction, mouth open speaking bluntly, crossbow on back, silver bullet necklace catching firelight, direct no-nonsense expression, warm torchlight from side, semi-realistic digital painting, gothic-Chinese fantasy style, 512x768, transparent background
-```
-
-**Shooting (last stand):**
-```
-Half-body portrait of a hunter firing his crossbow as his final act, weathered East Asian male age 45, eyepatch, grizzled hair blown back by force, brown hunting vest with fresh wounds, crossbow in both hands aimed forward with bolt just released - motion blur on bolt, muzzle flash and smoke, one good eye locked on target with grim determination, silver bullet necklace flying from the recoil, dramatic action pose, speed lines and dust, warm-to-cold lighting transition, semi-realistic digital painting, gothic-Chinese fantasy style, 512x768, transparent background
+Cartoon villager speaking up bravely at meeting, round-faced person in peasant clothes, straw hat pushed back, one hand raised timidly but determined, torch/lantern set on table, mouth open speaking with visible effort to be brave, slight blush, big earnest eyes, fairy tale storybook illustration, bold outlines, cel-shaded, 512x768, transparent background
 ```
 
 **Dead:**
 ```
-Half-body portrait of a dead hunter veteran, weathered East Asian male age 45, eyepatch still on, one good eye closed peacefully, grizzled hair matted, brown hunting vest with wolf claw tears, crossbow fallen beside him with one last bolt still loaded, silver bullet necklace broken with bullets scattered, a final defiant expression frozen on face, cold blue desaturated tones, ground-level perspective, semi-realistic digital painting, gothic-Chinese fantasy style, 512x768, transparent background
+Cartoon villager defeated, round-faced person with peaceful X-eyes, straw hat fallen nearby, lantern extinguished beside them, simple peasant clothes, a single wilted flower growing where they lay, gentle and sad mood, muted warm colors, fairy tale storybook illustration, bold outlines, cel-shaded, 512x768, transparent background
 ```
 
----
-
-### 1.8 白痴（男，20岁，天真少年）
-
-**外貌设定：** 年轻东亚男性，圆脸娃娃脸，乱蓬蓬的棕色头发上插着一朵野花，穿打了彩色补丁的简陋衣服，手里抱着一个木头小人偶，笑容纯真无忧，眼神有些呆萌。
-
-**Normal:**
+**Accused:**
 ```
-Half-body portrait of a village idiot / innocent fool, young East Asian male age 20, round baby face with rosy cheeks, messy brown hair with a small wildflower tucked behind ear, wearing simple patched clothes with mismatched colorful fabric patches - blue green yellow, hugging a small hand-carved wooden puppet doll to his chest, wide innocent smile showing slight gap in front teeth, slightly unfocused cheerful eyes, warm soft candlelight, simple cottage background blurred, semi-realistic digital painting, gothic-Chinese fantasy style, 512x768, transparent background
-```
-
-**Speaking (confused):**
-```
-Half-body portrait of a village idiot trying to speak at meeting but confused, young East Asian male age 20, round baby face, messy brown hair with wildflower, patched colorful clothes, wooden puppet held in one hand while other hand scratches head, mouth open in confused "uh" expression, eyes looking up trying to think, tilted head, innocent bewilderment, warm candlelight, villagers' blurred silhouettes around, semi-realistic digital painting, gothic-Chinese fantasy style, 512x768, transparent background
-```
-
-**Revealing (flipping card):**
-```
-Half-body portrait of a village idiot triumphantly revealing his identity to survive exile, young East Asian male age 20, round face with a rare moment of clever grin, messy brown hair wildflower bouncing, patched clothes, holding up his "fool's card" identity token proudly in both hands above his head, wooden puppet tucked under arm, expression of childlike triumph and relief, golden light emanating from the revealed card, surprised gasps implied around him, dramatic reveal lighting, semi-realistic digital painting, gothic-Chinese fantasy style, 512x768, transparent background
-```
-
-**Dead:**
-```
-Half-body portrait of a dead village idiot, young East Asian male age 20, round face now peaceful in eternal sleep, messy brown hair with wildflower wilting, patched colorful clothes now torn, wooden puppet fallen from limp hand, slight smile still on face as if dreaming, the innocence preserved even in death, warm but fading golden light from above like a farewell, desaturating to cool tones at edges, semi-realistic digital painting, gothic-Chinese fantasy style, 512x768, transparent background
-```
-
----
-
-### 1.9 ~ 1.12 村民（4人，各有特点）
-
-**村民 A — 老村长（男，70岁）**
-
-外貌：白须长者，拄拐杖，穿素色麻布长衫，慈祥但忧虑。
-
-**Normal:**
-```
-Half-body portrait of a village elder, East Asian elderly man age 70, long white beard and mustache, kind worried eyes with deep wrinkles, wearing plain beige hemp changshan robe, leaning on a gnarled wooden walking stick with both hands, slightly hunched posture of age but dignity intact, a jade pendant at neck, grandfatherly concerned expression, warm candlelight from a nearby hearth, simple village home background, semi-realistic digital painting, gothic-Chinese fantasy style, 512x768, transparent background
-```
-
-**Speaking:**
-```
-Half-body portrait of a village elder speaking with wisdom at meeting, East Asian elderly man age 70, white beard, one wrinkled hand raised palm-out in calming gesture, other hand on walking stick, eyes kind but firm, mouth open offering measured counsel, jade pendant glowing faintly, respected authority posture, warm interior lighting, semi-realistic digital painting, gothic-Chinese fantasy style, 512x768, transparent background
-```
-
-**Dead:**
-```
-Half-body portrait of a dead village elder, East Asian elderly man age 70, white beard peaceful, eyes closed as if sleeping, hemp robe with minimal visible wound, walking stick fallen beside him, jade pendant cracked, a single tear dried on weathered cheek, expression of sorrow for his village, cold moonlight through window, semi-realistic digital painting, gothic-Chinese fantasy style, 512x768, transparent background
-```
-
----
-
-**村民 B — 农夫（男，32岁）**
-
-外貌：壮实庄稼汉，古铜肤色，穿粗布短褂，戴草帽（挂在背后），手上有老茧。
-
-**Normal:**
-```
-Half-body portrait of a young farmer villager, sturdy East Asian male age 32, tanned bronze skin, honest open face, wearing rough cotton short jacket in earth brown, straw hat hanging on back by chin cord, calloused strong hands resting at sides, simple hemp belt with a small sickle tucked in, earnest straightforward expression, golden wheat-field sunset light, rural farm background blurred, semi-realistic digital painting, gothic-Chinese fantasy style, 512x768, transparent background
-```
-
-**Speaking:**
-```
-Half-body portrait of a farmer speaking earnestly at village meeting, sturdy East Asian male age 32, tanned face animated with honest passion, straw hat pushed back, rough cotton jacket, one calloused hand gesturing openly, mouth open speaking plainly from the heart, no guile in expression, warm torchlight, semi-realistic digital painting, gothic-Chinese fantasy style, 512x768, transparent background
-```
-
-**Dead:**
-```
-Half-body portrait of a dead farmer, sturdy East Asian male age 32, tanned face now pale, eyes closed, rough cotton jacket with bloodstain on chest, straw hat fallen nearby, one calloused hand still clutching earth, sickle at belt unused, cold blue-gray morning light, dew on ground around him, semi-realistic digital painting, gothic-Chinese fantasy style, 512x768, transparent background
-```
-
----
-
-**村民 C — 少女（女，18岁）**
-
-外貌：温婉东亚少女，编了两条辫子，穿浅蓝色汉服衫裙，手提小灯笼，胆小但善良。
-
-**Normal:**
-```
-Half-body portrait of a village girl, gentle East Asian young woman age 18, two braided pigtails tied with pale blue ribbons, soft kind face with worried doe eyes, wearing light blue simplified hanfu - cross-collar top and flowing skirt, holding a small paper lantern in both hands close to chest for comfort, shy timid posture with slight hunch of shoulders, warm lantern glow illuminating her face from below, misty evening village street background, semi-realistic digital painting, gothic-Chinese fantasy style, 512x768, transparent background
-```
-
-**Speaking:**
-```
-Half-body portrait of a village girl nervously speaking at meeting, gentle East Asian young woman age 18, braided pigtails, blue hanfu, lantern set on table, both hands fidgeting in her lap, mouth open speaking softly with visible nervousness, eyes darting between listeners, slight blush of embarrassment, trying to be brave despite fear, warm interior candlelight, semi-realistic digital painting, gothic-Chinese fantasy style, 512x768, transparent background
-```
-
-**Dead:**
-```
-Half-body portrait of a dead village girl, gentle East Asian young woman age 18, braids loose and ribbons undone, blue hanfu with tear marks, paper lantern fallen and extinguished nearby, eyes closed with dried tear tracks on cheeks, peaceful innocent expression preserved, a single blue ribbon caught on the wind, cold moonlight with warm lantern afterglow fading, semi-realistic digital painting, gothic-Chinese fantasy style, 512x768, transparent background
-```
-
----
-
-**村民 D — 商人（男，50岁）**
-
-外貌：圆胖中年人，精明面相，穿锦缎商服，腰间挂算盘和钱袋，圆滑但胆小。
-
-**Normal:**
-```
-Half-body portrait of a village merchant, plump East Asian middle-aged man age 50, round shrewd face with small calculating eyes, thin mustache, wearing brocade merchant robes in dark green and gold trim, a small abacus hanging from sash belt next to a money pouch, hands rubbing together nervously, trying to appear friendly but clearly self-interested, warm lamp-lit shop atmosphere, shelves with goods blurred behind, semi-realistic digital painting, gothic-Chinese fantasy style, 512x768, transparent background
-```
-
-**Speaking:**
-```
-Half-body portrait of a merchant arguing to save himself at village meeting, plump East Asian male age 50, round face sweating, small eyes darting nervously, thin mustache twitching, brocade robes, one hand clutching money pouch protectively other hand waving dismissively, mouth open in rapid persuasion, self-preservation clear in expression, warm torchlight making his sweat glisten, semi-realistic digital painting, gothic-Chinese fantasy style, 512x768, transparent background
-```
-
-**Dead:**
-```
-Half-body portrait of a dead merchant, plump East Asian male age 50, round face frozen in surprise, small eyes wide open, thin mustache, brocade robes disheveled, money pouch spilled with coins scattered around him, abacus broken, expression of disbelief that his wealth couldn't save him, cold harsh overhead light, semi-realistic digital painting, gothic-Chinese fantasy style, 512x768, transparent background
+Cartoon villager being accused and panicking, round face with huge shocked eyes and sweat drops, straw hat flying off head, hands waving frantically in denial, torch/lantern shaking, "it's not me!!" panic expression, knees knocking together, fairy tale storybook illustration, bold outlines, cel-shaded, 512x768, transparent background
 ```
 
 ---
