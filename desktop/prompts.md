@@ -58,26 +58,26 @@
 
 | BGM | 时长 | 格式 | 采样率 | 位深 | BPM | 调性 | 循环 |
 |-----|------|------|--------|------|-----|------|------|
-| 夜晚 | 120s | MP3 / OGG | 44.1kHz | 16bit | 60 | Dm | 无缝循环 |
-| 白天讨论 | 120s | MP3 / OGG | 44.1kHz | 16bit | 90 | Am | 无缝循环 |
-| 投票紧张 | 60s | MP3 / OGG | 44.1kHz | 16bit | 110→130 | Em | 无缝循环 |
-| 警长竞选 | 90s | MP3 / OGG | 44.1kHz | 16bit | 100 | Gm | 无缝循环 |
-| 好人胜利 | 30s | MP3 / OGG | 44.1kHz | 16bit | 120 | D | 自然淡出 |
-| 狼人胜利 | 30s | MP3 / OGG | 44.1kHz | 16bit | 80 | Dm | 自然淡出 |
+| 夜晚 | 30s | OGG 128kbps | 44.1kHz | 16bit | 60 | Dm | 无缝循环 |
+| 白天讨论 | 30s | OGG 128kbps | 44.1kHz | 16bit | 90 | Am | 无缝循环 |
+| 投票紧张 | 20s | OGG 128kbps | 44.1kHz | 16bit | 110→130 | Em | 无缝循环 |
+| 警长竞选 | 30s | OGG 128kbps | 44.1kHz | 16bit | 100 | Gm | 无缝循环 |
+| 好人胜利 | 15s | OGG 128kbps | 44.1kHz | 16bit | 120 | D | 自然淡出 |
+| 狼人胜利 | 15s | OGG 128kbps | 44.1kHz | 16bit | 80 | Dm | 自然淡出 |
 
-循环点要求：循环 BGM 首尾衔接处无明显断裂，建议生成时在工具中预览循环效果。
+循环点要求：短循环 BGM 首尾衔接必须无缝（同一音高、同一节拍位置），前端用 `loop=true` 自动重复播放。
 
 ### 文件大小预算
 
 | 类别 | 单个约 | 总计约 |
 |------|--------|--------|
-| 角色立绘（48张） | 200-400KB | ~15MB |
+| 角色立绘（51张） | 200-400KB | ~15MB |
 | 场景背景（7张） | 500KB-1MB | ~5MB |
 | UI 元素（11个） | 50-200KB | ~1.5MB |
 | 动画 Sheet（8张） | 500KB-1MB | ~6MB |
 | 音效（13个） | 50-150KB | ~1.5MB |
-| BGM（6首） | 2-4MB | ~18MB |
-| **总计** | | **~47MB** |
+| BGM（6首，短循环 OGG） | 400-600KB | ~3MB |
+| **总计** | | **~32MB** |
 
 ---
 
@@ -175,14 +175,14 @@
 
 ### 背景音乐 — `bgm/`
 
-| 文件名 | 用途 | 时长 | 循环 |
-|--------|------|------|------|
-| `bgm_night.mp3` | 夜晚阶段 | 120s | 无缝循环 |
-| `bgm_day.mp3` | 白天讨论 | 120s | 无缝循环 |
-| `bgm_vote.mp3` | 投票紧张 | 60s | 无缝循环 |
-| `bgm_sheriff.mp3` | 警长竞选 | 90s | 无缝循环 |
-| `bgm_victory_good.mp3` | 好人胜利结算 | 30s | 自然淡出 |
-| `bgm_victory_wolf.mp3` | 狼人胜利结算 | 30s | 自然淡出 |
+| 文件名 | 用途 | 时长 | 循环 | 格式 |
+|--------|------|------|------|------|
+| `bgm_night.ogg` | 夜晚阶段 | 30s | 无缝循环 | OGG 128kbps |
+| `bgm_day.ogg` | 白天讨论 | 30s | 无缝循环 | OGG 128kbps |
+| `bgm_vote.ogg` | 投票紧张 | 20s | 无缝循环 | OGG 128kbps |
+| `bgm_sheriff.ogg` | 警长竞选 | 30s | 无缝循环 | OGG 128kbps |
+| `bgm_victory_good.ogg` | 好人胜利结算 | 15s | 自然淡出 | OGG 128kbps |
+| `bgm_victory_wolf.ogg` | 狼人胜利结算 | 15s | 自然淡出 | OGG 128kbps |
 
 ---
 
@@ -752,40 +752,40 @@ Sound effect: wolves victory - ominous orchestral hit in minor key, multiple wol
 
 ## 六、背景音乐 BGM（循环）
 
-### 6.1 夜晚阶段 — 120秒循环
+### 6.1 夜晚阶段 — 30秒无缝循环
 
 ```
-Background music for werewolf game night phase: dark ambient orchestral, tempo 60 BPM, key of D minor. Instruments: low cello drone, sparse haunting piano notes (high register), distant wolf howl motif every 30 seconds, subtle heartbeat bass drum (pp), ethereal female voice humming a lullaby fragment, occasional wind gusts sound design, building subtle tension without climax. Mood: mysterious, dangerous, suspenseful. Must loop seamlessly at 120 seconds. Cinematic game soundtrack quality, orchestral + ambient electronic hybrid.
+Dark ambient background music, 30 seconds seamless loop, tempo 60 BPM, key of D minor. Instruments: low cello drone, sparse haunting piano notes (high register), one distant wolf howl at 15s mark, subtle heartbeat bass drum (pp), ethereal female voice humming. Must start and end on same note/chord for perfect loop. Mysterious dangerous suspenseful mood. Cinematic game soundtrack, orchestral + ambient hybrid.
 ```
 
-### 6.2 白天讨论 — 120秒循环
+### 6.2 白天讨论 — 30秒无缝循环
 
 ```
-Background music for werewolf game day discussion phase: tense psychological thriller, tempo 90 BPM, key of A minor. Instruments: pizzicato strings in repeating suspicious pattern, light frame drum keeping time, guzheng (Chinese zither) sparse melodic fragments, low clarinet countermelody, subtle ticking clock percussion. Mood: analytical, suspicious, accusatory, building tension. Medieval tavern meets courtroom drama. Must loop seamlessly at 120 seconds. Cinematic game soundtrack quality.
+Tense discussion background music, 30 seconds seamless loop, tempo 90 BPM, key of A minor. Instruments: pizzicato strings repeating motif, light frame drum, guzheng sparse melodic fragments, low clarinet. Suspicious analytical mood, medieval tavern meets courtroom. Must loop seamlessly - same beat position at start and end. Cinematic game soundtrack.
 ```
 
-### 6.3 投票紧张 — 60秒循环
+### 6.3 投票紧张 — 20秒无缝循环
 
 ```
-Background music for werewolf game voting phase: intense countdown tension, tempo 110 BPM accelerating to 130 BPM, key of E minor. Instruments: driving string ostinato, timpani rolls building, brass staccato stabs, snare drum building from soft rolls to intense patterns, heartbeat bass drum getting louder, dissonant rising chromatic strings. Mood: time pressure, life or death decision, climactic. Must loop or end on sustained tension chord at 60 seconds. Cinematic game soundtrack quality.
+Intense countdown background music, 20 seconds seamless loop, tempo 110 BPM steady, key of E minor. Instruments: driving string ostinato, ticking clock percussion, brass staccato stabs, snare drum pattern, heartbeat bass. Time pressure life-or-death mood. Short tight loop, same rhythmic position at start and end. Cinematic game soundtrack.
 ```
 
-### 6.4 警长竞选 — 90秒循环
+### 6.4 警长竞选 — 30秒无缝循环
 
 ```
-Background music for sheriff campaign phase: competitive dramatic, tempo 100 BPM, key of G minor. Instruments: bold brass melody (authority theme), military snare pattern, competitive string runs, Chinese erhu adding Eastern flavor, building from candidates' introduction to heated debate. Mood: competitive, political, dramatic, authoritative. Must loop seamlessly at 90 seconds. Cinematic game soundtrack quality.
+Dramatic campaign background music, 30 seconds seamless loop, tempo 100 BPM, key of G minor. Instruments: bold brass authority theme, military snare, competitive string runs, Chinese erhu Eastern flavor. Competitive political dramatic mood. Must loop seamlessly. Cinematic game soundtrack.
 ```
 
-### 6.5 好人胜利 — 30秒（带淡出）
+### 6.5 好人胜利 — 15秒（带淡出）
 
 ```
-Victory music for good team winning: triumphant and relieving, tempo 120 BPM, key of D major. Instruments: full orchestra - soaring violin melody, heroic French horns, triumphant trumpets, warm cello harmony, harp glissandos, crash cymbals, timpani. Structure: 0-10s explosive joyful climax, 10-20s gentle hopeful melody (morning theme), 20-30s fade with solo flute and birds chirping. Mood: justice prevails, dawn after nightmare. 30 seconds total with natural fade out. Cinematic quality.
+Short victory fanfare, 15 seconds with fade out, tempo 120 BPM, key of D major. Structure: 0-5s explosive triumphant brass and strings climax, 5-10s warm hopeful melody (solo violin), 10-15s gentle fade with flute and birds. Heroic relieving dawn-breaks mood. Cinematic quality.
 ```
 
-### 6.6 狼人胜利 — 30秒（带淡出）
+### 6.6 狼人胜利 — 15秒（带淡出）
 
 ```
-Victory music for wolf team winning: ominous and powerful, tempo 80 BPM, key of D minor. Instruments: dark brass doom chords, wolf howl melody (French horn), thunderous taiko drums, dissonant string cluster, low choir chanting, distant thunder rumbles. Structure: 0-10s explosive dark power climax with wolf howls, 10-20s sinister victory march, 20-30s fade into lone wolf howl echoing into silence. Mood: darkness triumphs, village falls. 30 seconds total. Cinematic quality.
+Short dark victory sting, 15 seconds with fade out, tempo 80 BPM, key of D minor. Structure: 0-5s ominous orchestral hit with wolf howl, 5-10s sinister low brass march, 10-15s fade to lone wolf howl in silence. Dreadful powerful final mood. Cinematic quality.
 ```
 
 ---
