@@ -81,6 +81,111 @@
 
 ---
 
+## 素材文件名清单（完整）
+
+生成素材后按以下文件名放入 `desktop/public/assets/` 目录，前端代码会直接引用这些路径。
+
+### 角色立绘 — `avatars/`
+
+| 座位 | 角色 | 文件名 |
+|------|------|--------|
+| 1 | 狼人A 头狼 | `wolf_01_normal.png` `wolf_01_speaking.png` `wolf_01_dead.png` `wolf_01_accused.png` |
+| 2 | 狼人B 潜伏 | `wolf_02_normal.png` `wolf_02_speaking.png` `wolf_02_dead.png` `wolf_02_accused.png` |
+| 3 | 狼人C 暴徒 | `wolf_03_normal.png` `wolf_03_speaking.png` `wolf_03_dead.png` `wolf_03_accused.png` |
+| 4 | 狼人D 军师 | `wolf_04_normal.png` `wolf_04_speaking.png` `wolf_04_dead.png` `wolf_04_accused.png` |
+| 5 | 预言家 | `seer_normal.png` `seer_speaking.png` `seer_dead.png` `seer_accused.png` |
+| 6 | 女巫 | `witch_normal.png` `witch_speaking.png` `witch_antidote.png` `witch_poison.png` `witch_dead.png` |
+| 7 | 猎人 | `hunter_normal.png` `hunter_speaking.png` `hunter_shooting.png` `hunter_dead.png` |
+| 8 | 白痴 | `idiot_normal.png` `idiot_speaking.png` `idiot_reveal.png` `idiot_dead.png` |
+| 9 | 村民A 老村长 | `villager_01_normal.png` `villager_01_speaking.png` `villager_01_dead.png` |
+| 10 | 村民B 农夫 | `villager_02_normal.png` `villager_02_speaking.png` `villager_02_dead.png` |
+| 11 | 村民C 少女 | `villager_03_normal.png` `villager_03_speaking.png` `villager_03_dead.png` |
+| 12 | 村民D 商人 | `villager_04_normal.png` `villager_04_speaking.png` `villager_04_dead.png` |
+
+**总计：51 张**（特殊角色多 1-2 个状态）
+
+### 场景背景 — `backgrounds/`
+
+| 文件名 | 用途 | 触发条件 |
+|--------|------|----------|
+| `night_village.jpg` | 夜晚默认背景 | phase 包含 `night` |
+| `night_wolf_pov.jpg` | 狼人行动特写 | phase = `night_wolf` |
+| `day_meeting.jpg` | 白天集会 | phase 包含 `day` 或 `sheriff` |
+| `day_execution.jpg` | 投票放逐场 | phase = `day_vote` 或 `day_resolve` |
+| `dawn_transition.jpg` | 黎明过渡 | phase = `day_announce` |
+| `victory_good.jpg` | 好人胜利 | winner = `good` |
+| `victory_wolf.jpg` | 狼人胜利 | winner = `wolf` |
+
+### UI 元素 — `ui/`
+
+| 文件名 | 用途 | 尺寸 |
+|--------|------|------|
+| `table_top.png` | 圆桌俯视（桌面中央） | 1024×1024 |
+| `frame_good.png` | 好人阵营卡片边框 | 256×384 |
+| `frame_wolf.png` | 狼人阵营卡片边框 | 256×384 |
+| `badge_sheriff.png` | 警长徽章（叠加在卡片上） | 256×256 |
+| `loading_card.png` | 加载画面/启动屏 | 1080×1920 |
+| `logo.png` | 游戏标题 Logo | 1920×480 |
+
+### 技能图标 — `ui/icons/`
+
+| 文件名 | 对应技能 | 尺寸 |
+|--------|----------|------|
+| `icon_claw.png` | 狼刀/狼人击杀 | 128×128 |
+| `icon_eye.png` | 预言家查验 | 128×128 |
+| `icon_antidote.png` | 女巫解药 | 128×128 |
+| `icon_poison.png` | 女巫毒药 | 128×128 |
+| `icon_bolt.png` | 猎人弩箭 | 128×128 |
+| `icon_vote.png` | 投票 | 128×128 |
+| `icon_sheriff.png` | 警长竞选/当选 | 128×128 |
+| `icon_explode.png` | 狼人自爆 | 128×128 |
+
+### 动画 Sprite Sheet — `animations/`
+
+| 文件名 | 动画 | 帧数 | Sheet尺寸 | 单帧 |
+|--------|------|------|-----------|------|
+| `anim_slash.png` | 狼刀攻击 | 8 | 1024×512 | 256×256 |
+| `anim_poison.png` | 毒药效果 | 8 | 1024×512 | 256×256 |
+| `anim_heal.png` | 解药效果 | 8 | 1024×512 | 256×256 |
+| `anim_seer.png` | 查验效果 | 10 | 1280×512 | 256×256 |
+| `anim_shoot.png` | 开枪效果 | 8 | 1024×512 | 256×256 |
+| `anim_vote.png` | 投票计票 | 8 | 1024×512 | 256×256 |
+| `anim_death.png` | 死亡碎裂 | 12 | 1024×768 | 256×256 |
+| `anim_fireworks.png` | 胜利烟花 | 12 | 1024×768 | 256×256 |
+
+排列规则：从左到右、从上到下。第1帧在左上角，最后一帧在右下角。
+
+### 音效 — `sfx/`
+
+| 文件名 | 用途 | 时长 |
+|--------|------|------|
+| `sfx_night_fall.mp3` | 天黑转场 | 3.0s |
+| `sfx_dawn.mp3` | 天亮转场 | 3.0s |
+| `sfx_wolf_kill.mp3` | 狼刀击杀 | 1.5s |
+| `sfx_seer_check.mp3` | 预言家查验 | 2.0s |
+| `sfx_antidote.mp3` | 女巫解药 | 2.0s |
+| `sfx_poison.mp3` | 女巫毒药 | 2.0s |
+| `sfx_hunter_shoot.mp3` | 猎人开枪 | 1.5s |
+| `sfx_self_destruct.mp3` | 狼人自爆 | 2.0s |
+| `sfx_vote_result.mp3` | 投票定票（锤子） | 1.5s |
+| `sfx_exile.mp3` | 放逐宣告 | 2.0s |
+| `sfx_sheriff_elected.mp3` | 警长当选 | 2.0s |
+| `sfx_victory_good.mp3` | 好人阵营胜利 | 4.0s |
+| `sfx_victory_wolf.mp3` | 狼人阵营胜利 | 4.0s |
+
+### 背景音乐 — `bgm/`
+
+| 文件名 | 用途 | 时长 | 循环 |
+|--------|------|------|------|
+| `bgm_night.mp3` | 夜晚阶段 | 120s | 无缝循环 |
+| `bgm_day.mp3` | 白天讨论 | 120s | 无缝循环 |
+| `bgm_vote.mp3` | 投票紧张 | 60s | 无缝循环 |
+| `bgm_sheriff.mp3` | 警长竞选 | 90s | 无缝循环 |
+| `bgm_victory_good.mp3` | 好人胜利结算 | 30s | 自然淡出 |
+| `bgm_victory_wolf.mp3` | 狼人胜利结算 | 30s | 自然淡出 |
+
+---
+
 ## 全局风格统一指令
 
 所有图像素材在提示词前加上以下统一风格前缀：
