@@ -30,7 +30,7 @@ export default function MusicStudio({ onClose }: { onClose: () => void }) {
   const [files, setFiles] = useState<BGMFile[]>([])
   const [customPrompt, setCustomPrompt] = useState('')
   const [customFilename, setCustomFilename] = useState('bgm_custom')
-  const [duration, setDuration] = useState(30)
+  const [segments, setSegments] = useState(4)
   const [generating, setGenerating] = useState<string | null>(null)
   const [playing, setPlaying] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -75,7 +75,7 @@ export default function MusicStudio({ onClose }: { onClose: () => void }) {
     try {
       await apiPost<GenerateResult>('/api/music/generate', {
         prompt: customPrompt,
-        duration_seconds: duration,
+        segments: segments,
         filename: customFilename,
       })
       await loadFiles()
@@ -182,7 +182,7 @@ export default function MusicStudio({ onClose }: { onClose: () => void }) {
               <textarea
                 value={customPrompt}
                 onChange={(e) => setCustomPrompt(e.target.value)}
-                placeholder="输入英文音乐描述，例如: dark ambient orchestral, mysterious, cello drone, game BGM..."
+                placeholder="用 ♪ 包裹音乐描述，例如: ♪ dark mysterious ambient music with piano ♪"
                 className="w-full h-20 bg-gray-800 border border-white/10 rounded-lg px-3 py-2 text-sm resize-none focus:outline-none focus:border-blue-500"
               />
               <div className="flex items-center gap-3">
@@ -193,16 +193,17 @@ export default function MusicStudio({ onClose }: { onClose: () => void }) {
                   className="bg-gray-800 border border-white/10 rounded px-2 py-1 text-sm w-40 focus:outline-none focus:border-blue-500"
                 />
                 <label className="text-xs text-gray-400">
-                  时长:
+                  段数:
                   <select
-                    value={duration}
-                    onChange={(e) => setDuration(Number(e.target.value))}
+                    value={segments}
+                    onChange={(e) => setSegments(Number(e.target.value))}
                     className="ml-1 bg-gray-800 border border-white/10 rounded px-1 py-0.5 text-sm"
                   >
-                    <option value={10}>10s</option>
-                    <option value={15}>15s</option>
-                    <option value={20}>20s</option>
-                    <option value={30}>30s</option>
+                    <option value={2}>2段 (~10s)</option>
+                    <option value={3}>3段 (~15s)</option>
+                    <option value={4}>4段 (~20s)</option>
+                    <option value={6}>6段 (~30s)</option>
+                    <option value={8}>8段 (~40s)</option>
                   </select>
                 </label>
                 <button
@@ -254,8 +255,9 @@ export default function MusicStudio({ onClose }: { onClose: () => void }) {
 
           {/* Info */}
           <div className="text-[10px] text-gray-600 space-y-0.5">
-            <p>模型: facebook/musicgen-small (300M) · 许可: CC-BY-NC 4.0（非商用/开源项目可用）</p>
-            <p>GPU 生成约 10-30 秒，CPU 约 3-5 分钟。首次加载需下载模型（~500MB）。</p>
+            <p>模型: suno/bark · 许可: MIT（可商用）</p>
+            <p>每段约 5 秒音频，多段拼接并交叉淡入淡出。GPU (RTX 3090) 每段约 3-5 秒。</p>
+            <p>提示词用 ♪ 包裹表示音乐生成。首次加载需下载模型（~5GB）。</p>
             <p>生成的文件保存在 desktop/public/assets/bgm/ 目录。</p>
           </div>
         </div>
