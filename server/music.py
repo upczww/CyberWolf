@@ -1,13 +1,13 @@
-"""ACE-Step 1.5 BGM generator — API endpoints for generating and serving game BGM.
+"""ACE-Step 1.5 BGM generator — API endpoints for generating game BGM.
 
-Uses ACE-Step 1.5 model for high-quality instrumental music generation.
-Install: pip install git+https://github.com/ace-step/ACE-Step-1.5.git
-Model auto-downloads from HuggingFace on first use.
+Uses ACE-Step 1.5 (MIT license) for high-quality instrumental music.
+Requires: pip install -e /path/to/ACE-Step-1.5
 """
 from __future__ import annotations
 
 import logging
 import asyncio
+import sys
 from pathlib import Path
 from typing import Any
 
@@ -18,35 +18,48 @@ _log = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/music", tags=["music"])
 
-# Output directory
 BGM_DIR = Path(__file__).resolve().parents[1] / "desktop" / "public" / "assets" / "bgm"
 
-# Lazy-loaded pipeline
-_pipeline = None
+# Add ACE-Step to path if installed elsewhere
+_ACE_STEP_PATH = Path("/tmp/ace-step")
+if _ACE_STEP_PATH.exists() and str(_ACE_STEP_PATH) not in sys.path:
+    sys.path.insert(0, str(_ACE_STEP_PATH))
+
+# Lazy-loaded handlers
+_dit_handler = None
+_llm_handler = None
 
 
 def _ensure_model():
-    global _pipeline
-    if _pipeline is not None:
+    global _dit_handler, _llm_handler
+    if _dit_handler is not None:
         return
-    _log.info("Loading ACE-Step 1.5 model (first time, auto-downloading)...")
+    _log.info("Loading ACE-Step 1.5 model...")
+    # Use ACE-Step's venv if available
+    ace_venv = _ACE_STEP_PATH / ".venv" / "lib"
+    if ace_venv.exists():
+        for p in ace_venv.glob("python*/site-packages"):
+            if str(p) not in sys.path:
+                sys.path.insert(0, str(p))
+
+    from acestep.handler import AceStepHandler
+    _dit_handler = AceStepHandler()
     try:
-        from acestep import ACEStepPipeline
-        _pipeline = ACEStepPipeline()
-        _log.info("ACE-Step 1.5 loaded successfully")
-    except ImportError:
-        _log.error(
-            "ACE-Step not installed. Run: pip install git+https://github.com/ace-step/ACE-Step-1.5.git"
-        )
-        raise
+        from acestep.llm_inference import LLMHandler
+        _llm_handler = LLMHandler()
+    except Exception as e:
+        _log.warning("LLM handler not available (caption-only mode): %s", e)
+        _llm_handler = None
+    _log.info("ACE-Step 1.5 ready")
 
 
 class GenerateRequest(BaseModel):
-    tags: str = "ambient, orchestral, dark, mysterious, instrumental"
-    lyrics: str = "[instrumental]"
+    caption: str = "dark ambient orchestral, mysterious, haunting cello, game soundtrack"
+    lyrics: str = "[Instrumental]"
     filename: str = "bgm_custom"
     duration: int = 30
-    steps: int = 32
+    bpm: int = 80
+    infer_step: int = 60
 
 
 class BGMInfo(BaseModel):
@@ -55,43 +68,48 @@ class BGMInfo(BaseModel):
     size_kb: float
 
 
-# Preset prompts — tags describe style, lyrics = [instrumental] for pure music
 PRESETS: dict[str, dict[str, Any]] = {
     "night": {
-        "tags": "ambient, orchestral, dark, mysterious, haunting, cello, piano, minor key, slow tempo, 60 bpm, cinematic, game soundtrack",
-        "lyrics": "[instrumental]",
+        "caption": "Dark ambient orchestral music, mysterious and tense atmosphere, low cello drone with sparse haunting piano notes, subtle heartbeat rhythm, cinematic game night phase soundtrack",
+        "lyrics": "[Instrumental]",
         "filename": "bgm_night",
         "duration": 30,
+        "bpm": 60,
     },
     "day": {
-        "tags": "acoustic, tense, suspenseful, pizzicato strings, light percussion, medieval, analytical, moderate tempo, 90 bpm, game soundtrack",
-        "lyrics": "[instrumental]",
+        "caption": "Tense acoustic thriller music, suspicious and analytical mood, pizzicato strings with light frame drum, medieval tavern atmosphere, game discussion phase soundtrack",
+        "lyrics": "[Instrumental]",
         "filename": "bgm_day",
         "duration": 30,
+        "bpm": 90,
     },
     "vote": {
-        "tags": "intense, dramatic, countdown, driving strings, ticking rhythm, brass stabs, suspenseful, fast tempo, 110 bpm, game soundtrack",
-        "lyrics": "[instrumental]",
+        "caption": "Intense dramatic countdown music, driving string ostinato with ticking clock percussion, brass stabs and building snare, suspenseful game voting phase soundtrack",
+        "lyrics": "[Instrumental]",
         "filename": "bgm_vote",
         "duration": 20,
+        "bpm": 110,
     },
     "sheriff": {
-        "tags": "dramatic, bold, brass fanfare, military snare, competitive, authoritative, moderate tempo, 100 bpm, game soundtrack",
-        "lyrics": "[instrumental]",
+        "caption": "Dramatic bold brass fanfare music, military snare pattern with competitive string runs, authoritative and commanding, game campaign phase soundtrack",
+        "lyrics": "[Instrumental]",
         "filename": "bgm_sheriff",
         "duration": 30,
+        "bpm": 100,
     },
     "victory_good": {
-        "tags": "triumphant, joyful, orchestral, heroic brass, soaring strings, major key, celebration, uplifting, 120 bpm, game soundtrack",
-        "lyrics": "[instrumental]",
+        "caption": "Triumphant joyful orchestral fanfare, heroic brass melody with soaring strings, warm hopeful celebration, game victory theme",
+        "lyrics": "[Instrumental]",
         "filename": "bgm_victory_good",
         "duration": 15,
+        "bpm": 120,
     },
     "victory_wolf": {
-        "tags": "ominous, dark, orchestral, sinister brass, menacing, thunderous drums, minor key, powerful, 80 bpm, game soundtrack",
-        "lyrics": "[instrumental]",
+        "caption": "Ominous dark orchestral music, sinister brass doom chords with thunderous drums, menacing and powerful, game dark victory theme",
+        "lyrics": "[Instrumental]",
         "filename": "bgm_victory_wolf",
         "duration": 15,
+        "bpm": 80,
     },
 }
 
@@ -99,7 +117,7 @@ PRESETS: dict[str, dict[str, Any]] = {
 @router.get("/presets")
 async def list_presets():
     return {
-        name: {"tags": p["tags"], "filename": p["filename"], "duration": p["duration"]}
+        name: {"caption": p["caption"], "filename": p["filename"], "duration": p["duration"], "bpm": p["bpm"]}
         for name, p in PRESETS.items()
     }
 
@@ -123,7 +141,7 @@ async def generate_bgm(req: GenerateRequest):
     BGM_DIR.mkdir(parents=True, exist_ok=True)
     output_path = BGM_DIR / f"{req.filename}.wav"
     result = await asyncio.to_thread(
-        _generate_sync, req.tags, req.lyrics, req.duration, req.steps, output_path,
+        _generate_sync, req.caption, req.lyrics, req.duration, req.bpm, req.infer_step, output_path,
     )
     return result
 
@@ -136,26 +154,46 @@ async def generate_preset(preset_name: str):
     BGM_DIR.mkdir(parents=True, exist_ok=True)
     output_path = BGM_DIR / f"{preset['filename']}.wav"
     result = await asyncio.to_thread(
-        _generate_sync, preset["tags"], preset["lyrics"], preset["duration"], 32, output_path,
+        _generate_sync, preset["caption"], preset["lyrics"], preset["duration"], preset["bpm"], 60, output_path,
     )
     return result
 
 
 def _generate_sync(
-    tags: str, lyrics: str, duration: int, steps: int, output_path: Path,
+    caption: str, lyrics: str, duration: int, bpm: int, infer_step: int, output_path: Path,
 ) -> dict[str, Any]:
-    """Synchronous generation (runs in thread)."""
     _ensure_model()
 
-    _log.info("Generating BGM: tags=%s, duration=%ds, steps=%d", tags[:60], duration, steps)
+    from acestep.inference import GenerationParams, GenerationConfig, generate_music
 
-    result = _pipeline(
-        tags=tags,
+    _log.info("Generating BGM: caption=%s, duration=%ds, bpm=%d", caption[:60], duration, bpm)
+
+    params = GenerationParams(
+        caption=caption,
         lyrics=lyrics,
+        instrumental=True,
         duration=duration,
-        infer_step=steps,
-        save_path=str(output_path),
+        bpm=bpm,
     )
+    config = GenerationConfig(
+        infer_step=infer_step,
+        guidance_scale=15.0,
+        scheduler_type="euler",
+    )
+
+    result = generate_music(
+        dit_handler=_dit_handler,
+        llm_handler=_llm_handler,
+        params=params,
+        config=config,
+        save_dir=str(output_path.parent),
+    )
+
+    # Find the generated file and rename to our target name
+    if result.audio_files:
+        src = Path(result.audio_files[0])
+        if src.exists() and src != output_path:
+            src.rename(output_path)
 
     size_kb = round(output_path.stat().st_size / 1024, 1) if output_path.exists() else 0
     _log.info("BGM saved: %s (%.1f KB)", output_path.name, size_kb)
@@ -166,5 +204,6 @@ def _generate_sync(
         "path": f"/assets/bgm/{output_path.name}",
         "size_kb": size_kb,
         "duration_seconds": duration,
-        "tags": tags,
+        "caption": caption,
+        "bpm": bpm,
     }

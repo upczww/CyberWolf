@@ -28,7 +28,7 @@ interface GenerateResult {
 export default function MusicStudio({ onClose }: { onClose: () => void }) {
   const [presets, setPresets] = useState<Record<string, Preset>>({})
   const [files, setFiles] = useState<BGMFile[]>([])
-  const [customTags, setCustomTags] = useState('')
+  const [customCaption, setCustomCaption] = useState('')
   const [customFilename, setCustomFilename] = useState('bgm_custom')
   const [duration, setDuration] = useState(30)
   const [generating, setGenerating] = useState<string | null>(null)
@@ -69,13 +69,13 @@ export default function MusicStudio({ onClose }: { onClose: () => void }) {
   }
 
   const generateCustom = async () => {
-    if (!customTags.trim()) return
+    if (!customCaption.trim()) return
     setGenerating('custom')
     setError(null)
     try {
       await apiPost<GenerateResult>('/api/music/generate', {
-        tags: customTags,
-        lyrics: '[instrumental]',
+        caption: customCaption,
+        lyrics: '[Instrumental]',
         duration: duration,
         filename: customFilename,
       })
@@ -168,7 +168,7 @@ export default function MusicStudio({ onClose }: { onClose: () => void }) {
                       )}
                     </div>
                     {preset && (
-                      <p className="text-[10px] text-gray-500 leading-tight line-clamp-2">{preset.tags}</p>
+                      <p className="text-[10px] text-gray-500 leading-tight line-clamp-2">{preset.caption}</p>
                     )}
                   </div>
                 )
@@ -181,9 +181,9 @@ export default function MusicStudio({ onClose }: { onClose: () => void }) {
             <h3 className="text-sm font-bold text-gray-400 uppercase mb-3">自定义生成</h3>
             <div className="space-y-3">
               <textarea
-                value={customTags}
-                onChange={(e) => setCustomTags(e.target.value)}
-                placeholder="输入风格标签，例如: ambient, orchestral, dark, mysterious, piano, 60 bpm, game soundtrack"
+                value={customCaption}
+                onChange={(e) => setCustomCaption(e.target.value)}
+                placeholder="描述音乐风格，例如: Dark ambient orchestral, mysterious cello, haunting piano, cinematic game soundtrack"
                 className="w-full h-20 bg-gray-800 border border-white/10 rounded-lg px-3 py-2 text-sm resize-none focus:outline-none focus:border-blue-500"
               />
               <div className="flex items-center gap-3">
@@ -208,7 +208,7 @@ export default function MusicStudio({ onClose }: { onClose: () => void }) {
                 </label>
                 <button
                   onClick={generateCustom}
-                  disabled={!!generating || !customTags.trim()}
+                  disabled={!!generating || !customCaption.trim()}
                   className="px-4 py-1 bg-purple-600/80 hover:bg-purple-500 rounded text-sm disabled:opacity-40"
                 >
                   {generating === 'custom' ? '⏳ 生成中...' : '🎵 生成'}
@@ -255,9 +255,9 @@ export default function MusicStudio({ onClose }: { onClose: () => void }) {
 
           {/* Info */}
           <div className="text-[10px] text-gray-600 space-y-0.5">
-            <p>模型: ACE-Step 1.5 · 许可: MIT（可商用）· VRAM: &lt;4GB</p>
-            <p>用 [instrumental] + 风格标签生成纯音乐，无需歌词。RTX 3090 约 10 秒/首。</p>
-            <p>首次加载自动下载模型。生成文件保存在 desktop/public/assets/bgm/</p>
+            <p>模型: ACE-Step 1.5 · 许可: MIT（可商用）· VRAM: &lt;4GB · 48kHz 立体声</p>
+            <p>用 [Instrumental] + 风格描述生成纯音乐。RTX 3090 约 10 秒/首。</p>
+            <p>生成文件保存在 desktop/public/assets/bgm/</p>
           </div>
         </div>
       </div>
