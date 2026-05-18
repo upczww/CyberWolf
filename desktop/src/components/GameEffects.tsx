@@ -139,13 +139,22 @@ function SlashEffect() {
   )
 }
 
-/** Purple radial expansion + floating particles */
+/** Purple radial expansion + floating particles + poison smoke overlay */
 function PoisonEffect() {
   return (
     <motion.div
       className="fixed inset-0 pointer-events-none z-50 flex items-center justify-center"
       exit={{ opacity: 0 }}
     >
+      <motion.img
+        src="/assets/ui/effects/poison_smoke_overlay.png"
+        alt=""
+        className="absolute"
+        style={{ width: '420px', height: 'auto', mixBlendMode: 'screen' }}
+        initial={{ scale: 0.6, opacity: 0 }}
+        animate={{ scale: [0.6, 1.05, 1.2], opacity: [0, 0.85, 0] }}
+        transition={{ duration: 1.3 }}
+      />
       <motion.div
         className="w-64 h-64 rounded-full"
         style={{
@@ -169,13 +178,22 @@ function PoisonEffect() {
   )
 }
 
-/** Green sparkle particles spiraling upward */
+/** Green sparkle particles spiraling upward + antidote glow overlay */
 function HealEffect() {
   return (
     <motion.div
       className="fixed inset-0 pointer-events-none z-50 flex items-center justify-center"
       exit={{ opacity: 0 }}
     >
+      <motion.img
+        src="/assets/ui/effects/antidote_glow_overlay.png"
+        alt=""
+        className="absolute"
+        style={{ width: '380px', height: 'auto', mixBlendMode: 'screen' }}
+        initial={{ scale: 0.7, opacity: 0 }}
+        animate={{ scale: [0.7, 1.2, 1.1], opacity: [0, 0.9, 0] }}
+        transition={{ duration: 1.3 }}
+      />
       <motion.div
         className="w-32 h-32 rounded-full"
         style={{ boxShadow: '0 0 60px rgba(34,197,94,0.6)' }}
@@ -231,13 +249,22 @@ function SeerEffect() {
   )
 }
 
-/** White bolt line + impact ring */
+/** White bolt line + impact ring + hunter bolt trail overlay */
 function ShootEffect() {
   return (
     <motion.div
       className="fixed inset-0 pointer-events-none z-50"
       exit={{ opacity: 0 }}
     >
+      <motion.img
+        src="/assets/ui/effects/hunter_bolt_trail_overlay.png"
+        alt=""
+        className="absolute top-[40%] left-[10%]"
+        style={{ width: '70%', height: 'auto', mixBlendMode: 'screen' }}
+        initial={{ opacity: 0, x: -120 }}
+        animate={{ opacity: [0, 0.95, 0], x: [-120, 0, 120] }}
+        transition={{ duration: 0.55 }}
+      />
       {/* Bolt trail */}
       <motion.div
         className="absolute top-1/2 h-0.5 bg-white"

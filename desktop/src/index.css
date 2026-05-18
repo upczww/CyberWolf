@@ -107,7 +107,7 @@ button.danger {
   height: 100%;
   display: grid;
   grid-template-columns: 1fr;
-  grid-template-rows: 78px 1fr 88px;
+  grid-template-rows: 78px 1fr auto;
   gap: 12px;
   padding: 14px;
 }
@@ -175,7 +175,8 @@ button.danger {
 
 .phase-banner strong {
   color: #f6e5b5;
-  font-size: 24px;
+  font-size: 18px;
+  letter-spacing: .14em;
   text-align: center;
   text-shadow: 0 2px 3px rgba(0,0,0,.9);
 }
@@ -322,30 +323,43 @@ button.danger {
 }
 
 .table-eye {
-  width: 28%;
-  left: 15%;
-  top: 40%;
+  width: 18%;
+  left: 6%;
+  top: 8%;
+  opacity: .45;
+  filter: drop-shadow(0 0 18px rgba(180, 130, 220, .55));
+  animation: tableEffectFade .6s ease-out;
 }
 
 .table-claw {
-  width: 24%;
-  right: 18%;
-  top: 38%;
-  opacity: .75;
-  transform: rotate(-12deg);
+  width: 16%;
+  right: 6%;
+  bottom: 10%;
+  top: auto;
+  opacity: .42;
+  transform: rotate(-14deg);
+  filter: drop-shadow(0 0 16px rgba(200, 80, 50, .5));
+  animation: tableEffectFade .6s ease-out;
+}
+
+@keyframes tableEffectFade {
+  from { opacity: 0; transform: scale(.85) rotate(var(--rot, 0deg)); }
+  to   { opacity: var(--target-opacity, .45); }
 }
 
 .judge-card {
   position: relative;
   z-index: 2;
-  width: min(320px, 80%);
+  width: min(360px, 86%);
+  max-height: 75%;
   padding: 12px 14px;
   text-align: center;
   border: 2px solid rgba(215, 174, 93, .5);
   background:
-    linear-gradient(180deg, rgba(18, 12, 9, .74), rgba(33, 22, 14, .66)),
+    linear-gradient(180deg, rgba(18, 12, 9, .82), rgba(33, 22, 14, .78)),
     radial-gradient(ellipse at center, rgba(209, 162, 73, .16), transparent 64%);
   box-shadow: 0 10px 22px rgba(0,0,0,.38);
+  overflow: hidden;
 }
 
 .judge-card h2 {
@@ -913,4 +927,482 @@ button.danger {
   .connection-pill {
     display: none;
   }
+}
+
+/* ---------------------------------------------------------------
+   View mode + human player + TTS + endgame overlay
+   --------------------------------------------------------------- */
+
+.director-toolbar {
+  grid-template-columns: minmax(360px, auto) minmax(0, auto) 1fr minmax(240px, 360px);
+  grid-template-rows: auto;
+  grid-template-areas: "actions modes steps note";
+  column-gap: 12px;
+  align-items: center;
+  padding: 8px 14px;
+}
+
+.toolbar-actions {
+  grid-area: actions;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.toolbar-actions button {
+  padding: 5px 12px;
+  font-size: 12px;
+  letter-spacing: .12em;
+}
+
+.view-mode-toggle { grid-area: modes; }
+.phase-steps { grid-area: steps; }
+.toolbar-note { grid-area: note; font-size: 11.5px; line-height: 1.45; }
+
+.view-mode-toggle {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  padding: 4px 10px;
+  border-left: 1px solid rgba(218, 185, 119, .22);
+  border-right: 1px solid rgba(218, 185, 119, .12);
+}
+
+.view-mode-toggle button {
+  padding: 5px 10px;
+  font-size: 11.5px;
+  letter-spacing: .08em;
+  color: rgba(245, 224, 175, .68);
+  border: 1px solid rgba(218, 185, 119, .32);
+  background: rgba(20, 13, 9, .6);
+  cursor: pointer;
+  transition: all .18s ease;
+}
+
+.view-mode-toggle button:hover:not(:disabled) {
+  color: #f6cf73;
+  border-color: rgba(218, 185, 119, .6);
+}
+
+.view-mode-toggle button.active {
+  color: #1c130a;
+  border-color: #f6cf73;
+  background: linear-gradient(180deg, #f6cf73, #c89a3f);
+  box-shadow: 0 0 12px rgba(218, 185, 119, .45);
+}
+
+.view-mode-toggle button:disabled {
+  opacity: .42;
+  cursor: not-allowed;
+}
+
+.seat-picker {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: 8px;
+  color: rgba(245, 224, 175, .72);
+  font-size: 12px;
+  letter-spacing: .14em;
+}
+
+.seat-picker select {
+  padding: 5px 8px;
+  color: #f6cf73;
+  background: rgba(20, 13, 9, .8);
+  border: 1px solid rgba(218, 185, 119, .42);
+  font-family: inherit;
+  font-size: 12.5px;
+}
+
+.tts-toggle {
+  letter-spacing: .14em;
+}
+
+.tts-toggle.on {
+  color: #1c130a !important;
+  background: linear-gradient(180deg, #d9c082, #a07f3a) !important;
+  border-color: #f6cf73 !important;
+}
+
+.is-human .avatar-frame {
+  box-shadow:
+    0 0 0 3px rgba(118, 198, 134, .8),
+    0 0 24px rgba(80, 188, 110, .5),
+    0 14px 22px rgba(0,0,0,.52);
+}
+
+.is-human .seat-name {
+  color: #9ee5a7;
+}
+
+.role-card-back {
+  position: absolute;
+  z-index: 1;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: .92;
+  pointer-events: none;
+}
+
+.card-frame {
+  position: absolute;
+  z-index: 2;
+  inset: -3px;
+  width: calc(100% + 6px);
+  height: calc(100% + 6px);
+  object-fit: fill;
+  pointer-events: none;
+  filter: drop-shadow(0 0 8px rgba(0, 0, 0, .65));
+}
+
+.tie-mark {
+  position: absolute;
+  z-index: 6;
+  top: 50%;
+  left: 50%;
+  width: 120px;
+  height: 120px;
+  transform: translate(-50%, -50%);
+  filter: drop-shadow(0 0 18px rgba(218, 185, 119, .55));
+  animation: tieMarkPulse 1.6s ease-in-out infinite;
+  pointer-events: none;
+}
+
+@keyframes tieMarkPulse {
+  0%, 100% { transform: translate(-50%, -50%) scale(1); opacity: .9; }
+  50% { transform: translate(-50%, -50%) scale(1.08); opacity: 1; }
+}
+
+.loading-splash {
+  position: absolute;
+  z-index: 1;
+  top: 50%;
+  left: 50%;
+  width: min(380px, 38%);
+  height: auto;
+  transform: translate(-50%, -50%);
+  opacity: .72;
+  filter: drop-shadow(0 18px 36px rgba(0,0,0,.65));
+  pointer-events: none;
+  animation: splashFloat 4s ease-in-out infinite;
+}
+
+@keyframes splashFloat {
+  0%, 100% { transform: translate(-50%, -50%) scale(1); }
+  50% { transform: translate(-50%, -52%) scale(1.02); }
+}
+
+.alive-stamp {
+  position: absolute;
+  z-index: 3;
+  bottom: 18%;
+  right: 3px;
+  width: 22px;
+  height: 22px;
+  pointer-events: none;
+  opacity: .85;
+}
+
+.exile-stamp {
+  position: absolute;
+  z-index: 4;
+  inset: 12% 8%;
+  width: 84%;
+  height: 76%;
+  object-fit: contain;
+  opacity: .82;
+  pointer-events: none;
+}
+
+.abstain-mark {
+  position: absolute;
+  z-index: 4;
+  bottom: 22%;
+  right: 6%;
+  width: 26px;
+  height: 26px;
+  object-fit: contain;
+  opacity: .8;
+  pointer-events: none;
+}
+
+.vote-arrow {
+  position: absolute;
+  z-index: 5;
+  bottom: 16%;
+  right: -8px;
+  width: 36px;
+  height: auto;
+  filter: drop-shadow(0 0 6px rgba(255, 200, 90, .65));
+  pointer-events: none;
+  animation: voteArrowPulse 1s ease-in-out infinite;
+}
+
+@keyframes voteArrowPulse {
+  0%, 100% { transform: translateX(0); opacity: .85; }
+  50% { transform: translateX(6px); opacity: 1; }
+}
+
+.vote-count {
+  position: absolute;
+  z-index: 5;
+  top: 3px;
+  left: 3px;
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+}
+
+.vote-count img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.vote-count b {
+  position: relative;
+  color: #1c130a;
+  font-size: 14px;
+  font-weight: 800;
+  text-shadow: 0 0 4px rgba(255, 220, 130, .8);
+}
+
+.message-empty,
+.event-empty {
+  padding: 18px 14px;
+  text-align: center;
+  color: rgba(245, 224, 175, .42);
+  font-size: 12px;
+  letter-spacing: .12em;
+}
+
+.endgame-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  animation: endgameFadeIn .6s ease-out forwards;
+}
+
+.endgame-overlay .defeat-bg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: .55;
+}
+
+.endgame-stack {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 20px 80px;
+  background: radial-gradient(ellipse at center, rgba(8, 5, 3, .78) 0%, rgba(8, 5, 3, .35) 55%, rgba(8, 5, 3, 0) 80%);
+  max-width: 90vw;
+}
+
+.endgame-stack > * {
+  z-index: 1;
+}
+
+.endgame-overlay .winner-badge {
+  width: min(220px, 22vw);
+  max-height: 32vh;
+  height: auto;
+  object-fit: contain;
+  filter: drop-shadow(0 0 24px rgba(218, 185, 119, .55));
+  animation: endgamePulse 2s ease-in-out infinite;
+}
+
+.endgame-overlay h1 {
+  margin: 6px 0 0;
+  font-size: clamp(26px, 3.4vw, 48px);
+  color: #f6cf73;
+  letter-spacing: .22em;
+  text-shadow: 0 0 14px rgba(50, 25, 5, .9);
+}
+
+.endgame-overlay.wolf h1 {
+  color: #f3a07a;
+}
+
+.endgame-overlay p {
+  color: rgba(247, 227, 181, .88);
+  font-size: 15px;
+  letter-spacing: .2em;
+}
+
+@keyframes endgameFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes endgamePulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.04); }
+}
+
+.speech-card p {
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.message-feed {
+  scroll-behavior: smooth;
+}
+
+@media (max-width: 1180px) {
+  .director-toolbar {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto auto auto auto;
+    grid-template-areas:
+      "actions"
+      "modes"
+      "steps"
+      "note";
+  }
+}
+
+/* ---------------------------------------------------------------
+   Parchment backgrounds (use as cover, never tile)
+   --------------------------------------------------------------- */
+
+.parchment-bg {
+  background-image:
+    linear-gradient(180deg, rgba(20,14,9,.74), rgba(14,9,6,.85)),
+    url("/assets/ui/cards/panel_parchment.png");
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
+.director-toolbar {
+  background-image:
+    linear-gradient(180deg, rgba(28,18,10,.82), rgba(10,6,4,.94)),
+    url("/assets/ui/cards/button_parchment.png");
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
+/* Toolbar buttons get parchment veneer */
+.toolbar-actions button {
+  border: 1px solid rgba(218, 185, 119, .42);
+  background:
+    linear-gradient(180deg, rgba(58, 36, 18, .88), rgba(28, 16, 8, .94));
+  color: rgba(245, 224, 175, .9);
+  letter-spacing: .14em;
+  transition: all .18s ease;
+}
+
+.toolbar-actions button:not(:disabled):hover {
+  border-color: #f6cf73;
+  color: #f6cf73;
+  background:
+    linear-gradient(180deg, rgba(82, 52, 24, .9), rgba(38, 22, 10, .98));
+}
+
+.toolbar-actions button.primary {
+  background:
+    linear-gradient(180deg, #c8902a, #7a4f12);
+  color: #1c130a;
+  font-weight: 700;
+}
+
+.toolbar-actions button.primary:not(:disabled):hover {
+  background:
+    linear-gradient(180deg, #e6a934, #946218);
+}
+
+.toolbar-actions button.danger {
+  border-color: rgba(180, 60, 50, .55);
+  color: #f3a07a;
+}
+
+.toolbar-actions button:disabled {
+  opacity: .4;
+  cursor: not-allowed;
+}
+
+/* Frame overlay sits on top of avatar to recolor by faction */
+.frame-overlay {
+  position: absolute;
+  z-index: 2;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  pointer-events: none;
+  opacity: .85;
+  mix-blend-mode: screen;
+}
+
+/* Seer result stamp pops on the target card during night_seer / next phase */
+.seer-result {
+  position: absolute;
+  z-index: 5;
+  top: 4%;
+  right: 4%;
+  width: 56%;
+  height: auto;
+  filter: drop-shadow(0 0 12px rgba(255, 230, 170, .55));
+  animation: seerResultPop .5s ease-out;
+  pointer-events: none;
+}
+
+@keyframes seerResultPop {
+  0% { opacity: 0; transform: scale(.4) rotate(-12deg); }
+  60% { transform: scale(1.08) rotate(2deg); }
+  100% { opacity: 1; transform: scale(1) rotate(0); }
+}
+
+/* When showing system_banner as a transient flash banner (future use) */
+.system-banner-flash {
+  position: absolute;
+  z-index: 10;
+  top: 24%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(720px, 60%);
+  aspect-ratio: 1200 / 260;
+  background: url("/assets/ui/cards/system_banner.png") center / contain no-repeat;
+  display: grid;
+  place-items: center;
+  color: #f6cf73;
+  font-size: 18px;
+  letter-spacing: .25em;
+  text-shadow: 0 2px 4px rgba(0,0,0,.85);
+  pointer-events: none;
+  animation: bannerFlash 2.4s ease-out forwards;
+}
+
+@keyframes bannerFlash {
+  0% { opacity: 0; transform: translate(-50%, -20px); }
+  20%, 70% { opacity: 1; transform: translate(-50%, 0); }
+  100% { opacity: 0; transform: translate(-50%, -10px); }
+}
+
+/* Hide chronic connection-pill when online; only show when offline */
+.connection-pill {
+  opacity: .92;
+  background: rgba(20, 13, 9, .72);
+  border: 1px solid rgba(218, 185, 119, .36);
+}
+
+.connection-pill.online {
+  opacity: 0;
+  pointer-events: none;
 }

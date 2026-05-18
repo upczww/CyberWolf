@@ -49,6 +49,11 @@ interface GameState {
   loading: boolean
   connected: boolean
 
+  // View mode + human player
+  viewMode: 'god' | 'observer' | 'self'
+  humanSeat: number | null
+  ttsEnabled: boolean
+
   // Actions
   setGameId: (id: string | null) => void
   setPlayers: (players: Player[]) => void
@@ -61,6 +66,9 @@ interface GameState {
   setGames: (games: GameSummary[]) => void
   setLoading: (loading: boolean) => void
   setConnected: (connected: boolean) => void
+  setViewMode: (mode: 'god' | 'observer' | 'self') => void
+  setHumanSeat: (seat: number | null) => void
+  setTtsEnabled: (enabled: boolean) => void
   reset: () => void
 }
 
@@ -75,6 +83,9 @@ export const useGameStore = create<GameState>((set) => ({
   games: [],
   loading: false,
   connected: false,
+  viewMode: 'god',
+  humanSeat: null,
+  ttsEnabled: false,
 
   setGameId: (id) => set({ gameId: id }),
   setPlayers: (players) => set({ players }),
@@ -87,5 +98,8 @@ export const useGameStore = create<GameState>((set) => ({
   setGames: (games) => set({ games }),
   setLoading: (loading) => set({ loading }),
   setConnected: (connected) => set({ connected }),
+  setViewMode: (viewMode) => set({ viewMode }),
+  setHumanSeat: (humanSeat) => set({ humanSeat }),
+  setTtsEnabled: (ttsEnabled) => set({ ttsEnabled }),
   reset: () => set({ gameId: null, players: [], events: [], status: null, winner: null, phase: null, round: 1 }),
 }))
