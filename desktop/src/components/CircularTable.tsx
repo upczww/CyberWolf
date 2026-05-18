@@ -6,25 +6,6 @@ interface Props {
   currentPhase: string | null
 }
 
-// Calculate positions for 12 seats in an ellipse
-function getSeatPositions(count: number): { x: number; y: number }[] {
-  const positions: { x: number; y: number }[] = []
-  const cx = 50  // center x %
-  const cy = 50  // center y %
-  const rx = 38  // radius x %
-  const ry = 40  // radius y %
-
-  for (let i = 0; i < count; i++) {
-    // Start from top, go clockwise
-    const angle = (Math.PI * 2 * i) / count - Math.PI / 2
-    positions.push({
-      x: cx + rx * Math.cos(angle),
-      y: cy + ry * Math.sin(angle),
-    })
-  }
-  return positions
-}
-
 const PHASE_ROLE_MAP: Record<string, string> = {
   night_wolf: 'wolf',
   night_seer: 'seer',
@@ -35,21 +16,40 @@ const PHASE_ROLE_MAP: Record<string, string> = {
 
 export default function CircularTable({ players, currentPhase }: Props) {
   const sorted = [...players].sort((a, b) => a.seat_index - b.seat_index)
-  const positions = getSeatPositions(sorted.length || 12)
   const actingRole = currentPhase ? PHASE_ROLE_MAP[currentPhase] || null : null
 
+  // Split: seats 1-6 left, seats 7-12 right
+  const leftPlayers = sorted.filter(p => p.seat_index <= 6)
+  const rightPlayers = sorted.filter(p => p.seat_index > 6)
+
   return (
-    <div className="relative w-full h-full">
-      {/* Table center - current phase info */}
-      <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-center">
-        <div className="w-32 h-32 rounded-full bg-black/30 backdrop-blur-sm border border-white/10 flex items-center justify-center">
-          <div>
-            <div className="text-3xl mb-1">
+    <div className="flex h-full">
+      {/* Left column — seats 1-6 */}
+      <div className="flex-1 flex flex-col justify-evenly py-4 px-6">
+        {leftPlayers.map((player) => {
+          const isActing = !!player.survived && actingRole !== null && (
+            player.role === actingRole || (actingRole === 'wolf' && player.faction === 'wolf')
+          )
+          return (
+            <PlayerSeat
+              key={player.player_id}
+              player={player}
+              isActing={isActing}
+            />
+          )
+        })}
+      </div>
+
+      {/* Center — phase indicator */}
+      <div className="w-32 flex items-center justify-center">
+        <div className="w-24 h-24 rounded-full bg-black/30 backdrop-blur-sm border border-white/10 flex items-center justify-center">
+          <div className="text-center">
+            <div className="text-2xl">
               {currentPhase?.includes('night') ? '🌙' : currentPhase?.includes('day') || currentPhase?.includes('sheriff') ? '☀' : '⚔'}
             </div>
-            <div className="text-xs text-gray-400">
+            <div className="text-[10px] text-gray-400 mt-1">
               {currentPhase === 'night_wolf' ? '狼人行动' :
-               currentPhase === 'night_seer' ? '预言家查验' :
+               currentPhase === 'night_seer' ? '预言查验' :
                currentPhase === 'night_witch' ? '女巫行动' :
                currentPhase === 'day_speech' ? '发言中' :
                currentPhase === 'day_vote' ? '投票中' :
@@ -60,20 +60,21 @@ export default function CircularTable({ players, currentPhase }: Props) {
         </div>
       </div>
 
-      {/* Player seats around the table */}
-      {sorted.map((player, i) => {
-        const isActing = !!player.survived && actingRole !== null && (
-          player.role === actingRole || (actingRole === 'wolf' && player.faction === 'wolf')
-        )
-        return (
-          <PlayerSeat
-            key={player.player_id}
-            player={player}
-            isActing={isActing}
-            position={positions[i] || { x: 50, y: 50 }}
-          />
-        )
-      })}
+      {/* Right column — seats 7-12 */}
+      <div className="flex-1 flex flex-col justify-evenly py-4 px-6">
+        {rightPlayers.map((player) => {
+          const isActing = !!player.survived && actingRole !== null && (
+            player.role === actingRole || (actingRole === 'wolf' && player.faction === 'wolf')
+          )
+          return (
+            <PlayerSeat
+              key={player.player_id}
+              player={player}
+              isActing={isActing}
+            />
+          )
+        })}
+      </div>
     </div>
   )
 }
