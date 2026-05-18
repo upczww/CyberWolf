@@ -44,12 +44,13 @@ def _ensure_model():
 
     from acestep.handler import AceStepHandler
     _dit_handler = AceStepHandler()
-    try:
-        from acestep.llm_inference import LLMHandler
-        _llm_handler = LLMHandler()
-    except Exception as e:
-        _log.warning("LLM handler not available (caption-only mode): %s", e)
-        _llm_handler = None
+    status, enable = _dit_handler.initialize_service(
+        project_root=str(_ACE_STEP_PATH),
+        config_path="acestep-v15-turbo",
+        device="cuda",
+    )
+    _log.info("ACE-Step init: %s", status)
+    _llm_handler = None
     _log.info("ACE-Step 1.5 ready")
 
 
@@ -140,10 +141,14 @@ async def list_files():
 async def generate_bgm(req: GenerateRequest):
     BGM_DIR.mkdir(parents=True, exist_ok=True)
     output_path = BGM_DIR / f"{req.filename}.wav"
-    result = await asyncio.to_thread(
-        _generate_sync, req.caption, req.lyrics, req.duration, req.bpm, req.infer_step, output_path,
-    )
-    return result
+    try:
+        result = await asyncio.to_thread(
+            _generate_sync, req.caption, req.lyrics, req.duration, req.bpm, req.infer_step, output_path,
+        )
+        return result
+    except Exception as exc:
+        _log.exception("Generate custom failed")
+        return {"success": False, "error": str(exc)}
 
 
 @router.post("/generate/{preset_name}")
@@ -153,10 +158,14 @@ async def generate_preset(preset_name: str):
         return {"error": f"Unknown preset: {preset_name}", "available": list(PRESETS.keys())}
     BGM_DIR.mkdir(parents=True, exist_ok=True)
     output_path = BGM_DIR / f"{preset['filename']}.wav"
-    result = await asyncio.to_thread(
-        _generate_sync, preset["caption"], preset["lyrics"], preset["duration"], preset["bpm"], 60, output_path,
-    )
-    return result
+    try:
+        result = await asyncio.to_thread(
+            _generate_sync, preset["caption"], preset["lyrics"], preset["duration"], preset["bpm"], 8, output_path,
+        )
+        return result
+    except Exception as exc:
+        _log.exception("Generate preset failed")
+        return {"success": False, "error": str(exc)}
 
 
 def _generate_sync(
@@ -174,26 +183,33 @@ def _generate_sync(
         instrumental=True,
         duration=duration,
         bpm=bpm,
+        inference_steps=infer_step,
+        guidance_scale=7.0,
     )
     config = GenerationConfig(
-        infer_step=infer_step,
-        guidance_scale=15.0,
-        scheduler_type="euler",
+        batch_size=1,
+        audio_format="wav",
     )
 
-    result = generate_music(
-        dit_handler=_dit_handler,
-        llm_handler=_llm_handler,
-        params=params,
-        config=config,
-        save_dir=str(output_path.parent),
-    )
+    import tempfile
+    with tempfile.TemporaryDirectory() as tmp_dir:
+        result = generate_music(
+            dit_handler=_dit_handler,
+            llm_handler=_llm_handler,
+            params=params,
+            config=config,
+            save_dir=tmp_dir,
+        )
 
-    # Find the generated file and rename to our target name
-    if result.audio_files:
-        src = Path(result.audio_files[0])
-        if src.exists() and src != output_path:
-            src.rename(output_path)
+        if not result.success or not result.audios:
+            _log.error("Generation failed: %s", result.error or result.status_message)
+            return {"success": False, "error": result.error or result.status_message}
+
+        # Move generated file to target path
+        src = Path(result.audios[0]["path"])
+        if src.exists():
+            import shutil
+            shutil.move(str(src), str(output_path))
 
     size_kb = round(output_path.stat().st_size / 1024, 1) if output_path.exists() else 0
     _log.info("BGM saved: %s (%.1f KB)", output_path.name, size_kb)
