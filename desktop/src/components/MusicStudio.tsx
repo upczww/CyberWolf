@@ -28,9 +28,9 @@ interface GenerateResult {
 export default function MusicStudio({ onClose }: { onClose: () => void }) {
   const [presets, setPresets] = useState<Record<string, Preset>>({})
   const [files, setFiles] = useState<BGMFile[]>([])
-  const [customPrompt, setCustomPrompt] = useState('')
+  const [customTags, setCustomTags] = useState('')
   const [customFilename, setCustomFilename] = useState('bgm_custom')
-  const [segments, setSegments] = useState(4)
+  const [duration, setDuration] = useState(30)
   const [generating, setGenerating] = useState<string | null>(null)
   const [playing, setPlaying] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -69,13 +69,14 @@ export default function MusicStudio({ onClose }: { onClose: () => void }) {
   }
 
   const generateCustom = async () => {
-    if (!customPrompt.trim()) return
+    if (!customTags.trim()) return
     setGenerating('custom')
     setError(null)
     try {
       await apiPost<GenerateResult>('/api/music/generate', {
-        prompt: customPrompt,
-        segments: segments,
+        tags: customTags,
+        lyrics: '[instrumental]',
+        duration: duration,
         filename: customFilename,
       })
       await loadFiles()
@@ -167,7 +168,7 @@ export default function MusicStudio({ onClose }: { onClose: () => void }) {
                       )}
                     </div>
                     {preset && (
-                      <p className="text-[10px] text-gray-500 leading-tight line-clamp-2">{preset.prompt}</p>
+                      <p className="text-[10px] text-gray-500 leading-tight line-clamp-2">{preset.tags}</p>
                     )}
                   </div>
                 )
@@ -180,9 +181,9 @@ export default function MusicStudio({ onClose }: { onClose: () => void }) {
             <h3 className="text-sm font-bold text-gray-400 uppercase mb-3">自定义生成</h3>
             <div className="space-y-3">
               <textarea
-                value={customPrompt}
-                onChange={(e) => setCustomPrompt(e.target.value)}
-                placeholder="用 ♪ 包裹音乐描述，例如: ♪ dark mysterious ambient music with piano ♪"
+                value={customTags}
+                onChange={(e) => setCustomTags(e.target.value)}
+                placeholder="输入风格标签，例如: ambient, orchestral, dark, mysterious, piano, 60 bpm, game soundtrack"
                 className="w-full h-20 bg-gray-800 border border-white/10 rounded-lg px-3 py-2 text-sm resize-none focus:outline-none focus:border-blue-500"
               />
               <div className="flex items-center gap-3">
@@ -193,22 +194,21 @@ export default function MusicStudio({ onClose }: { onClose: () => void }) {
                   className="bg-gray-800 border border-white/10 rounded px-2 py-1 text-sm w-40 focus:outline-none focus:border-blue-500"
                 />
                 <label className="text-xs text-gray-400">
-                  段数:
+                  时长:
                   <select
-                    value={segments}
-                    onChange={(e) => setSegments(Number(e.target.value))}
+                    value={duration}
+                    onChange={(e) => setDuration(Number(e.target.value))}
                     className="ml-1 bg-gray-800 border border-white/10 rounded px-1 py-0.5 text-sm"
                   >
-                    <option value={2}>2段 (~10s)</option>
-                    <option value={3}>3段 (~15s)</option>
-                    <option value={4}>4段 (~20s)</option>
-                    <option value={6}>6段 (~30s)</option>
-                    <option value={8}>8段 (~40s)</option>
+                    <option value={15}>15s</option>
+                    <option value={20}>20s</option>
+                    <option value={30}>30s</option>
+                    <option value={60}>60s</option>
                   </select>
                 </label>
                 <button
                   onClick={generateCustom}
-                  disabled={!!generating || !customPrompt.trim()}
+                  disabled={!!generating || !customTags.trim()}
                   className="px-4 py-1 bg-purple-600/80 hover:bg-purple-500 rounded text-sm disabled:opacity-40"
                 >
                   {generating === 'custom' ? '⏳ 生成中...' : '🎵 生成'}
@@ -255,10 +255,9 @@ export default function MusicStudio({ onClose }: { onClose: () => void }) {
 
           {/* Info */}
           <div className="text-[10px] text-gray-600 space-y-0.5">
-            <p>模型: suno/bark · 许可: MIT（可商用）</p>
-            <p>每段约 5 秒音频，多段拼接并交叉淡入淡出。GPU (RTX 3090) 每段约 3-5 秒。</p>
-            <p>提示词用 ♪ 包裹表示音乐生成。首次加载需下载模型（~5GB）。</p>
-            <p>生成的文件保存在 desktop/public/assets/bgm/ 目录。</p>
+            <p>模型: ACE-Step 1.5 · 许可: MIT（可商用）· VRAM: &lt;4GB</p>
+            <p>用 [instrumental] + 风格标签生成纯音乐，无需歌词。RTX 3090 约 10 秒/首。</p>
+            <p>首次加载自动下载模型。生成文件保存在 desktop/public/assets/bgm/</p>
           </div>
         </div>
       </div>

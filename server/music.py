@@ -1,7 +1,8 @@
-"""Bark BGM generator — API endpoints for generating and serving game BGM.
+"""ACE-Step 1.5 BGM generator — API endpoints for generating and serving game BGM.
 
-Uses suno/bark model with GPU acceleration.
-Bark can generate music via special music prompts with ♪ notation.
+Uses ACE-Step 1.5 model for high-quality instrumental music generation.
+Install: pip install git+https://github.com/ace-step/ACE-Step-1.5.git
+Model auto-downloads from HuggingFace on first use.
 """
 from __future__ import annotations
 
@@ -10,8 +11,6 @@ import asyncio
 from pathlib import Path
 from typing import Any
 
-import numpy as np
-import scipy.io.wavfile
 from fastapi import APIRouter
 from pydantic import BaseModel
 
@@ -22,36 +21,32 @@ router = APIRouter(prefix="/api/music", tags=["music"])
 # Output directory
 BGM_DIR = Path(__file__).resolve().parents[1] / "desktop" / "public" / "assets" / "bgm"
 
-# Lazy-loaded model
-_model = None
-_processor = None
-_sample_rate = 24000
+# Lazy-loaded pipeline
+_pipeline = None
 
 
 def _ensure_model():
-    global _model, _processor, _sample_rate
-    if _model is not None:
+    global _pipeline
+    if _pipeline is not None:
         return
-    _log.info("Loading Bark model (first time, downloading ~5GB)...")
-    import torch
-    from transformers import AutoProcessor, BarkModel
-
-    _processor = AutoProcessor.from_pretrained("suno/bark")
-    _model = BarkModel.from_pretrained("suno/bark", torch_dtype=torch.float16)
-    if torch.cuda.is_available():
-        _model = _model.to("cuda")
-        _log.info("Bark loaded on GPU (CUDA)")
-    else:
-        _log.info("Bark loaded on CPU (will be slow)")
-    _model = _model.eval()
-    _sample_rate = _model.generation_config.sample_rate
-    _log.info("Bark model ready, sample_rate=%d", _sample_rate)
+    _log.info("Loading ACE-Step 1.5 model (first time, auto-downloading)...")
+    try:
+        from acestep import ACEStepPipeline
+        _pipeline = ACEStepPipeline()
+        _log.info("ACE-Step 1.5 loaded successfully")
+    except ImportError:
+        _log.error(
+            "ACE-Step not installed. Run: pip install git+https://github.com/ace-step/ACE-Step-1.5.git"
+        )
+        raise
 
 
 class GenerateRequest(BaseModel):
-    prompt: str = "♪ dark mysterious ambient music with strings and piano ♪"
+    tags: str = "ambient, orchestral, dark, mysterious, instrumental"
+    lyrics: str = "[instrumental]"
     filename: str = "bgm_custom"
-    segments: int = 4
+    duration: int = 30
+    steps: int = 32
 
 
 class BGMInfo(BaseModel):
@@ -60,38 +55,43 @@ class BGMInfo(BaseModel):
     size_kb: float
 
 
-# Bark uses text prompts with ♪ markers for music generation.
-# We generate multiple segments and concatenate for longer tracks.
+# Preset prompts — tags describe style, lyrics = [instrumental] for pure music
 PRESETS: dict[str, dict[str, Any]] = {
     "night": {
-        "prompt": "♪ dark mysterious ambient orchestral music, slow tempo, haunting cello, minor key ♪",
+        "tags": "ambient, orchestral, dark, mysterious, haunting, cello, piano, minor key, slow tempo, 60 bpm, cinematic, game soundtrack",
+        "lyrics": "[instrumental]",
         "filename": "bgm_night",
-        "segments": 6,
+        "duration": 30,
     },
     "day": {
-        "prompt": "♪ tense suspenseful acoustic music, moderate tempo, plucked strings, analytical mood ♪",
+        "tags": "acoustic, tense, suspenseful, pizzicato strings, light percussion, medieval, analytical, moderate tempo, 90 bpm, game soundtrack",
+        "lyrics": "[instrumental]",
         "filename": "bgm_day",
-        "segments": 6,
+        "duration": 30,
     },
     "vote": {
-        "prompt": "♪ intense dramatic countdown music, fast tempo, driving rhythm, suspenseful strings ♪",
+        "tags": "intense, dramatic, countdown, driving strings, ticking rhythm, brass stabs, suspenseful, fast tempo, 110 bpm, game soundtrack",
+        "lyrics": "[instrumental]",
         "filename": "bgm_vote",
-        "segments": 4,
+        "duration": 20,
     },
     "sheriff": {
-        "prompt": "♪ dramatic bold brass fanfare music, moderate tempo, authoritative, competitive ♪",
+        "tags": "dramatic, bold, brass fanfare, military snare, competitive, authoritative, moderate tempo, 100 bpm, game soundtrack",
+        "lyrics": "[instrumental]",
         "filename": "bgm_sheriff",
-        "segments": 6,
+        "duration": 30,
     },
     "victory_good": {
-        "prompt": "♪ triumphant joyful orchestral fanfare, major key, heroic brass, celebration ♪",
+        "tags": "triumphant, joyful, orchestral, heroic brass, soaring strings, major key, celebration, uplifting, 120 bpm, game soundtrack",
+        "lyrics": "[instrumental]",
         "filename": "bgm_victory_good",
-        "segments": 3,
+        "duration": 15,
     },
     "victory_wolf": {
-        "prompt": "♪ ominous dark orchestral music, sinister, minor key, thunderous, menacing ♪",
+        "tags": "ominous, dark, orchestral, sinister brass, menacing, thunderous drums, minor key, powerful, 80 bpm, game soundtrack",
+        "lyrics": "[instrumental]",
         "filename": "bgm_victory_wolf",
-        "segments": 3,
+        "duration": 15,
     },
 }
 
@@ -99,7 +99,7 @@ PRESETS: dict[str, dict[str, Any]] = {
 @router.get("/presets")
 async def list_presets():
     return {
-        name: {"prompt": p["prompt"], "filename": p["filename"], "segments": p["segments"]}
+        name: {"tags": p["tags"], "filename": p["filename"], "duration": p["duration"]}
         for name, p in PRESETS.items()
     }
 
@@ -108,12 +108,13 @@ async def list_presets():
 async def list_files():
     BGM_DIR.mkdir(parents=True, exist_ok=True)
     files = []
-    for f in sorted(BGM_DIR.glob("*.wav")):
-        files.append(BGMInfo(
-            filename=f.name,
-            path=f"/assets/bgm/{f.name}",
-            size_kb=round(f.stat().st_size / 1024, 1),
-        ))
+    for ext in ("*.wav", "*.flac", "*.mp3"):
+        for f in sorted(BGM_DIR.glob(ext)):
+            files.append(BGMInfo(
+                filename=f.name,
+                path=f"/assets/bgm/{f.name}",
+                size_kb=round(f.stat().st_size / 1024, 1),
+            ))
     return files
 
 
@@ -121,7 +122,9 @@ async def list_files():
 async def generate_bgm(req: GenerateRequest):
     BGM_DIR.mkdir(parents=True, exist_ok=True)
     output_path = BGM_DIR / f"{req.filename}.wav"
-    result = await asyncio.to_thread(_generate_sync, req.prompt, req.segments, output_path)
+    result = await asyncio.to_thread(
+        _generate_sync, req.tags, req.lyrics, req.duration, req.steps, output_path,
+    )
     return result
 
 
@@ -132,82 +135,36 @@ async def generate_preset(preset_name: str):
         return {"error": f"Unknown preset: {preset_name}", "available": list(PRESETS.keys())}
     BGM_DIR.mkdir(parents=True, exist_ok=True)
     output_path = BGM_DIR / f"{preset['filename']}.wav"
-    result = await asyncio.to_thread(_generate_sync, preset["prompt"], preset["segments"], output_path)
+    result = await asyncio.to_thread(
+        _generate_sync, preset["tags"], preset["lyrics"], preset["duration"], 32, output_path,
+    )
     return result
 
 
-def _generate_sync(prompt: str, segments: int, output_path: Path) -> dict[str, Any]:
-    """Generate music by concatenating multiple Bark segments."""
-    import torch
-
+def _generate_sync(
+    tags: str, lyrics: str, duration: int, steps: int, output_path: Path,
+) -> dict[str, Any]:
+    """Synchronous generation (runs in thread)."""
     _ensure_model()
 
-    _log.info("Generating BGM: prompt=%s, segments=%d", prompt[:60], segments)
+    _log.info("Generating BGM: tags=%s, duration=%ds, steps=%d", tags[:60], duration, steps)
 
-    all_audio = []
+    result = _pipeline(
+        tags=tags,
+        lyrics=lyrics,
+        duration=duration,
+        infer_step=steps,
+        save_path=str(output_path),
+    )
 
-    for i in range(segments):
-        _log.info("  Generating segment %d/%d...", i + 1, segments)
-        inputs = _processor(prompt, return_tensors="pt")
-        if torch.cuda.is_available():
-            inputs = {k: v.to("cuda") for k, v in inputs.items()}
-
-        with torch.no_grad():
-            audio_values = _model.generate(
-                **inputs,
-                do_sample=True,
-                fine_temperature=0.4,
-                coarse_temperature=0.8,
-            )
-
-        audio_data = audio_values.cpu().numpy().squeeze()
-        all_audio.append(audio_data)
-
-    # Concatenate all segments with short crossfade
-    combined = _crossfade_segments(all_audio, crossfade_samples=int(_sample_rate * 0.1))
-
-    # Normalize
-    if combined.max() > 0:
-        combined = combined / np.max(np.abs(combined)) * 0.9
-
-    # Convert to int16
-    audio_int16 = (combined * 32767).astype(np.int16)
-
-    # Save
-    scipy.io.wavfile.write(str(output_path), _sample_rate, audio_int16)
-
-    duration = len(audio_int16) / _sample_rate
-    size_kb = round(output_path.stat().st_size / 1024, 1)
-    _log.info("BGM saved: %s (%.1fs, %.1f KB)", output_path.name, duration, size_kb)
+    size_kb = round(output_path.stat().st_size / 1024, 1) if output_path.exists() else 0
+    _log.info("BGM saved: %s (%.1f KB)", output_path.name, size_kb)
 
     return {
         "success": True,
         "filename": output_path.name,
         "path": f"/assets/bgm/{output_path.name}",
         "size_kb": size_kb,
-        "duration_seconds": round(duration, 1),
-        "prompt": prompt,
-        "segments": segments,
-        "sample_rate": _sample_rate,
+        "duration_seconds": duration,
+        "tags": tags,
     }
-
-
-def _crossfade_segments(segments: list[np.ndarray], crossfade_samples: int = 2400) -> np.ndarray:
-    """Concatenate audio segments with smooth crossfade to avoid clicks."""
-    if not segments:
-        return np.array([], dtype=np.float32)
-    if len(segments) == 1:
-        return segments[0]
-
-    result = segments[0].copy()
-    for seg in segments[1:]:
-        if len(result) < crossfade_samples or len(seg) < crossfade_samples:
-            result = np.concatenate([result, seg])
-            continue
-        # Crossfade region
-        fade_out = np.linspace(1, 0, crossfade_samples)
-        fade_in = np.linspace(0, 1, crossfade_samples)
-        result[-crossfade_samples:] = result[-crossfade_samples:] * fade_out + seg[:crossfade_samples] * fade_in
-        result = np.concatenate([result, seg[crossfade_samples:]])
-
-    return result
