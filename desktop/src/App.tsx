@@ -14,6 +14,7 @@ import GameList from './components/GameList'
 export default function App() {
   const { gameId, players, events, phase, round, winner, setGameId, setPlayers, setEvents, setPhase, setRound, setStatus, setWinner, reset } = useGameStore()
   const [showMusicStudio, setShowMusicStudio] = useState(false)
+  const [showGameList, setShowGameList] = useState(false)
 
   useGameWS(gameId)
 
@@ -72,9 +73,6 @@ export default function App() {
 
       {/* Main: left players | center (title + events) | right players */}
       <div className="flex-1 flex overflow-hidden relative z-10">
-        {/* Game list sidebar */}
-        <GameList onSelect={handleSelectGame} />
-
         {/* Left players */}
         <div className="w-52 flex flex-col justify-evenly py-2 px-2 bg-black/20 backdrop-blur-sm border-r border-white/5">
           {leftPlayers.map((player) => (
@@ -105,9 +103,14 @@ export default function App() {
       </div>
 
       {/* Toolbar */}
-      <Toolbar onGameStarted={handleGameStarted} onOpenMusic={() => setShowMusicStudio(true)} />
+      <Toolbar
+        onGameStarted={handleGameStarted}
+        onOpenMusic={() => setShowMusicStudio(true)}
+        onOpenGameList={() => setShowGameList(true)}
+      />
 
-      {/* Music Studio modal */}
+      {/* Modals */}
+      {showGameList && <GameList onSelect={handleSelectGame} onClose={() => setShowGameList(false)} />}
       {showMusicStudio && <MusicStudio onClose={() => setShowMusicStudio(false)} />}
     </div>
   )
