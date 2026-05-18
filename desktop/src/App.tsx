@@ -40,7 +40,7 @@ export default function App() {
         setWinner(state.winner || null)
       }
     } catch (e) {
-      console.error('Failed to load game:', e)
+      // server not ready
     }
   }
 
@@ -54,33 +54,53 @@ export default function App() {
     setGameId(gid)
   }, [])
 
+  // Split players: 1-6 left, 7-12 right
+  const sorted = [...players].sort((a, b) => a.seat_index - b.seat_index)
+  const leftPlayers = sorted.filter(p => p.seat_index <= 6)
+  const rightPlayers = sorted.filter(p => p.seat_index > 6)
+
   return (
     <div className="h-screen flex flex-col relative overflow-hidden">
       {/* Animated background */}
       <Background phase={phase} />
 
-      {/* Game event effects (slash, poison, heal, etc.) */}
+      {/* Game event effects */}
       <GameEffects latestEvent={events.length > 0 ? events[events.length - 1] : null} />
 
-      {/* Phase bar */}
+      {/* Title bar */}
       <PhaseBar phase={phase} round={round} winner={winner} players={players} />
 
-      {/* Main content */}
+      {/* Main: left players | center (title + events) | right players */}
       <div className="flex-1 flex overflow-hidden relative z-10">
         {/* Game list sidebar */}
         <GameList onSelect={handleSelectGame} />
 
-        {/* Circular table (center) */}
-        <div className="flex-1 relative">
-          <CircularTable players={players} currentPhase={phase} />
+        {/* Left players */}
+        <div className="w-52 flex flex-col justify-evenly py-2 px-2 bg-black/20 backdrop-blur-sm border-r border-white/5">
+          {leftPlayers.map((player) => (
+            <CircularTable key={player.player_id} player={player} currentPhase={phase} />
+          ))}
+          {leftPlayers.length === 0 && Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} className="h-12 rounded-xl border border-white/5 bg-white/5" />
+          ))}
         </div>
 
-        {/* Event feed (right panel) */}
-        <div className="w-80 border-l border-white/10 bg-black/40 backdrop-blur-sm flex flex-col">
-          <div className="px-3 py-2 border-b border-white/10 text-sm font-bold text-gray-300">
-            事件日志
-          </div>
+        {/* Center: phase title + event log */}
+        <div className="flex-1 flex flex-col bg-black/30 backdrop-blur-sm">
+          {/* Center title */}
+          <CenterTitle phase={phase} round={round} winner={winner} />
+          {/* Event feed */}
           <EventFeed events={events} />
+        </div>
+
+        {/* Right players */}
+        <div className="w-52 flex flex-col justify-evenly py-2 px-2 bg-black/20 backdrop-blur-sm border-l border-white/5">
+          {rightPlayers.map((player) => (
+            <CircularTable key={player.player_id} player={player} currentPhase={phase} />
+          ))}
+          {rightPlayers.length === 0 && Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} className="h-12 rounded-xl border border-white/5 bg-white/5" />
+          ))}
         </div>
       </div>
 
@@ -89,6 +109,41 @@ export default function App() {
 
       {/* Music Studio modal */}
       {showMusicStudio && <MusicStudio onClose={() => setShowMusicStudio(false)} />}
+    </div>
+  )
+}
+
+function CenterTitle({ phase, round, winner }: { phase: string | null; round: number; winner: string | null }) {
+  const PHASE_NAMES: Record<string, string> = {
+    setup_game: '初始化',
+    night_start: '🌙 夜晚开始',
+    night_wolf: '🐺 狼人行动',
+    night_seer: '🔮 预言家查验',
+    night_witch: '🧪 女巫行动',
+    night_resolve: '夜晚结算',
+    day_announce: '☀ 天亮公布',
+    sheriff_election: '👑 警长竞选',
+    day_speech: '💬 白天发言',
+    day_vote: '🗳 投票',
+    day_resolve: '放逐结算',
+    pending_skills: '⚡ 技能结算',
+    check_win: '胜负检查',
+    game_over: '🏆 游戏结束',
+  }
+
+  return (
+    <div className="px-4 py-2 border-b border-white/10 flex items-center justify-between">
+      <div className="flex items-center gap-3">
+        <span className="text-sm font-bold text-white/80">R{round}</span>
+        <span className="text-sm text-cyan-300 font-medium">
+          {phase ? PHASE_NAMES[phase] || phase : '等待开始'}
+        </span>
+      </div>
+      {winner && (
+        <span className="text-sm font-bold text-green-400 animate-pulse">
+          🏆 {winner === 'good' ? '好人阵营' : '狼人阵营'}获胜
+        </span>
+      )}
     </div>
   )
 }
