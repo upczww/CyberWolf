@@ -160,8 +160,13 @@ async def game_count():
 
 
 @app.get("/api/games/{game_id}")
-async def get_game(game_id: str, event_limit: int = 300):
-    """Get full game detail."""
+async def get_game(game_id: str, event_limit: int = 300, seat: int | None = None):
+    """Get full game detail.
+
+    Optional ``seat=N`` filters role_private / wolf_team events to those whose
+    target_ids include seat N — mirrors the WS filter so the human player can
+    safely call this endpoint without leaking other players' private info.
+    """
     paths = _get_paths()
     conn = connect_database(paths.database)
     try:
@@ -177,6 +182,14 @@ async def get_game(game_id: str, event_limit: int = 300):
             ev = dict(row)
             if isinstance(ev.get("data_json"), str):
                 ev["data_json"] = json.loads(ev["data_json"])
+            if seat is not None and ev.get("scope") in {"role_private", "wolf_team"}:
+                raw_targets = ev.get("target_ids_json") or "[]"
+                try:
+                    targets = json.loads(raw_targets) if isinstance(raw_targets, str) else raw_targets
+                except (ValueError, TypeError):
+                    targets = []
+                if seat not in targets:
+                    continue
             decoded_events.append(ev)
 
         decoded_snapshot = None

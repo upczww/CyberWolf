@@ -90,7 +90,7 @@ export default function App() {
   useEffect(() => {
     if (!gameId) return
     loadGameDetail(gameId)
-  }, [gameId])
+  }, [gameId, humanSeat])
 
   useEffect(() => {
     apiGet<{ enabled: boolean }>('/api/tts/status')
@@ -100,7 +100,8 @@ export default function App() {
 
   const loadGameDetail = async (gid: string) => {
     try {
-      const detail = await apiGet<any>(`/api/games/${gid}`)
+      const seatParam = viewMode === 'self' && humanSeat != null ? `?seat=${humanSeat}` : ''
+      const detail = await apiGet<any>(`/api/games/${gid}${seatParam}`)
       if (detail.error) return
       setPlayers(detail.players || [])
       setEvents((detail.events || []).map((ev: any) => ({
