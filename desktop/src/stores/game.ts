@@ -120,3 +120,8 @@ export const useGameStore = create<GameState>((set) => ({
   clearAwaitingHuman: () => set({ awaitingHuman: null }),
   reset: () => set({ gameId: null, players: [], events: [], status: null, winner: null, phase: null, round: 1, awaitingHuman: null }),
 }))
+
+// Dev hook: expose the store for headless screenshot scripts and debugging.
+if (typeof window !== 'undefined') {
+  (window as unknown as { __useGameStore?: typeof useGameStore }).__useGameStore = useGameStore
+}

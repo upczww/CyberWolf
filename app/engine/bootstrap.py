@@ -37,6 +37,7 @@ async def bootstrap_and_run_game(
     on_game_started: Callable[[str], None] | None = None,
     human_seat: int | None = None,
     human_awaiter: HumanAwaiter | None = None,
+    phase_delay_seconds: float = 0.0,
 ) -> BootstrappedGame:
     seed = time_ns() if seed is None else seed
     initialize_database(paths.database, paths.schema)
@@ -60,6 +61,7 @@ async def bootstrap_and_run_game(
             state, conn=conn, event_bus=event_bus or EventBus(),
             llm_settings=llm_settings, llm_callback=llm_callback,
             human_awaiter=human_awaiter,
+            phase_delay_seconds=phase_delay_seconds,
         )
     finally:
         conn.close()

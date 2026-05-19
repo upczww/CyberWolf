@@ -84,6 +84,7 @@ class StartGameRequest(BaseModel):
     use_llm: bool = True
     human_join: bool = False
     human_seat: int | None = None  # if human_join is True and this is None, server picks at random
+    phase_delay_seconds: float = 0.0  # debug aid: hold each phase for visual/screenshot
 
 
 class HumanActionRequest(BaseModel):
@@ -264,6 +265,7 @@ async def start_game(req: StartGameRequest):
                 on_game_started=on_started,
                 human_seat=resolved_seat,
                 human_awaiter=human_awaiter,
+                phase_delay_seconds=req.phase_delay_seconds,
             )
             tts_engine.set_player_roles(boot.state["players"])
         except Exception as exc:

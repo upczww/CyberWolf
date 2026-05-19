@@ -55,6 +55,7 @@ class SessionServices:
     total_fallbacks: int = 0
     llm_callback: Any = None
     human_awaiter: HumanAwaiter | None = None
+    phase_delay_seconds: float = 0.0  # debug/demo aid: pause after each phase
     _phase_started_emitted: bool = False
 
 
@@ -67,6 +68,7 @@ async def run_game_session(
     llm_callback: Any = None,
     max_steps: int = 200,
     human_awaiter: HumanAwaiter | None = None,
+    phase_delay_seconds: float = 0.0,
 ) -> GameState:
     started = monotonic()
     services = SessionServices(
@@ -79,6 +81,7 @@ async def run_game_session(
         llm_semaphore=asyncio.Semaphore(llm_settings.max_concurrency) if llm_settings is not None else None,
         llm_callback=llm_callback,
         human_awaiter=human_awaiter,
+        phase_delay_seconds=max(0.0, phase_delay_seconds),
     )
     insert_game_players(conn, game_id=state["game_id"], state=state)
 
@@ -137,6 +140,9 @@ async def run_game_session(
 
         if state["ended"]:
             break
+
+        if services.phase_delay_seconds > 0:
+            await asyncio.sleep(services.phase_delay_seconds)
 
     if not state["ended"]:
         state = apply_state_patch(state, {"status": GameStatus.FAILED, "ended": True, "winner": None})
