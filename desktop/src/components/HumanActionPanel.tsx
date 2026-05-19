@@ -74,15 +74,21 @@ export default function HumanActionPanel({ request, gameId, players }: Props) {
   const isSpeech = request.tool_name === 'public_speech' || request.tool_name === 'death_speech'
   const isWitchAntidote = request.tool_name === 'witch_antidote'
   const isWitchPoison = request.tool_name === 'witch_poison'
+  const canSelfDestruct =
+    request.role === 'wolf' &&
+    ['day_speech', 'day_vote', 'sheriff_election'].includes(request.phase)
+  const hint = roleHint(request.role, request.tool_name, request.phase)
 
   return (
     <div className="human-action-overlay">
       <div className="human-action-panel">
         <header>
-          <span className="panel-tag">人类席位 · {request.actor_id} 号</span>
+          <span className="panel-tag">{request.role ? `${roleLabel(request.role)} · ${request.actor_id} 号` : `人类席位 · ${request.actor_id} 号`}</span>
           <h2>{title}</h2>
           <span className={`panel-timer ${remaining <= 10 ? 'urgent' : ''}`}>{remaining}s</span>
         </header>
+
+        {hint && <p className="panel-hint">{hint}</p>}
 
         {isSpeech && (
           <SpeechComposer
@@ -167,6 +173,18 @@ export default function HumanActionPanel({ request, gameId, players }: Props) {
 
         <footer>
           <button className="ghost" onClick={skip} disabled={submitting}>跳过(使用 AI 推荐)</button>
+          {canSelfDestruct && (
+            <button
+              className="danger self-destruct"
+              onClick={() => {
+                if (!confirm('确定狼人自爆?当前阶段立即结束。')) return
+                submit({ _wolf_self_destruct: true })
+              }}
+              disabled={submitting}
+            >
+              💥 狼人自爆
+            </button>
+          )}
           {error ? <span className="panel-error">{error}</span> : null}
         </footer>
       </div>
@@ -208,6 +226,63 @@ function TargetGrid({
       )}
     </div>
   )
+}
+
+const ROLE_LABELS: Record<string, string> = {
+  wolf: '狼人', seer: '预言家', witch: '女巫', hunter: '猎人', idiot: '白痴', guard: '守卫', villager: '村民',
+}
+
+function roleLabel(role: string): string {
+  return ROLE_LABELS[role] || role || '未知'
+}
+
+function roleHint(role: string, tool: string, phase: string): string | null {
+  if (!role) return null
+  // Wolf
+  if (role === 'wolf') {
+    if (tool === 'wolf_kill_proposal') return '夜刀目标:优先击杀强神(预言家/女巫/猎人)。注意不要刀同伴。'
+    if (tool === 'vote_target' && phase === 'sheriff_election') return '警长竞选投票:狼队通常抱团给设计好的悍跳狼,争夺警徽流。'
+    if (tool === 'vote_target') return '白天投票:跟刀好人或制造混乱;别投己方狼人除非必须做局。'
+    if (tool === 'public_speech') return '发言阶段:可悍跳预言家/装好人/带节奏。点 💥 自爆可立即结束发言并取消投票放逐。'
+    if (tool === 'sheriff_candidacy') return '警长竞选:狼队通常派一名悍跳预言家。其他狼一般不上警。'
+    if (tool === 'death_speech') return '遗言:可继续身份伪装/划水/不暴露同伴。'
+  }
+  // Seer
+  if (role === 'seer') {
+    if (tool === 'seer_check') return '查验目标:验你怀疑的对象。第一晚通常验"看起来威胁大"的玩家。'
+    if (tool === 'public_speech') return '发言:作为预言家应主动跳身份,通报昨夜查验结果("X 号是狼/好人")。'
+    if (tool === 'vote_target') return '投票:跟自己验出的狼或可疑对象。'
+    if (tool === 'sheriff_candidacy') return '警长竞选:预言家几乎必上警争夺警徽,死亡可传警徽流。'
+  }
+  // Witch
+  if (role === 'witch') {
+    if (tool === 'witch_antidote') return '解药:首夜可自救;之后救强神价值最高。同时使用解药+毒药会浪费一晚。'
+    if (tool === 'witch_poison') return '毒药:看到明显是狼的目标再用;乱毒强神是大忌。'
+    if (tool === 'public_speech') return '发言:可隐藏身份,也可在关键时点亮"我是女巫,昨夜救了 X / 毒了 Y"。'
+    if (tool === 'vote_target') return '投票:基于私有的死亡 + 救药信息推理。'
+  }
+  // Hunter
+  if (role === 'hunter') {
+    if (tool === 'hunter_shoot') return '猎人开枪:被毒不能开枪;否则可以带走一名怀疑对象。'
+    if (tool === 'public_speech') return '发言:可明跳"我是猎人,大家投我警将开枪"或藏身份。'
+    if (tool === 'vote_target') return '投票:猎人不怕暴露,可大胆投票。'
+  }
+  // Idiot
+  if (role === 'idiot') {
+    if (tool === 'public_speech') return '发言:白痴尽量伪装村民。被投出后翻牌可继续存活但失去投票权。'
+    if (tool === 'vote_target') return '投票:跟好人节奏,别乱站边。'
+  }
+  // Villager
+  if (role === 'villager') {
+    if (tool === 'public_speech') return '发言:村民最重要的是逻辑梳理 + 给神队让位。'
+    if (tool === 'vote_target') return '投票:跟预言家给的狼或综合多神判断。'
+    if (tool === 'sheriff_candidacy') return '警长竞选:普通村民原则上不上警,避免扰乱预言家视角。'
+  }
+  // Generic sheriff_candidacy fallback
+  if (tool === 'sheriff_candidacy') {
+    return '警长竞选:警长发言权重 1.5 倍,死亡可传警徽。综合身份与局势决定是否参选。'
+  }
+  return null
 }
 
 function SpeechComposer({

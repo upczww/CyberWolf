@@ -417,6 +417,20 @@ button.danger {
     0 14px 22px rgba(0,0,0,.52);
 }
 
+.player-card.is-speaking .avatar-frame,
+.player-card.is-waiting .avatar-frame {
+  box-shadow:
+    0 0 0 3px rgba(255, 220, 130, 1),
+    0 0 32px rgba(255, 200, 80, .85),
+    0 14px 22px rgba(0,0,0,.52);
+  animation: speakerPulse 1.2s ease-in-out infinite;
+}
+
+@keyframes speakerPulse {
+  0%, 100% { box-shadow: 0 0 0 3px rgba(255, 220, 130, 1), 0 0 24px rgba(255, 200, 80, .65), 0 14px 22px rgba(0,0,0,.52); }
+  50% { box-shadow: 0 0 0 4px rgba(255, 235, 160, 1), 0 0 40px rgba(255, 200, 80, 1), 0 14px 22px rgba(0,0,0,.52); }
+}
+
 .player-card.is-dead {
   opacity: .72;
 }
@@ -1315,6 +1329,32 @@ button.danger {
   color: #ff9a6e;
   font-size: 12px;
   letter-spacing: .08em;
+}
+
+.panel-hint {
+  margin: 14px 0 0;
+  padding: 10px 12px;
+  background: rgba(80, 50, 22, .35);
+  border-left: 3px solid rgba(218, 185, 119, .55);
+  color: rgba(245, 224, 175, .82);
+  font-size: 12.5px;
+  line-height: 1.55;
+  letter-spacing: .04em;
+}
+
+.human-action-panel footer button.danger.self-destruct {
+  padding: 6px 14px;
+  font-size: 12px;
+  letter-spacing: .14em;
+  color: #f3a07a;
+  background: rgba(80, 30, 20, .65);
+  border: 1px solid rgba(220, 80, 60, .65);
+  cursor: pointer;
+}
+
+.human-action-panel footer button.danger.self-destruct:hover:not(:disabled) {
+  background: rgba(150, 40, 30, .85);
+  color: #fff;
 }
 
 @keyframes humanPanelFadeIn {

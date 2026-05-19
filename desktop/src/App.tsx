@@ -168,6 +168,19 @@ export default function App() {
   const conversation = useMemo(() => buildConversation(events, humanSeat), [events, humanSeat])
   const judgeEvents = useMemo(() => buildJudgeEvents(events), [events])
   const playerStatuses = useMemo(() => computePlayerStatuses(events, round, phase), [events, round, phase])
+  const currentSpeakerId = useMemo(() => {
+    for (let i = events.length - 1; i >= 0; i -= 1) {
+      const ev = events[i]
+      if (ev.event_type === 'speaking_started') {
+        return Number(ev.data?.player_id) || null
+      }
+      if (ev.event_type === 'public_speech_made' || ev.event_type === 'sheriff_campaign' || ev.event_type === 'death_speech') {
+        return null
+      }
+    }
+    return null
+  }, [events])
+  const waitingActorId = awaitingHuman?.actor_id ?? null
   const avatarOverrides = useMemo(() => computeAvatarOverrides(events), [events])
   const voteTie = useMemo(() => {
     for (let i = events.length - 1; i >= 0; i -= 1) {
@@ -274,6 +287,8 @@ export default function App() {
                 seerHint={latestSeerCheck && Number(latestSeerCheck.data?.target_id) === index + 1 ? (latestSeerCheck.data?.result === 'wolf' ? 'wolf' : 'good') : null}
                 avatarOverride={avatarOverrides[index + 1]}
                 isEndgame={!!winner}
+                isCurrentSpeaker={currentSpeakerId === index + 1}
+                isWaiting={waitingActorId === index + 1 && humanSeat !== index + 1}
               />
             ))}
             {voteTie && (
@@ -385,6 +400,8 @@ function PlayerCard({
   seerHint,
   avatarOverride,
   isEndgame,
+  isCurrentSpeaker,
+  isWaiting,
 }: {
   player: Player | null
   seatIndex: number
@@ -396,6 +413,8 @@ function PlayerCard({
   seerHint: 'wolf' | 'good' | null
   avatarOverride: string | undefined
   isEndgame: boolean
+  isCurrentSpeaker: boolean
+  isWaiting: boolean
 }) {
   const isHuman = humanSeat === seatIndex
   const role = player?.role || 'unknown'
@@ -434,7 +453,7 @@ function PlayerCard({
 
   return (
     <article
-      className={`player-card seat-${seatIndex} ${acting ? 'is-acting' : ''} ${!alive ? 'is-dead' : ''} ${isHuman ? 'is-human' : ''}`}
+      className={`player-card seat-${seatIndex} ${acting ? 'is-acting' : ''} ${!alive ? 'is-dead' : ''} ${isHuman ? 'is-human' : ''} ${isCurrentSpeaker ? 'is-speaking' : ''} ${isWaiting ? 'is-waiting' : ''}`}
     >
       <div className={`avatar-frame ${meta.tone}`}>
         <img className="avatar-img" src={meta.avatar} alt="" />

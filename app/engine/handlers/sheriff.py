@@ -334,7 +334,8 @@ def _validate_or_raise(state, services, *, actor_id, role, phase, tool_name, arg
     )
     if not validated["is_valid"]:
         errors = validated.get("validation_errors", [])
-        if services.llm_client is not None:
+        is_human = state.get("human_seat") == actor_id
+        if services.llm_client is not None or is_human:
             _log.warning("invalid %s args for player %s in %s: %s – using fallback",
                          tool_name, actor_id, phase.value, errors)
             validated = validated.copy()
@@ -343,7 +344,7 @@ def _validate_or_raise(state, services, *, actor_id, role, phase, tool_name, arg
             fallback_args = dict(args)
             if tool_name in {"wolf_kill_proposal", "seer_check", "vote_target", "hunter_shoot"}:
                 candidates = [pid for pid in alive_player_ids(state) if pid != actor_id]
-                fallback_args["target_id"] = candidates[0] if candidates else None
+                fallback_args["target_id"] = services.rng.choice(candidates) if candidates else None
             validated["args"] = fallback_args
         else:
             raise RuntimeError(f"invalid {tool_name} args for player {actor_id}: {errors}")
