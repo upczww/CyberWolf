@@ -71,10 +71,17 @@ class TTSEngine:
     def __init__(self) -> None:
         self._chat: Any = None
         self._lock = threading.Lock()
-        self._queue: asyncio.Queue[tuple[str, int, str]] = asyncio.Queue()
+        # Bounded queue: when backlog grows, drop the oldest items so we stay
+        # roughly in sync with the live game instead of narrating events from
+        # several rounds ago.
+        self._queue: asyncio.Queue[tuple[str, int, str]] = asyncio.Queue(maxsize=8)
         self._worker_task: asyncio.Task | None = None
         self._enabled = False
         self._player_roles: dict[int, str] = {}  # player_id -> role (set per game)
+        # Consecutive failure counter — auto-disable if too many in a row so a
+        # broken audio device doesn't keep producing error spam.
+        self._consec_failures = 0
+        self._max_consec_failures = 5
 
     @property
     def enabled(self) -> bool:
@@ -120,7 +127,19 @@ class TTSEngine:
             return
         try:
             self._queue.put_nowait((text, player_id, event_type))
-        except (asyncio.QueueFull, RuntimeError):
+        except asyncio.QueueFull:
+            # Drop the oldest queued item to make room — keeps narration close
+            # to live game state rather than letting backlog grow.
+            try:
+                self._queue.get_nowait()
+                self._queue.task_done()
+            except (asyncio.QueueEmpty, RuntimeError):
+                return
+            try:
+                self._queue.put_nowait((text, player_id, event_type))
+            except (asyncio.QueueFull, RuntimeError):
+                pass
+        except RuntimeError:
             pass
 
     @staticmethod
@@ -239,11 +258,23 @@ class TTSEngine:
         while True:
             text, player_id, event_type = await self._queue.get()
             if not self._enabled:
+                self._queue.task_done()
                 continue
             try:
                 await asyncio.to_thread(self._synthesize_and_play, text, player_id, event_type)
+                self._consec_failures = 0
             except Exception as exc:
-                _log.warning("TTS playback failed: %s", exc)
+                self._consec_failures += 1
+                _log.warning(
+                    "TTS playback failed (%d/%d): %s",
+                    self._consec_failures, self._max_consec_failures, exc,
+                )
+                if self._consec_failures >= self._max_consec_failures:
+                    _log.error("TTS auto-disabled after %d consecutive failures", self._consec_failures)
+                    self._enabled = False
+                    self._consec_failures = 0
+            finally:
+                self._queue.task_done()
 
     def _synthesize_and_play(self, text: str, player_id: int, event_type: str) -> None:
         """Synthesize speech sentence-by-sentence for low-latency playback."""
@@ -285,17 +316,28 @@ class TTSEngine:
         for sentence in sentences:
             if not sentence.strip():
                 continue
-            wavs = self._chat.infer(
-                [sentence],
-                params_infer_code=params_infer,
-                params_refine_text=params_refine,
-            )
-            if wavs and len(wavs) > 0 and wavs[0] is not None:
-                audio_data = wavs[0]
-                if isinstance(audio_data, torch.Tensor):
-                    audio_data = audio_data.numpy()
-                audio_data = (audio_data * 32767).astype(np.int16)
+            try:
+                wavs = self._chat.infer(
+                    [sentence],
+                    params_infer_code=params_infer,
+                    params_refine_text=params_refine,
+                )
+            except Exception as exc:  # noqa: BLE001
+                _log.warning("TTS infer failed for sentence (%d chars): %s",
+                             len(sentence), exc)
+                continue
+            if not (wavs and len(wavs) > 0 and wavs[0] is not None):
+                continue
+            audio_data = wavs[0]
+            if isinstance(audio_data, torch.Tensor):
+                audio_data = audio_data.numpy()
+            audio_data = (audio_data * 32767).astype(np.int16)
+            try:
                 self._play_audio(audio_data, sample_rate=24000)
+            except Exception as exc:  # noqa: BLE001
+                _log.warning("TTS playback (sounddevice) failed: %s", exc)
+                # One bad playback shouldn't kill the rest of the sentences.
+                continue
 
     def _get_speaker_embedding(self, seed: int) -> Any:
         """Generate a deterministic speaker embedding from seed."""
