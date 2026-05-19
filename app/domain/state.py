@@ -73,6 +73,7 @@ class GameState(TypedDict):
     llm_stats: dict
     seed: int
     graph_artifacts: dict[str, str | None]
+    human_seat: int | None
 
 
 def alive_player_ids(state: GameState) -> list[int]:
@@ -116,6 +117,7 @@ def init_game_state(
     game_id: str | None = None,
     seed: int = 0,
     graph_artifacts: dict[str, str | None] | None = None,
+    human_seat: int | None = None,
 ) -> GameState:
     phase = runtime["phase_order"][0]
     return GameState(
@@ -150,6 +152,7 @@ def init_game_state(
         llm_stats={},
         seed=seed,
         graph_artifacts=graph_artifacts or {},
+        human_seat=human_seat,
     )
 
 

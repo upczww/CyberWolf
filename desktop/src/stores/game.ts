@@ -23,6 +23,16 @@ export interface Player {
   death_round?: number
 }
 
+export interface AwaitingHumanRequest {
+  actor_id: number
+  tool_name: string
+  phase: string
+  role: string
+  round: number
+  timeout_seconds: number
+  local_args: Record<string, any>
+}
+
 export interface GameSummary {
   id: string
   config_id?: string
@@ -54,6 +64,8 @@ interface GameState {
   humanSeat: number | null
   ttsEnabled: boolean
 
+  awaitingHuman: AwaitingHumanRequest | null
+
   // Actions
   setGameId: (id: string | null) => void
   setPlayers: (players: Player[]) => void
@@ -69,6 +81,8 @@ interface GameState {
   setViewMode: (mode: 'god' | 'observer' | 'self') => void
   setHumanSeat: (seat: number | null) => void
   setTtsEnabled: (enabled: boolean) => void
+  setAwaitingHuman: (req: AwaitingHumanRequest | null) => void
+  clearAwaitingHuman: () => void
   reset: () => void
 }
 
@@ -86,6 +100,7 @@ export const useGameStore = create<GameState>((set) => ({
   viewMode: 'god',
   humanSeat: null,
   ttsEnabled: false,
+  awaitingHuman: null,
 
   setGameId: (id) => set({ gameId: id }),
   setPlayers: (players) => set({ players }),
@@ -101,5 +116,7 @@ export const useGameStore = create<GameState>((set) => ({
   setViewMode: (viewMode) => set({ viewMode }),
   setHumanSeat: (humanSeat) => set({ humanSeat }),
   setTtsEnabled: (ttsEnabled) => set({ ttsEnabled }),
-  reset: () => set({ gameId: null, players: [], events: [], status: null, winner: null, phase: null, round: 1 }),
+  setAwaitingHuman: (awaitingHuman) => set({ awaitingHuman }),
+  clearAwaitingHuman: () => set({ awaitingHuman: null }),
+  reset: () => set({ gameId: null, players: [], events: [], status: null, winner: null, phase: null, round: 1, awaitingHuman: null }),
 }))

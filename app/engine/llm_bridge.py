@@ -9,7 +9,8 @@ import json
 import logging
 from typing import TYPE_CHECKING, Any
 
-from app.domain.roles import Phase, Role
+from app.domain.events import GameEvent
+from app.domain.roles import EventScope, EventType, Phase, Role
 from app.domain.state import GameState
 from app.services.context_builder import build_prompt_context
 from app.services.llm import TOOL_REGISTRY, LLMCallResult, build_phase_messages, enabled_tools
@@ -53,6 +54,12 @@ async def llm_decide(
     Returns normal args dict, or {"_wolf_self_destruct": True} if wolf chose to self-destruct.
     Falls back to local_args on failure.
     """
+    if _is_human_actor(state, actor_id) and services.human_awaiter is not None:
+        return await _await_human_action(
+            state, services,
+            actor_id=actor_id, role=role, phase=phase,
+            tool_name=tool_name, local_args=local_args,
+        )
     if services.llm_client is None or services.llm_settings is None:
         return local_args
     if phase.value not in services.llm_settings.enabled_phase_names:
@@ -148,6 +155,60 @@ async def llm_speech(
     )
 
 
+def _is_human_actor(state: GameState, actor_id: int) -> bool:
+    return state.get("human_seat") == actor_id
+
+
+async def _await_human_action(
+    state: GameState,
+    services: "SessionServices",
+    *,
+    actor_id: int,
+    role: Role,
+    phase: Phase,
+    tool_name: str,
+    local_args: dict,
+    timeout_seconds: float = 60.0,
+) -> dict:
+    """Emit an awaiting_human event and wait for the API to submit a result."""
+    awaiter = services.human_awaiter
+    if awaiter is None:
+        return local_args
+
+    # Emit awaiting_human (private to the actor) so the frontend can render the action panel
+    payload = {
+        "actor_id": actor_id,
+        "tool_name": tool_name,
+        "phase": phase.value,
+        "round": state["round"],
+        "role": role.value,
+        "timeout_seconds": timeout_seconds,
+        "local_args": local_args,
+    }
+    event = GameEvent(
+        game_id=state["game_id"], phase=state["phase"],
+        scope=EventScope.ROLE_PRIVATE, target_players={actor_id},
+        event_type=EventType.AWAITING_HUMAN,
+        content=f"event.{EventType.AWAITING_HUMAN.value}",
+        data=payload,
+    )
+    services.event_bus.publish(event)
+    try:
+        args = await awaiter.wait_for_action(
+            actor_id=actor_id, tool_name=tool_name, phase=phase.value,
+            local_args=local_args, timeout_seconds=timeout_seconds,
+        )
+    finally:
+        services.event_bus.publish(GameEvent(
+            game_id=state["game_id"], phase=state["phase"],
+            scope=EventScope.ROLE_PRIVATE, target_players={actor_id},
+            event_type=EventType.HUMAN_SUBMITTED,
+            content=f"event.{EventType.HUMAN_SUBMITTED.value}",
+            data={"actor_id": actor_id, "tool_name": tool_name},
+        ))
+    return args
+
+
 async def llm_death_speech(
     state: GameState,
     services: "SessionServices",
@@ -158,6 +219,12 @@ async def llm_death_speech(
     local_args: dict,
 ) -> dict:
     """Death speech — bypasses phase-based tool filtering."""
+    if _is_human_actor(state, actor_id) and services.human_awaiter is not None:
+        return await _await_human_action(
+            state, services,
+            actor_id=actor_id, role=role, phase=phase,
+            tool_name="death_speech", local_args=local_args,
+        )
     if services.llm_client is None or services.llm_settings is None:
         return local_args
     if services.total_llm_calls >= services.llm_settings.max_calls_per_game:

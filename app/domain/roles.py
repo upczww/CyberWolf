@@ -67,6 +67,8 @@ class EventType(StrEnum):
     WOLF_SELF_DESTRUCT = "wolf_self_destruct"
     GAME_ENDED = "game_ended"
     ERROR_RAISED = "error_raised"
+    AWAITING_HUMAN = "awaiting_human"
+    HUMAN_SUBMITTED = "human_submitted"
 
 
 class WinRule(StrEnum):

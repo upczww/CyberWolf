@@ -18,7 +18,9 @@ from pydantic import BaseModel
 
 from app.config import AppPaths, get_llm_settings, get_paths
 from app.domain.events import GameEvent
+from app.domain.roles import EventScope, EventType
 from app.engine.bootstrap import bootstrap_and_run_game, list_config_ids
+from app.engine.human import HumanAwaiter
 from app.infra.db import connect_database, initialize_database
 from app.infra.events import EventBus
 from app.infra.repositories.games import fetch_game, fetch_game_players, fetch_recent_games, fetch_game_count
@@ -30,8 +32,12 @@ _log = logging.getLogger(__name__)
 
 # Active game sessions: game_id -> (EventBus, asyncio.Task)
 _active_games: dict[str, tuple[EventBus, asyncio.Task]] = {}
-# WebSocket subscribers: game_id -> set of queues
-_ws_subscribers: dict[str, set[asyncio.Queue]] = {}
+# WebSocket subscribers: game_id -> set of (queue, seat or None)
+_ws_subscribers: dict[str, set[tuple[asyncio.Queue, int | None]]] = {}
+# Per-game HumanAwaiter
+_human_awaiters: dict[str, HumanAwaiter] = {}
+# Per-game human seat (for WS event filtering)
+_human_seats: dict[str, int] = {}
 
 
 def _get_paths() -> AppPaths:
@@ -76,6 +82,13 @@ app.mount("/assets", StaticFiles(directory=str(_assets_dir)), name="assets")
 class StartGameRequest(BaseModel):
     config_id: str = "12p_pre_witch_hunter_idiot"
     use_llm: bool = True
+    human_seat: int | None = None
+
+
+class HumanActionRequest(BaseModel):
+    actor_id: int
+    tool_name: str
+    args: dict[str, Any]
 
 
 class StartGameResponse(BaseModel):
@@ -188,16 +201,25 @@ async def start_game(req: StartGameRequest):
 
     event_bus = EventBus()
     game_id_holder: list[str] = []
+    human_awaiter = HumanAwaiter() if req.human_seat is not None else None
 
     def on_started(gid: str) -> None:
         game_id_holder.append(gid)
+        if req.human_seat is not None:
+            _human_seats[gid] = req.human_seat
+            if human_awaiter is not None:
+                _human_awaiters[gid] = human_awaiter
 
-    # Subscribe WebSocket broadcaster
     def on_event(event: GameEvent) -> None:
         gid = event.game_id
         subscribers = _ws_subscribers.get(gid, set())
         event_data = _serialize_event(event)
-        for queue in subscribers:
+        scope = event.scope
+        targets = event.target_players or set()
+        for queue, seat in subscribers:
+            if seat is not None and scope in (EventScope.ROLE_PRIVATE, EventScope.WOLF_TEAM):
+                if seat not in targets:
+                    continue
             try:
                 queue.put_nowait(event_data)
             except asyncio.QueueFull:
@@ -214,14 +236,21 @@ async def start_game(req: StartGameRequest):
                 llm_settings=llm_settings,
                 event_bus=event_bus,
                 on_game_started=on_started,
+                human_seat=req.human_seat,
+                human_awaiter=human_awaiter,
             )
             tts_engine.set_player_roles(boot.state["players"])
         except Exception as exc:
             _log.exception("Game failed: %s", exc)
         finally:
             gid = game_id_holder[0] if game_id_holder else None
-            if gid and gid in _active_games:
-                del _active_games[gid]
+            if gid:
+                if gid in _active_games:
+                    del _active_games[gid]
+                _human_seats.pop(gid, None)
+                awaiter = _human_awaiters.pop(gid, None)
+                if awaiter is not None:
+                    await awaiter.cancel_all()
 
     task = asyncio.create_task(run())
 
@@ -278,6 +307,28 @@ async def tts_status():
     return {"enabled": tts_engine.enabled}
 
 
+@app.post("/api/games/{game_id}/human_action")
+async def submit_human_action(game_id: str, req: HumanActionRequest):
+    """Inject a human player's action into the awaiting phase handler."""
+    awaiter = _human_awaiters.get(game_id)
+    if awaiter is None:
+        return {"accepted": False, "reason": "no_human_in_game"}
+    expected_seat = _human_seats.get(game_id)
+    if expected_seat is not None and req.actor_id != expected_seat:
+        return {"accepted": False, "reason": "actor_mismatch"}
+    accepted = await awaiter.submit(actor_id=req.actor_id, tool_name=req.tool_name, args=req.args)
+    return {"accepted": accepted, "pending": awaiter.pending_snapshot()}
+
+
+@app.get("/api/games/{game_id}/human_pending")
+async def human_pending(game_id: str):
+    """Return any actions currently awaiting human input (for reconnect)."""
+    awaiter = _human_awaiters.get(game_id)
+    if awaiter is None:
+        return {"pending": [], "seat": None}
+    return {"pending": awaiter.pending_snapshot(), "seat": _human_seats.get(game_id)}
+
+
 # ---------------------------------------------------------------------------
 # WebSocket
 # ---------------------------------------------------------------------------
@@ -285,14 +336,27 @@ async def tts_status():
 
 @app.websocket("/ws/games/{game_id}")
 async def game_websocket(websocket: WebSocket, game_id: str):
-    """Real-time game event stream via WebSocket."""
+    """Real-time game event stream via WebSocket.
+
+    Optional query param ``seat=N`` restricts which scope=role_private /
+    wolf_team events are forwarded — used by human-player clients to avoid
+    leaking other players' private info.
+    """
+    seat_param = websocket.query_params.get("seat")
+    seat: int | None = None
+    if seat_param:
+        try:
+            seat = int(seat_param)
+        except ValueError:
+            seat = None
     await websocket.accept()
     queue: asyncio.Queue = asyncio.Queue(maxsize=200)
 
-    # Register subscriber
+    # Register subscriber as (queue, seat)
     if game_id not in _ws_subscribers:
         _ws_subscribers[game_id] = set()
-    _ws_subscribers[game_id].add(queue)
+    subscriber_entry = (queue, seat)
+    _ws_subscribers[game_id].add(subscriber_entry)
 
     try:
         # Send existing events as initial batch
@@ -304,6 +368,15 @@ async def game_websocket(websocket: WebSocket, game_id: str):
                 ev = dict(row)
                 if isinstance(ev.get("data_json"), str):
                     ev["data_json"] = json.loads(ev["data_json"])
+                # Filter private events for seat-bound subscribers
+                if seat is not None and ev.get("scope") in {"role_private", "wolf_team"}:
+                    raw_targets = ev.get("target_ids_json") or "[]"
+                    try:
+                        targets = json.loads(raw_targets) if isinstance(raw_targets, str) else raw_targets
+                    except (ValueError, TypeError):
+                        targets = []
+                    if seat not in targets:
+                        continue
                 await websocket.send_json({"type": "history", "event": ev})
         finally:
             conn.close()
@@ -317,7 +390,7 @@ async def game_websocket(websocket: WebSocket, game_id: str):
     except WebSocketDisconnect:
         pass
     finally:
-        _ws_subscribers.get(game_id, set()).discard(queue)
+        _ws_subscribers.get(game_id, set()).discard(subscriber_entry)
         if game_id in _ws_subscribers and not _ws_subscribers[game_id]:
             del _ws_subscribers[game_id]
 

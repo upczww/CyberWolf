@@ -4,6 +4,7 @@ import { useGameWS } from './hooks/useGameWS'
 import { apiGet, apiPost } from './hooks/useApi'
 import GameAudio from './components/GameAudio'
 import GameEffects from './components/GameEffects'
+import HumanActionPanel from './components/HumanActionPanel'
 import MusicStudio from './components/MusicStudio'
 import Toolbar from './components/Toolbar'
 import GameList from './components/GameList'
@@ -68,6 +69,7 @@ export default function App() {
     viewMode,
     humanSeat,
     ttsEnabled,
+    awaitingHuman,
     setGameId,
     setPlayers,
     setEvents,
@@ -83,7 +85,7 @@ export default function App() {
   const [showMusicStudio, setShowMusicStudio] = useState(false)
   const [showGameList, setShowGameList] = useState(false)
 
-  useGameWS(gameId)
+  useGameWS(gameId, viewMode === 'self' ? humanSeat : null)
 
   useEffect(() => {
     if (!gameId) return
@@ -352,6 +354,9 @@ export default function App() {
 
       {showGameList && <GameList onSelect={handleSelectGame} onClose={() => setShowGameList(false)} />}
       {showMusicStudio && <MusicStudio onClose={() => setShowMusicStudio(false)} />}
+      {awaitingHuman && gameId && viewMode === 'self' && awaitingHuman.actor_id === humanSeat && (
+        <HumanActionPanel request={awaitingHuman} gameId={gameId} players={players} />
+      )}
     </div>
   )
 }
@@ -647,7 +652,7 @@ function buildConversation(events: GameEvent[]) {
     const text = ev.data?.speech || ev.data?.message || ev.data?.text || ev.content || '正在发言'
     const scope = ev.scope === 'wolf_team' ? '狼队频道' : ev.scope === 'role_private' ? '私人频道' : '公开频道'
     return {
-      title: `${playerId}号 AI`,
+      title: `${playerId}号`,
       channel: scope,
       avatar: avatarForEventPlayer(playerId),
       text: String(text),
@@ -657,7 +662,7 @@ function buildConversation(events: GameEvent[]) {
 
 function buildJudgeEvents(events: GameEvent[]) {
   // Show meaningful events only — strip the noisy ones
-  const interesting = events.filter((ev) => !['phase_ended', 'speaking_started', 'speech_order_announced'].includes(ev.event_type))
+  const interesting = events.filter((ev) => !['phase_ended', 'speaking_started', 'speech_order_announced', 'awaiting_human', 'human_submitted'].includes(ev.event_type))
   return interesting.slice(-14).map((ev) => {
     const d = ev.data || {}
     const pid = d.player_id ?? d.target_id ?? '?'

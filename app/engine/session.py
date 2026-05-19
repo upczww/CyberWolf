@@ -29,6 +29,7 @@ from app.domain.state import (
     snapshot_state,
 )
 from app.engine.handlers import PHASE_HANDLERS
+from app.engine.human import HumanAwaiter
 from app.infra.events import EventBus
 from app.infra.repositories.events import insert_events
 from app.infra.repositories.games import finalize_game, insert_game_players
@@ -53,6 +54,7 @@ class SessionServices:
     total_llm_calls: int = 0
     total_fallbacks: int = 0
     llm_callback: Any = None
+    human_awaiter: HumanAwaiter | None = None
     _phase_started_emitted: bool = False
 
 
@@ -64,6 +66,7 @@ async def run_game_session(
     llm_settings: LLMSettings | None = None,
     llm_callback: Any = None,
     max_steps: int = 200,
+    human_awaiter: HumanAwaiter | None = None,
 ) -> GameState:
     started = monotonic()
     services = SessionServices(
@@ -75,6 +78,7 @@ async def run_game_session(
         llm_settings=llm_settings,
         llm_semaphore=asyncio.Semaphore(llm_settings.max_concurrency) if llm_settings is not None else None,
         llm_callback=llm_callback,
+        human_awaiter=human_awaiter,
     )
     insert_game_players(conn, game_id=state["game_id"], state=state)
 

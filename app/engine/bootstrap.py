@@ -11,6 +11,7 @@ from app.domain.state import GameState, init_game_state
 from app.engine.config_loader import compile_runtime_config, load_game_config
 from app.engine.graph import CompiledGraph, build_game_graph
 from app.engine.graph_viz import export_graph_bundle
+from app.engine.human import HumanAwaiter
 from app.engine.session import run_game_session
 from app.infra.db import connect_database, initialize_database
 from app.infra.events import EventBus
@@ -34,6 +35,8 @@ async def bootstrap_and_run_game(
     event_bus: EventBus | None = None,
     llm_callback: object = None,
     on_game_started: Callable[[str], None] | None = None,
+    human_seat: int | None = None,
+    human_awaiter: HumanAwaiter | None = None,
 ) -> BootstrappedGame:
     seed = time_ns() if seed is None else seed
     initialize_database(paths.database, paths.schema)
@@ -47,12 +50,16 @@ async def bootstrap_and_run_game(
     conn = connect_database(paths.database)
     try:
         insert_game_bootstrap(conn, game_id=game_id, runtime=runtime, seed=seed, graph_artifacts=artifact_strings)
-        state = init_game_state(runtime, game_id=game_id, seed=seed, graph_artifacts=artifact_strings)
+        state = init_game_state(
+            runtime, game_id=game_id, seed=seed,
+            graph_artifacts=artifact_strings, human_seat=human_seat,
+        )
         if on_game_started is not None:
             on_game_started(game_id)
         final_state = await run_game_session(
             state, conn=conn, event_bus=event_bus or EventBus(),
             llm_settings=llm_settings, llm_callback=llm_callback,
+            human_awaiter=human_awaiter,
         )
     finally:
         conn.close()
