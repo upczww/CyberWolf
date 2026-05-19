@@ -14,12 +14,20 @@ interface Props {
   onTtsToggle: () => void
 }
 
-const STEPS = ['入夜', '狼人', '预言家', '女巫', '天亮', '讨论', '投票']
+const STEPS: Array<{ label: string; icon: string; phases: string[] }> = [
+  { label: '入夜', icon: '/assets/ui/phases/phase_night.png', phases: ['night_start'] },
+  { label: '狼人', icon: '/assets/ui/icons/claw_slash.png', phases: ['night_wolf'] },
+  { label: '预言家', icon: '/assets/ui/icons/seer_eye.png', phases: ['night_seer'] },
+  { label: '女巫', icon: '/assets/ui/icons/antidote.png', phases: ['night_witch'] },
+  { label: '天亮', icon: '/assets/ui/phases/phase_dawn.png', phases: ['day_announce', 'night_resolve'] },
+  { label: '讨论', icon: '/assets/ui/icons/ballot_vote.png', phases: ['day_speech', 'sheriff_election'] },
+  { label: '投票', icon: '/assets/ui/vote/vote_count_token.png', phases: ['day_vote', 'day_resolve'] },
+]
 
 const VIEW_OPTIONS: Array<{ value: 'god' | 'observer' | 'self'; label: string; hint: string }> = [
-  { value: 'god', label: '上帝视角', hint: '看到所有真实身份' },
-  { value: 'observer', label: '旁观席', hint: '所有身份保密' },
-  { value: 'self', label: '我加入', hint: '仅看到自己的身份' },
+  { value: 'god', label: '导演', hint: '看到所有真实身份' },
+  { value: 'observer', label: '旁观', hint: '所有身份保密' },
+  { value: 'self', label: '参局', hint: '仅看到自己的身份' },
 ]
 
 export default function Toolbar({
@@ -95,18 +103,15 @@ export default function Toolbar({
     <footer className="director-toolbar">
       <section className="toolbar-actions">
         <button className="primary" onClick={() => startGame(true)} disabled={loading}>
-          {loading ? '启动中' : '新局 AI'}
+          {loading ? '启动中' : '新局'}
         </button>
-        <button onClick={() => startGame(false)} disabled={loading}>规则演示</button>
+        <button onClick={() => startGame(false)} disabled={loading}>演示</button>
         <button onClick={runReplay} disabled={!gameId || status !== 'completed' || replaying}>
           {replaying ? '分析中' : '复盘'}
         </button>
-        {onOpenGameList ? <button onClick={onOpenGameList}>对局库</button> : null}
-        {onOpenMusic ? <button onClick={onOpenMusic}>音频台</button> : null}
-        <button className={`tts-toggle ${ttsEnabled ? 'on' : ''}`} onClick={onTtsToggle} title="语音播报">
-          {ttsEnabled ? '🔊 语音' : '🔇 静音'}
-        </button>
-        <button className="danger" onClick={deleteGame} disabled={!gameId}>删除</button>
+        {onOpenGameList ? <button onClick={onOpenGameList}>牌局</button> : null}
+        {onOpenMusic ? <button onClick={onOpenMusic}>音频</button> : null}
+        <button className="danger" onClick={deleteGame} disabled={!gameId}>删局</button>
       </section>
 
       <section className="view-mode-toggle">
@@ -129,20 +134,23 @@ export default function Toolbar({
 
       <section className="phase-steps">
         {STEPS.map((step) => (
-          <span className={isStepActive(step, phase) ? 'active' : ''} key={step}>{step}</span>
+          <span className={isStepActive(step, phase) ? 'active' : ''} key={step.label}>
+            <img src={step.icon} alt="" />
+            <b>{step.label}</b>
+          </span>
         ))}
       </section>
 
       <section className="toolbar-note">
-        <img src="/assets/ui/effects/antidote_glow_overlay.png" alt="" />
+        <img src={connected ? '/assets/ui/status/selected.png' : '/assets/ui/status/waiting.png'} alt="" />
         <span>
-          {connected ? '实时接收裁判事件' : '服务未连接时仍可预览导演台布局'}。
-          {viewMode === 'god' && '导演模式：可看到所有 AI 的真实身份与决策。'}
-          {viewMode === 'observer' && '旁观模式：仅依据公开信息推断。'}
+          <b>{connected ? '实时连接' : '离线预览'}</b>
+          {viewMode === 'god' && ' · 导演可见全部身份'}
+          {viewMode === 'observer' && ' · 旁观仅看公开信息'}
           {viewMode === 'self' && (
             humanSeat == null
-              ? '参与模式:启动后裁判会从 12 个席位中为你随机抽取一个,其它身份保密。'
-              : `参与模式:你是 ${humanSeat} 号玩家,其它身份保密。`
+              ? ' · 参局后随机席位'
+              : ` · 你是 ${humanSeat} 号`
           )}
         </span>
       </section>
@@ -152,14 +160,7 @@ export default function Toolbar({
   )
 }
 
-function isStepActive(step: string, phase: string | null) {
+function isStepActive(step: { phases: string[] }, phase: string | null) {
   if (!phase) return false
-  if (step === '入夜') return phase === 'night_start'
-  if (step === '狼人') return phase === 'night_wolf'
-  if (step === '预言家') return phase === 'night_seer'
-  if (step === '女巫') return phase === 'night_witch'
-  if (step === '天亮') return phase === 'day_announce'
-  if (step === '讨论') return phase === 'day_speech' || phase === 'sheriff_election'
-  if (step === '投票') return phase === 'day_vote' || phase === 'day_resolve'
-  return false
+  return step.phases.includes(phase)
 }
