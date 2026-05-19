@@ -8,6 +8,7 @@ dependencies = [
     "chattts>=0.2.5",
     "fastapi>=0.136.1",
     "numpy>=2.4.5",
+    "pybase16384>=0.3.0,<0.3.6",
     "PyYAML>=6.0",
     "requests>=2.34.2",
     "scipy>=1.17.1",
@@ -16,7 +17,7 @@ dependencies = [
     "textual>=0.58.0",
     "torch>=2.12.0",
     "transformers>=5.8.1",
-    "uvicorn>=0.47.0",
+    "uvicorn[standard]>=0.47.0",
 ]
 
 [project.scripts]
