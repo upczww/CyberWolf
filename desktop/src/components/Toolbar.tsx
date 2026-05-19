@@ -39,12 +39,8 @@ export default function Toolbar({
 
   const handleViewModeChange = (mode: 'god' | 'observer' | 'self') => {
     onViewModeChange(mode)
-    if (mode === 'self' && humanSeat == null) {
-      onHumanSeatChange(1)
-    }
-    if (mode !== 'self') {
-      onHumanSeatChange(null)
-    }
+    // Always clear humanSeat on mode change; backend assigns at random when starting a self game.
+    onHumanSeatChange(null)
   }
 
   const startGame = async (useLlm: boolean) => {
@@ -54,10 +50,14 @@ export default function Toolbar({
         config_id: '12p_pre_witch_hunter_idiot',
         use_llm: useLlm,
       }
-      if (viewMode === 'self' && humanSeat) {
-        payload.human_seat = humanSeat
+      if (viewMode === 'self') {
+        payload.human_join = true
+        // server picks human_seat at random
       }
-      const res = await apiPost<{ game_id: string }>('/api/games/start', payload)
+      const res = await apiPost<{ game_id: string; human_seat?: number | null }>('/api/games/start', payload)
+      if (viewMode === 'self' && typeof res.human_seat === 'number') {
+        onHumanSeatChange(res.human_seat)
+      }
       onGameStarted(res.game_id)
     } catch (error) {
       console.error('Start failed:', error)
@@ -94,7 +94,7 @@ export default function Toolbar({
   return (
     <footer className="director-toolbar">
       <section className="toolbar-actions">
-        <button className="primary" onClick={() => startGame(true)} disabled={loading || (viewMode === 'self' && humanSeat == null)}>
+        <button className="primary" onClick={() => startGame(true)} disabled={loading}>
           {loading ? '启动中' : '新局 AI'}
         </button>
         <button onClick={() => startGame(false)} disabled={loading}>规则演示</button>
@@ -121,17 +121,9 @@ export default function Toolbar({
           </button>
         ))}
         {viewMode === 'self' && (
-          <label className="seat-picker">
-            席位
-            <select
-              value={humanSeat ?? 1}
-              onChange={(e) => onHumanSeatChange(Number(e.target.value))}
-            >
-              {Array.from({ length: 12 }, (_, i) => i + 1).map((n) => (
-                <option key={n} value={n}>{n} 号</option>
-              ))}
-            </select>
-          </label>
+          <span className="seat-info">
+            {humanSeat == null ? '席位随机分配' : `你的席位:${humanSeat} 号`}
+          </span>
         )}
       </section>
 
@@ -147,7 +139,11 @@ export default function Toolbar({
           {connected ? '实时接收裁判事件' : '服务未连接时仍可预览导演台布局'}。
           {viewMode === 'god' && '导演模式：可看到所有 AI 的真实身份与决策。'}
           {viewMode === 'observer' && '旁观模式：仅依据公开信息推断。'}
-          {viewMode === 'self' && `参与模式：你将作为 ${humanSeat ?? '?'} 号玩家，其它身份保密（行动接入开发中）。`}
+          {viewMode === 'self' && (
+            humanSeat == null
+              ? '参与模式:启动后裁判会从 12 个席位中为你随机抽取一个,其它身份保密。'
+              : `参与模式:你是 ${humanSeat} 号玩家,其它身份保密。`
+          )}
         </span>
       </section>
 

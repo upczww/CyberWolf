@@ -1022,23 +1022,16 @@ button.danger {
   cursor: not-allowed;
 }
 
-.seat-picker {
+.seat-info {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  margin-left: 8px;
-  color: rgba(245, 224, 175, .72);
-  font-size: 12px;
-  letter-spacing: .14em;
-}
-
-.seat-picker select {
-  padding: 5px 8px;
+  margin-left: 10px;
+  padding: 4px 10px;
   color: #f6cf73;
-  background: rgba(20, 13, 9, .8);
+  background: rgba(20, 13, 9, .68);
   border: 1px solid rgba(218, 185, 119, .42);
-  font-family: inherit;
-  font-size: 12.5px;
+  font-size: 11.5px;
+  letter-spacing: .14em;
 }
 
 .tts-toggle {

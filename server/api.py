@@ -82,7 +82,8 @@ app.mount("/assets", StaticFiles(directory=str(_assets_dir)), name="assets")
 class StartGameRequest(BaseModel):
     config_id: str = "12p_pre_witch_hunter_idiot"
     use_llm: bool = True
-    human_seat: int | None = None
+    human_join: bool = False
+    human_seat: int | None = None  # if human_join is True and this is None, server picks at random
 
 
 class HumanActionRequest(BaseModel):
@@ -94,6 +95,7 @@ class HumanActionRequest(BaseModel):
 class StartGameResponse(BaseModel):
     game_id: str
     config_id: str
+    human_seat: int | None = None
 
 
 class GameSummary(BaseModel):
@@ -199,14 +201,25 @@ async def start_game(req: StartGameRequest):
     paths = _get_paths()
     llm_settings = get_llm_settings() if req.use_llm else None
 
+    # Resolve human seat: if human_join is true and no seat specified, pick at random 1-12.
+    resolved_seat: int | None
+    if req.human_join:
+        if req.human_seat is None:
+            import secrets
+            resolved_seat = secrets.randbelow(12) + 1
+        else:
+            resolved_seat = req.human_seat
+    else:
+        resolved_seat = None
+
     event_bus = EventBus()
     game_id_holder: list[str] = []
-    human_awaiter = HumanAwaiter() if req.human_seat is not None else None
+    human_awaiter = HumanAwaiter() if resolved_seat is not None else None
 
     def on_started(gid: str) -> None:
         game_id_holder.append(gid)
-        if req.human_seat is not None:
-            _human_seats[gid] = req.human_seat
+        if resolved_seat is not None:
+            _human_seats[gid] = resolved_seat
             if human_awaiter is not None:
                 _human_awaiters[gid] = human_awaiter
 
@@ -236,7 +249,7 @@ async def start_game(req: StartGameRequest):
                 llm_settings=llm_settings,
                 event_bus=event_bus,
                 on_game_started=on_started,
-                human_seat=req.human_seat,
+                human_seat=resolved_seat,
                 human_awaiter=human_awaiter,
             )
             tts_engine.set_player_roles(boot.state["players"])
@@ -265,7 +278,7 @@ async def start_game(req: StartGameRequest):
 
     gid = game_id_holder[0]
     _active_games[gid] = (event_bus, task)
-    return StartGameResponse(game_id=gid, config_id=req.config_id)
+    return StartGameResponse(game_id=gid, config_id=req.config_id, human_seat=resolved_seat)
 
 
 @app.delete("/api/games/{game_id}")
