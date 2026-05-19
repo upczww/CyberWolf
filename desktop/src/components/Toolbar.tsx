@@ -111,6 +111,9 @@ export default function Toolbar({
         </button>
         {onOpenGameList ? <button onClick={onOpenGameList}>牌局</button> : null}
         {onOpenMusic ? <button onClick={onOpenMusic}>音频</button> : null}
+        <button className={`tts-toggle ${ttsEnabled ? 'on' : ''}`} onClick={onTtsToggle} title="语音播报">
+          {ttsEnabled ? '语音' : '静音'}
+        </button>
         <button className="danger" onClick={deleteGame} disabled={!gameId}>删局</button>
       </section>
 

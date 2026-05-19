@@ -8,8 +8,10 @@ from __future__ import annotations
 import asyncio
 import io
 import logging
+import os
 import threading
 import wave
+from pathlib import Path
 from typing import Any
 
 import numpy as np
@@ -218,7 +220,14 @@ class TTSEngine:
             try:
                 import ChatTTS
                 chat = ChatTTS.Chat()
-                chat.load(compile=False)  # compile=False for CPU compatibility
+                custom_path = _resolve_chattts_path()
+                if custom_path is not None:
+                    _log.info("Loading ChatTTS from local snapshot: %s", custom_path)
+                    ok = chat.load(compile=False, source="custom", custom_path=str(custom_path))
+                else:
+                    ok = chat.load(compile=False)  # source="local" → rvcmd
+                if not ok:
+                    raise RuntimeError("ChatTTS.load() returned False")
                 self._chat = chat
                 _log.info("ChatTTS model loaded successfully")
             except Exception as exc:
@@ -352,4 +361,32 @@ def _split_sentences(text: str) -> list[str]:
 
 
 # Singleton instance
+def _resolve_chattts_path() -> "Path | None":
+    """Return a pre-warmed ChatTTS snapshot path, or None to let ChatTTS download.
+
+    Checks, in order:
+      1. ``LYCAN_CHATTTS_PATH`` env var (explicit override)
+      2. ModelScope cache at ``~/.cache/modelscope/AI-ModelScope/ChatTTS``
+      3. HuggingFace snapshot under ``~/.cache/huggingface/hub/models--2Noise--ChatTTS/snapshots/*``
+
+    Returns the first directory whose ``asset/`` subfolder exists. If none are
+    found returns None so ChatTTS falls back to its built-in rvcmd downloader.
+    """
+    from pathlib import Path as _Path
+    candidates: list[_Path] = []
+    explicit = os.environ.get("LYCAN_CHATTTS_PATH")
+    if explicit:
+        candidates.append(_Path(explicit))
+    home = _Path.home()
+    candidates.append(home / ".cache" / "modelscope" / "AI-ModelScope" / "ChatTTS")
+    hf_root = home / ".cache" / "huggingface" / "hub" / "models--2Noise--ChatTTS" / "snapshots"
+    if hf_root.exists():
+        snapshots = sorted([p for p in hf_root.iterdir() if p.is_dir()])
+        candidates.extend(snapshots[::-1])  # newest first by sort order
+    for c in candidates:
+        if (c / "asset").exists() and (c / "config").exists():
+            return c
+    return None
+
+
 tts_engine = TTSEngine()
