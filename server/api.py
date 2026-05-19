@@ -48,6 +48,11 @@ def _get_paths() -> AppPaths:
 async def lifespan(app: FastAPI):
     paths = _get_paths()
     initialize_database(paths.database, paths.schema)
+    # Start TTS playback worker so toggling tts on actually produces audio
+    try:
+        tts_engine.start_worker(asyncio.get_running_loop())
+    except Exception as exc:  # noqa: BLE001
+        _log.warning("TTS worker failed to start: %s", exc)
     yield
     # Cleanup active games
     for game_id, (bus, task) in _active_games.items():
