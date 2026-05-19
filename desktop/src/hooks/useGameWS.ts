@@ -26,7 +26,18 @@ export function useGameWS(gameId: string | null, seat: number | null = null) {
       if (seat != null) {
         fetch(`/api/games/${gameId}/human_pending`)
           .then((r) => r.json())
-          .then((data: { pending?: Array<{ actor_id: number; tool_name: string; phase: string }>; seat?: number | null }) => {
+          .then((data: {
+            pending?: Array<{
+              actor_id: number
+              tool_name: string
+              phase: string
+              role?: string
+              round?: number
+              timeout_seconds?: number
+              local_args?: Record<string, any>
+            }>
+            seat?: number | null
+          }) => {
             if (!data?.pending || data.pending.length === 0) return
             const own = data.pending.find((p) => p.actor_id === seat)
             if (!own) return
@@ -34,10 +45,10 @@ export function useGameWS(gameId: string | null, seat: number | null = null) {
               actor_id: own.actor_id,
               tool_name: own.tool_name,
               phase: own.phase,
-              role: '',
-              round: 0,
-              timeout_seconds: 60,
-              local_args: {},
+              role: own.role || '',
+              round: own.round || 0,
+              timeout_seconds: own.timeout_seconds || 60,
+              local_args: own.local_args || {},
             })
           })
           .catch(() => undefined)

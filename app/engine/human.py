@@ -27,6 +27,9 @@ class _Pending:
     actor_id: int
     phase: str
     timeout_seconds: float
+    local_args: dict
+    role: str = ""
+    round_no: int = 0
 
 
 class HumanAwaiter:
@@ -54,6 +57,8 @@ class HumanAwaiter:
         phase: str,
         local_args: dict,
         timeout_seconds: float = 60.0,
+        role: str = "",
+        round_no: int = 0,
     ) -> dict:
         """Block until the human submits an action or timeout fires.
 
@@ -72,6 +77,9 @@ class HumanAwaiter:
                 actor_id=actor_id,
                 phase=phase,
                 timeout_seconds=timeout_seconds,
+                local_args=local_args,
+                role=role,
+                round_no=round_no,
             )
         try:
             args = await asyncio.wait_for(future, timeout=timeout_seconds)
@@ -91,7 +99,15 @@ class HumanAwaiter:
     def pending_snapshot(self) -> list[dict]:
         """Return a serializable list of currently awaiting actions (for reconnect)."""
         return [
-            {"actor_id": p.actor_id, "tool_name": p.tool_name, "phase": p.phase}
+            {
+                "actor_id": p.actor_id,
+                "tool_name": p.tool_name,
+                "phase": p.phase,
+                "role": p.role,
+                "round": p.round_no,
+                "timeout_seconds": p.timeout_seconds,
+                "local_args": p.local_args,
+            }
             for p in self._pending.values()
         ]
 

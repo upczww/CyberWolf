@@ -165,7 +165,7 @@ export default function App() {
   const deadCount = players.length ? players.length - aliveCount : 0
   const wolvesAlive = players.filter((p) => p.survived && p.faction === 'wolf').length
   const latestEvent = events.length > 0 ? events[events.length - 1] : null
-  const conversation = useMemo(() => buildConversation(events), [events])
+  const conversation = useMemo(() => buildConversation(events, humanSeat), [events, humanSeat])
   const judgeEvents = useMemo(() => buildJudgeEvents(events), [events])
   const playerStatuses = useMemo(() => computePlayerStatuses(events, round, phase), [events, round, phase])
   const avatarOverrides = useMemo(() => computeAvatarOverrides(events), [events])
@@ -207,12 +207,16 @@ export default function App() {
           </section>
 
           <section
-            className="phase-banner"
+            className={`phase-banner ${awaitingHuman && viewMode === 'self' && awaitingHuman.actor_id === humanSeat ? 'is-your-turn' : ''}`}
             style={{ backgroundImage: `linear-gradient(90deg, rgba(14,10,8,.22), rgba(14,10,8,.42)), url(/assets/ui/phases/${meta?.asset || 'phase_night.png'})` }}
           >
             <span>第 {round || 1} 轮</span>
             <strong>{winner ? `${winner === 'good' ? '好人阵营' : '狼人阵营'}胜利` : meta?.label || '等待开始'}</strong>
-            <span>{meta?.channel || '导演频道'}</span>
+            <span>
+              {awaitingHuman && viewMode === 'self' && awaitingHuman.actor_id === humanSeat
+                ? '⚡ 你的回合'
+                : meta?.channel || '导演频道'}
+            </span>
           </section>
 
           <section className="score-grid">
@@ -285,7 +289,7 @@ export default function App() {
               <PanelTitle title="AI 对话流" icon="/assets/ui/icons/ballot_vote.png" />
               <div className="message-feed">
                 {conversation.map((item, index) => (
-                  <article className="speech-card" key={`${item.title}-${index}`}>
+                  <article className={`speech-card ${item.isHuman ? 'is-human' : ''}`} key={`${item.title}-${index}`}>
                     <img src={item.avatar} alt="" />
                     <div>
                       <b>
@@ -641,7 +645,7 @@ function buildJudgeSummary(phase: string | null, events: GameEvent[], viewMode: 
   return '启动新局后，12 名 AI 会按身份、私有信息和公开记录自动行动。'
 }
 
-function buildConversation(events: GameEvent[]) {
+function buildConversation(events: GameEvent[], humanSeat: number | null) {
   const speechEvents = events.filter((ev) =>
     ['public_speech_made', 'sheriff_campaign', 'death_speech', 'wolf_team_discussion', 'witch_thought', 'seer_thought'].includes(ev.event_type),
   )
@@ -651,11 +655,13 @@ function buildConversation(events: GameEvent[]) {
     const playerId = ev.data?.player_id || ev.data?.actor_id || '?'
     const text = ev.data?.speech || ev.data?.message || ev.data?.text || ev.content || '正在发言'
     const scope = ev.scope === 'wolf_team' ? '狼队频道' : ev.scope === 'role_private' ? '私人频道' : '公开频道'
+    const isHuman = humanSeat != null && Number(playerId) === humanSeat
     return {
-      title: `${playerId}号`,
+      title: isHuman ? `${playerId}号 · 你` : `${playerId}号`,
       channel: scope,
       avatar: avatarForEventPlayer(playerId),
       text: String(text),
+      isHuman,
     }
   })
 }

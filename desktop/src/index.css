@@ -190,6 +190,22 @@ button.danger {
   text-align: right;
 }
 
+.phase-banner.is-your-turn {
+  box-shadow: 0 0 0 2px rgba(118, 198, 134, .75), 0 0 22px rgba(118, 198, 134, .45);
+  animation: yourTurnPulse 1.5s ease-in-out infinite;
+}
+
+.phase-banner.is-your-turn span:last-child {
+  color: #9ee5a7;
+  font-weight: 700;
+  letter-spacing: .14em;
+}
+
+@keyframes yourTurnPulse {
+  0%, 100% { box-shadow: 0 0 0 2px rgba(118, 198, 134, .75), 0 0 22px rgba(118, 198, 134, .45); }
+  50% { box-shadow: 0 0 0 2px rgba(118, 198, 134, 1), 0 0 32px rgba(118, 198, 134, .75); }
+}
+
 .score-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
@@ -608,6 +624,16 @@ button.danger {
   color: rgba(249, 231, 188, .82);
   line-height: 1.38;
   font-size: 13px;
+}
+
+.speech-card.is-human {
+  border-color: rgba(118, 198, 134, .58);
+  background: linear-gradient(180deg, rgba(40, 60, 38, .55), rgba(28, 40, 26, .72));
+  box-shadow: 0 0 10px rgba(118, 198, 134, .22);
+}
+
+.speech-card.is-human b {
+  color: #9ee5a7;
 }
 
 .logic-grid {

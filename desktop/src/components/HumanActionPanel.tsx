@@ -17,6 +17,7 @@ const TOOL_TITLES: Record<string, string> = {
   hunter_shoot: '猎人开枪',
   public_speech: '公开发言',
   death_speech: '遗言',
+  sheriff_candidacy: '警长竞选',
 }
 
 export default function HumanActionPanel({ request, gameId, players }: Props) {
@@ -151,6 +152,16 @@ export default function HumanActionPanel({ request, gameId, players }: Props) {
               allowAbstain
               abstainLabel="不投毒"
             />
+          </div>
+        )}
+
+        {request.tool_name === 'sheriff_candidacy' && (
+          <div className="witch-action">
+            <p>是否参选警长?警长发言权重 1.5,死亡可传警徽。</p>
+            <div className="action-buttons">
+              <button onClick={() => submit({ target_id: request.actor_id })} disabled={submitting}>参选</button>
+              <button className="ghost" onClick={() => submit({ target_id: null })} disabled={submitting}>不参选</button>
+            </div>
           </div>
         )}
 

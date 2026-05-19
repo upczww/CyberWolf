@@ -197,6 +197,7 @@ async def _await_human_action(
         args = await awaiter.wait_for_action(
             actor_id=actor_id, tool_name=tool_name, phase=phase.value,
             local_args=local_args, timeout_seconds=timeout_seconds,
+            role=role.value, round_no=state["round"],
         )
     finally:
         services.event_bus.publish(GameEvent(

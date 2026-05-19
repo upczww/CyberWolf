@@ -254,6 +254,18 @@ def _resolve_sheriff_vote(votes: dict[int, int], rng: Random, *, candidates: lis
 async def _decide_candidacy(state: GameState, services: "SessionServices", player_id: int) -> bool:
     """Decide whether a player wants to run for sheriff."""
     role = state["players"][player_id]["role"]
+    # Human seat gets to choose directly via the awaiter (separate tool name so
+    # the frontend can show a dedicated yes/no UI without conflicting with the
+    # later vote_target prompt).
+    if state.get("human_seat") == player_id and services.human_awaiter is not None:
+        from app.engine.llm_bridge import _await_human_action
+        result = await _await_human_action(
+            state, services,
+            actor_id=player_id, role=role, phase=state["phase"],
+            tool_name="sheriff_candidacy", local_args={"target_id": None},
+        )
+        target = result.get("target_id")
+        return target is not None and int(target) == player_id
     if services.llm_client is None or services.llm_settings is None:
         weights: dict[Role, float] = {
             Role.WOLF: 0.6, Role.SEER: 0.98, Role.WITCH: 0.3,
