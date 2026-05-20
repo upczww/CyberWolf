@@ -53,8 +53,8 @@ img {
   position: relative;
   width: 100vw;
   height: 100vh;
-  min-width: 1180px;
-  min-height: 720px;
+  min-width: 960px;
+  min-height: 640px;
   overflow: hidden;
   background: #06101c;
 }
@@ -845,31 +845,31 @@ img {
 
 .landing-logo {
   position: absolute;
-  left: 120px;
-  top: 145px;
-  width: 360px;
+  left: clamp(40px, 8vw, 120px);
+  top: clamp(70px, 13vh, 145px);
+  width: clamp(240px, 24vw, 360px);
 }
 
 .landing-logo img {
-  width: 330px;
+  width: clamp(220px, 22vw, 330px);
 }
 
 .landing-logo span {
   display: block;
   margin-top: -6px;
   color: #efe5d6;
-  font-size: 28px;
+  font-size: clamp(18px, 2.6vh, 28px);
   text-align: center;
 }
 
 .mode-cards {
   position: absolute;
   left: 50%;
-  top: 240px;
-  bottom: 108px;
+  top: clamp(170px, 22vh, 240px);
+  bottom: clamp(82px, 10vh, 108px);
   display: grid;
-  grid-template-columns: 410px 410px;
-  gap: 34px;
+  grid-template-columns: repeat(2, clamp(320px, 28vw, 410px));
+  gap: clamp(20px, 2.5vw, 34px);
   transform: translateX(-50%);
   align-items: stretch;
 }
@@ -880,7 +880,7 @@ img {
   z-index: 1;
   display: flex;
   flex-direction: column;
-  padding: 60px 38px 22px;
+  padding: clamp(42px, 5.5vh, 60px) clamp(24px, 2.8vw, 38px) clamp(14px, 2vh, 22px);
   border-radius: 8px;
   border: 1px solid rgba(131, 184, 239, .55);
   background: linear-gradient(180deg, rgba(56, 110, 168, .26) 0%, rgba(20, 48, 90, .42) 60%, rgba(12, 28, 56, .58) 100%);
@@ -941,11 +941,11 @@ img {
 .mode-icon {
   position: absolute;
   left: 50%;
-  top: -37px;
+  top: clamp(-30px, -3.4vh, -22px);
   pointer-events: none;
-  width: 92px;
-  height: 92px;
-  padding: 16px;
+  width: clamp(64px, 8.5vh, 92px);
+  height: clamp(64px, 8.5vh, 92px);
+  padding: clamp(10px, 1.5vh, 16px);
   border-radius: 50%;
   transform: translateX(-50%);
   background: rgba(20, 31, 49, .88);
@@ -954,7 +954,7 @@ img {
 .mode-card h2 {
   margin: 0;
   color: #eaf3ff;
-  font-size: 38px;
+  font-size: clamp(24px, 3.4vh, 38px);
   text-align: center;
   letter-spacing: .08em;
 }
@@ -964,19 +964,19 @@ img {
 }
 
 .mode-card p {
-  margin: 6px 0 8px;
+  margin: clamp(4px, 0.7vh, 8px) 0 clamp(4px, 0.8vh, 10px);
   color: rgba(247, 242, 232, .86);
-  font-size: 16px;
+  font-size: clamp(12px, 1.5vh, 16px);
   text-align: center;
 }
 
 .mode-hero {
   flex: 1 1 0;
-  min-height: 0;
-  max-height: 360px;
+  min-height: clamp(120px, 26vh, 280px);
+  max-height: clamp(180px, 40vh, 380px);
   position: relative;
   pointer-events: none;
-  margin: 0 -38px 10px;
+  margin: 0 calc(-1 * clamp(24px, 2.8vw, 38px)) clamp(6px, 1.2vh, 12px);
   display: grid;
   place-items: end center;
   overflow: hidden;
@@ -1016,13 +1016,12 @@ img {
 }
 
 .mode-silhouette {
-  position: relative;
+  position: absolute;
+  inset: 0;
   z-index: 1;
   pointer-events: none;
-  width: auto;
-  max-width: 70%;
-  height: 90%;
-  max-height: 90%;
+  width: 100%;
+  height: 100%;
   object-fit: contain;
   object-position: bottom center;
   filter:
@@ -1042,12 +1041,12 @@ img {
 
 .mode-card ul {
   display: grid;
-  gap: 6px;
-  margin: 0 0 14px;
+  gap: clamp(3px, 0.6vh, 8px);
+  margin: 0 0 clamp(8px, 1.6vh, 16px);
   padding: 0;
   list-style: none;
   color: rgba(244,240,232,.92);
-  font-size: 14px;
+  font-size: clamp(11px, 1.4vh, 15px);
 }
 
 .mode-card li {
@@ -1073,11 +1072,11 @@ img {
   position: relative;
   z-index: 4;
   width: 100%;
-  height: 62px;
+  height: clamp(44px, 5.8vh, 62px);
   border-radius: 14px;
   background: linear-gradient(180deg, #78afea, #4579bd);
   color: #fff;
-  font-size: 25px;
+  font-size: clamp(17px, 2.4vh, 25px);
   font-weight: 850;
 }
 
@@ -1088,7 +1087,7 @@ img {
 .mode-card button span {
   float: right;
   padding-right: 16px;
-  font-size: 38px;
+  font-size: clamp(24px, 3.4vh, 38px);
   line-height: .65;
 }
 
