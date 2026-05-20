@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import GameAudio from './components/GameAudio'
 import GameEffects from './components/GameEffects'
 import HumanActionPanel from './components/HumanActionPanel'
+import IdentityReveal, { hasSeenIdentityReveal } from './components/IdentityReveal'
 import { apiGet, apiPost } from './hooks/useApi'
 import { useGameWS } from './hooks/useGameWS'
 import { useGameStore, type GameEvent, type Player } from './stores/game'
@@ -282,6 +283,7 @@ export default function App() {
   const [landingMode, setLandingMode] = useState<ViewMode>('self')
   const [loadingStart, setLoadingStart] = useState(false)
   const [selectedVote, setSelectedVote] = useState<number | null>(8)
+  const [identityRevealed, setIdentityRevealed] = useState(false)
   const [voteConfirmed, setVoteConfirmed] = useState(false)
 
   useGameWS(gameId, viewMode === 'self' ? humanSeat : null)
@@ -296,6 +298,15 @@ export default function App() {
       .then((res) => setTtsEnabled(!!res.enabled))
       .catch(() => undefined)
   }, [setTtsEnabled])
+
+  // Identity reveal lifecycle: reset flag whenever a new game starts.
+  useEffect(() => {
+    if (!gameId) {
+      setIdentityRevealed(false)
+      return
+    }
+    setIdentityRevealed(hasSeenIdentityReveal(gameId))
+  }, [gameId])
 
   const visiblePlayers = players.length ? players : DEMO_PLAYERS
   const visibleEvents = events.length ? events : DEMO_EVENTS
@@ -504,9 +515,40 @@ export default function App() {
           }}
         />
       )}
-      {awaitingHuman && gameId && (
+      {awaitingHuman && gameId && viewMode === 'self' && humanSeat != null && awaitingHuman.actor_id === humanSeat && (
         <HumanActionPanel request={awaitingHuman} gameId={gameId} players={visiblePlayers} />
       )}
+
+      {(() => {
+        if (!gameId || gameId === 'demo') return null
+        if (viewMode !== 'self' || humanSeat == null) return null
+        if (identityRevealed) return null
+        const me = players.find((p) => p.seat_index === humanSeat)
+        if (!me || !me.role || me.role === 'unknown') return null
+        return (
+          <IdentityReveal
+            gameId={gameId}
+            player={me}
+            onClose={() => setIdentityRevealed(true)}
+          />
+        )
+      })()}
+
+      {/* Top-level personal-mode "AI 正在行动" hint — hidden when the
+          HumanActionPanel is already on screen (it's its own giant cue). */}
+      {viewMode === 'self' && humanSeat != null && !winner && (() => {
+        const isMyTurn = !!awaitingHuman && awaitingHuman.actor_id === humanSeat
+        if (isMyTurn) return null
+        const hint = selfWaitingHint(visiblePhase, currentSpeaker, humanSeat)
+        if (!hint) return null
+        return (
+          <div className="self-status-banner">
+            <span className="dot" /><span className="dot" /><span className="dot" />
+            <span>{hint}</span>
+          </div>
+        )
+      })()}
+
       <button className="legend-hotspot" onClick={() => setLegendOpen(true)}>状态图标</button>
     </div>
   )
@@ -1331,6 +1373,42 @@ function eventTitle(ev: GameEvent): string {
 
 function isSkillPhase(phase: string): boolean {
   return ['night_wolf', 'night_seer', 'night_witch', 'night_guard'].includes(phase)
+}
+
+function selfWaitingHint(phase: string, currentSpeaker: number, humanSeat: number | null): string | null {
+  switch (phase) {
+    case 'setup_game':
+      return '裁判正在准备对局，请稍候…'
+    case 'night_start':
+      return '夜幕降临，请闭眼等待…'
+    case 'night_wolf':
+      return '狼人正在商议夜刀目标…'
+    case 'night_seer':
+      return '预言家正在查验…'
+    case 'night_witch':
+      return '女巫正在抉择解药与毒药…'
+    case 'night_guard':
+      return '守卫正在守护一名玩家…'
+    case 'night_resolve':
+      return '裁判正在结算夜晚行动…'
+    case 'day_announce':
+      return '裁判正在公布夜晚结果…'
+    case 'sheriff_election':
+      return '警长竞选进行中…'
+    case 'day_speech':
+      if (humanSeat != null && currentSpeaker === humanSeat) return null
+      return `等待 ${currentSpeaker} 号玩家发言…`
+    case 'day_vote':
+      return '其他玩家正在投票…'
+    case 'day_resolve':
+      return '裁判正在结算投票…'
+    case 'pending_skills':
+      return '出局玩家正在结算死亡技能…'
+    case 'check_win':
+      return '裁判正在检查胜负…'
+    default:
+      return 'AI 思考中…'
+  }
 }
 
 function skillForPhase(phase: string) {

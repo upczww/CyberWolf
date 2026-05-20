@@ -18,6 +18,7 @@ const TOOL_TITLES: Record<string, string> = {
   public_speech: '公开发言',
   death_speech: '遗言',
   sheriff_candidacy: '警长竞选',
+  sheriff_transfer: '警长传警徽',
 }
 
 const UNKNOWN_AVATAR = '/assets/ui/icons/status/icon_status_identity_hidden.png'
@@ -187,6 +188,22 @@ export default function HumanActionPanel({ request, gameId, players }: Props) {
           </div>
         )}
 
+        {request.tool_name === 'sheriff_transfer' && (
+          <div className="witch-action">
+            <p>你已出局，请将警徽传给一名存活玩家（也可撕毁警徽）：</p>
+            <TargetGrid
+              candidates={candidates}
+              onPick={(target) => submit({ target_id: target })}
+              onAbstain={() => submit({ target_id: null })}
+              submitting={submitting}
+              allowAbstain
+              abstainLabel="撕毁警徽"
+              events={events}
+              toolName={request.tool_name}
+            />
+          </div>
+        )}
+
         <footer>
           <button className="ghost" onClick={skip} disabled={submitting}>跳过(使用 AI 推荐)</button>
           {canSelfDestruct && (
@@ -341,6 +358,11 @@ function roleHint(role: string, tool: string, phase: string): string | null {
   // Generic sheriff_candidacy fallback
   if (tool === 'sheriff_candidacy') {
     return '警长竞选:警长发言权重 1.5 倍,死亡可传警徽。综合身份与局势决定是否参选。'
+  }
+  // Generic sheriff_transfer fallback (any role can hold the badge)
+  if (tool === 'sheriff_transfer') {
+    if (role === 'wolf') return '传警徽：传给你的狼队同伴或一名你能伪装信任的好人；撕毁警徽也是常见操作。'
+    return '传警徽：传给你最信任的好人/神职；若没有清晰目标可撕毁警徽以避免误判。'
   }
   return null
 }
