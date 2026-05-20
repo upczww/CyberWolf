@@ -32,8 +32,30 @@ _log = logging.getLogger(__name__)
 
 # Active game sessions: game_id -> (EventBus, asyncio.Task)
 _active_games: dict[str, tuple[EventBus, asyncio.Task]] = {}
-# WebSocket subscribers: game_id -> set of (queue, seat or None)
-_ws_subscribers: dict[str, set[tuple[asyncio.Queue, int | None]]] = {}
+
+
+class WSSubscriber:
+    """Per-WebSocket queue + seat + vote buffer.
+
+    For self-mode (seat is not None) we never deliver another seat's vote_cast
+    immediately — those would let the human "follow" the AI's vote in real
+    time. Instead we buffer them until the round's vote_resolved or
+    sheriff_elected arrives, then flush them right before the resolution event.
+    """
+
+    __slots__ = ("queue", "seat", "buffered_votes")
+
+    def __init__(self, queue: asyncio.Queue, seat: int | None) -> None:
+        self.queue = queue
+        self.seat = seat
+        self.buffered_votes: list[dict[str, Any]] = []
+
+    def __hash__(self) -> int:
+        return id(self)
+
+
+# WebSocket subscribers: game_id -> set of WSSubscriber
+_ws_subscribers: dict[str, set[WSSubscriber]] = {}
 # Per-game HumanAwaiter
 _human_awaiters: dict[str, HumanAwaiter] = {}
 # Per-game human seat (for WS event filtering)
@@ -197,6 +219,9 @@ async def get_game(game_id: str, event_limit: int = 300, seat: int | None = None
                 if seat not in targets:
                     continue
             decoded_events.append(ev)
+        # Self-mode vote anti-leak: defer other seats' vote_cast until the
+        # round's vote_resolved / sheriff_elected.
+        decoded_events = _mask_vote_replay_for_seat(decoded_events, seat)
 
         decoded_snapshot = None
         if snapshot:
@@ -251,12 +276,31 @@ async def start_game(req: StartGameRequest):
         event_data = _serialize_event(event)
         scope = event.scope
         targets = event.target_players or set()
-        for queue, seat in subscribers:
+        et = event.event_type.value
+        for sub in subscribers:
+            seat = sub.seat
             if seat is not None and scope in (EventScope.ROLE_PRIVATE, EventScope.WOLF_TEAM):
                 if seat not in targets:
                     continue
+            # Self-mode vote anti-leak: buffer other seats' vote_cast until
+            # vote_resolved / sheriff_elected lands, then flush them right
+            # before the resolution event so the resolution + all individual
+            # casts appear in one batch.
+            if seat is not None and et == "vote_cast":
+                voter = event.data.get("voter_id") if isinstance(event.data, dict) else None
+                if voter is not None and int(voter) != seat:
+                    sub.buffered_votes.append(event_data)
+                    continue
+            if seat is not None and et in ("vote_resolved", "sheriff_elected") and sub.buffered_votes:
+                pending = sub.buffered_votes
+                sub.buffered_votes = []
+                for ev in pending:
+                    try:
+                        sub.queue.put_nowait(ev)
+                    except asyncio.QueueFull:
+                        pass
             try:
-                queue.put_nowait(event_data)
+                sub.queue.put_nowait(event_data)
             except asyncio.QueueFull:
                 pass
 
@@ -388,19 +432,20 @@ async def game_websocket(websocket: WebSocket, game_id: str):
     await websocket.accept()
     queue: asyncio.Queue = asyncio.Queue(maxsize=200)
 
-    # Register subscriber as (queue, seat)
+    # Register subscriber
     if game_id not in _ws_subscribers:
         _ws_subscribers[game_id] = set()
-    subscriber_entry = (queue, seat)
-    _ws_subscribers[game_id].add(subscriber_entry)
+    subscriber = WSSubscriber(queue, seat)
+    _ws_subscribers[game_id].add(subscriber)
 
     try:
         # Send existing events as initial batch
         paths = _get_paths()
         conn = connect_database(paths.database)
         try:
-            events = fetch_events(conn, game_id=game_id, limit=300)
-            for row in reversed(events):
+            raw = fetch_events(conn, game_id=game_id, limit=300)
+            decoded: list[dict[str, Any]] = []
+            for row in reversed(raw):
                 ev = dict(row)
                 if isinstance(ev.get("data_json"), str):
                     ev["data_json"] = json.loads(ev["data_json"])
@@ -413,6 +458,8 @@ async def game_websocket(websocket: WebSocket, game_id: str):
                         targets = []
                     if seat not in targets:
                         continue
+                decoded.append(ev)
+            for ev in _mask_vote_replay_for_seat(decoded, seat):
                 await websocket.send_json({"type": "history", "event": ev})
         finally:
             conn.close()
@@ -426,7 +473,7 @@ async def game_websocket(websocket: WebSocket, game_id: str):
     except WebSocketDisconnect:
         pass
     finally:
-        _ws_subscribers.get(game_id, set()).discard(subscriber_entry)
+        _ws_subscribers.get(game_id, set()).discard(subscriber)
         if game_id in _ws_subscribers and not _ws_subscribers[game_id]:
             del _ws_subscribers[game_id]
 
@@ -450,6 +497,49 @@ def _serialize_event(event: GameEvent) -> dict[str, Any]:
 # ---------------------------------------------------------------------------
 # Self-mode information isolation
 # ---------------------------------------------------------------------------
+
+
+def _mask_vote_replay_for_seat(events: list[dict[str, Any]], seat: int | None) -> list[dict[str, Any]]:
+    """Rearrange a historical event list so that other-seat ``vote_cast``
+    events are deferred until the round's resolution (``vote_resolved`` or
+    ``sheriff_elected``) — preventing a self-mode replay from leaking who
+    voted for whom before the human had to cast their own vote.
+
+    Implementation: walk the list once, buffer other-seat vote_casts; when a
+    resolution event is encountered, emit the buffered casts immediately
+    before it. Self vote_casts are always emitted in place. Buffered casts
+    whose round never resolves (game in progress / cut short) are dropped.
+    """
+    if seat is None:
+        return events
+    out: list[dict[str, Any]] = []
+    buffer: list[dict[str, Any]] = []
+    for ev in events:
+        et = ev.get("event_type")
+        if et == "vote_cast":
+            data = ev.get("data_json") or ev.get("data") or {}
+            voter = data.get("voter_id") if isinstance(data, dict) else None
+            if voter is not None:
+                try:
+                    if int(voter) == seat:
+                        out.append(ev)
+                        continue
+                except (TypeError, ValueError):
+                    pass
+                buffer.append(ev)
+                continue
+            buffer.append(ev)
+            continue
+        if et in ("vote_resolved", "sheriff_elected"):
+            if buffer:
+                out.extend(buffer)
+                buffer = []
+            out.append(ev)
+            continue
+        out.append(ev)
+    # Discard any buffered casts that never resolved — they'd leak in-progress
+    # information if shown alone.
+    return out
 
 # Fields on `state_snapshots.state_json` that may leak private info to non-self
 # seats; we drop them entirely from the seat=N response and only re-add the
