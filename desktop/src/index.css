@@ -95,6 +95,7 @@ img {
 .landing-bg {
   position: absolute;
   inset: 0;
+  pointer-events: none;
   background-image:
     linear-gradient(180deg, rgba(4, 11, 20, .08), rgba(4, 11, 20, .72)),
     url("/assets/ui/backgrounds/bg_landing.png");
@@ -111,6 +112,134 @@ img {
 .legend-hotspot {
   position: relative;
   z-index: 2;
+}
+
+.effect-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+}
+
+.effect-vignette {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at 50% 38%, rgba(245, 184, 86, .22), transparent 30%),
+    rgba(2, 8, 15, .36);
+}
+
+.effect-motion-stage {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  justify-items: center;
+  gap: 18px;
+  transform-origin: center;
+}
+
+.effect-symbol {
+  position: relative;
+  width: 164px;
+  height: 164px;
+  display: grid;
+  place-items: center;
+}
+
+.effect-symbol-icon,
+.effect-art {
+  position: absolute;
+  width: 132px;
+  height: 132px;
+  object-fit: contain;
+  filter: drop-shadow(0 18px 32px rgba(0,0,0,.55));
+}
+
+.effect-art {
+  width: 180px;
+  height: 180px;
+  opacity: .48;
+}
+
+.effect-vote-slip-row {
+  position: absolute;
+  inset: auto auto -18px 50%;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  transform: translateX(-50%);
+}
+
+.effect-vote-slip-row img {
+  width: 42px;
+  height: 42px;
+  object-fit: contain;
+}
+
+.effect-card {
+  width: min(460px, calc(100vw - 40px));
+  padding: 20px 24px;
+  border: 1px solid rgba(239, 190, 99, .35);
+  border-radius: 10px;
+  background: linear-gradient(180deg, rgba(16, 26, 39, .94), rgba(7, 15, 25, .97));
+  box-shadow: 0 24px 64px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.08);
+}
+
+.effect-card-header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.effect-card-header img {
+  width: 44px;
+  height: 44px;
+}
+
+.effect-card-header span,
+.effect-seat-pill small {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.effect-card h2 {
+  margin: 2px 0 0;
+  color: var(--gold-soft);
+  font-size: 24px;
+}
+
+.effect-card p {
+  margin: 14px 0;
+  color: rgba(242,238,231,.84);
+}
+
+.effect-route {
+  display: grid;
+  grid-template-columns: 1fr 64px 1fr;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.effect-route-arrow {
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--gold), transparent);
+  transform-origin: left;
+}
+
+.effect-seat-pill {
+  display: grid;
+  gap: 3px;
+  padding: 10px 12px;
+  border: 1px solid rgba(255,255,255,.1);
+  border-radius: 8px;
+  background: rgba(255,255,255,.045);
+}
+
+.effect-seat-pill b,
+.effect-card strong {
+  color: #fff5df;
 }
 
 .game-topbar {
@@ -189,7 +318,7 @@ img {
 }
 
 .phase-mini {
-  display: flex;
+  display: none;
   align-items: center;
   gap: 16px;
   color: #f1e9dc;
@@ -219,6 +348,9 @@ img {
 .icon-button,
 .dock-button,
 .landing-nav-item {
+  position: relative;
+  z-index: 6;
+  pointer-events: auto;
   display: grid;
   justify-items: center;
   gap: 5px;
@@ -250,7 +382,7 @@ img {
   display: grid;
   grid-template-columns: 330px minmax(500px, 1fr) 330px;
   gap: 22px;
-  padding: 0 22px 0;
+  padding: 16px 22px 12px;
 }
 
 .seat-column {
@@ -266,7 +398,7 @@ img {
   min-height: 82px;
   overflow: hidden;
   display: grid;
-  grid-template-columns: 44px 1fr 110px;
+  grid-template-columns: 44px 1fr 126px;
   align-items: center;
   gap: 6px;
   padding: 8px 4px 8px 10px;
@@ -367,13 +499,13 @@ img {
 .player-portrait {
   position: absolute;
   z-index: 1;
-  right: 2px;
-  top: 50%;
-  width: 116px;
-  height: 100%;
-  transform: translateY(-50%);
-  object-fit: cover;
-  object-position: center top;
+  right: 8px;
+  bottom: 0;
+  width: 132px;
+  height: 108%;
+  transform: none;
+  object-fit: contain;
+  object-position: center bottom;
   border-radius: 8px;
   pointer-events: none;
   mask-image: linear-gradient(90deg, transparent 0%, rgba(0,0,0,.4) 12%, #000 36%, #000 100%);
@@ -381,20 +513,13 @@ img {
 }
 
 .player-card.reverse .player-portrait {
-  right: auto;
-  left: 2px;
-  transform: translateY(-50%) scaleX(-1);
+  transform: scaleX(-1);
   mask-image: linear-gradient(90deg, transparent 0%, rgba(0,0,0,.4) 12%, #000 36%, #000 100%);
   -webkit-mask-image: linear-gradient(90deg, transparent 0%, rgba(0,0,0,.4) 12%, #000 36%, #000 100%);
 }
 
 .player-card.reverse .player-copy {
-  text-align: right;
-}
-
-.player-card.reverse .status-stack {
-  right: auto;
-  left: 14px;
+  text-align: left;
 }
 
 .status-stack {
@@ -434,7 +559,8 @@ img {
   height: 100%;
   border-radius: 0 0 10px 10px;
   background:
-    linear-gradient(180deg, rgba(4, 12, 22, .02), rgba(4, 12, 22, .84)),
+    linear-gradient(180deg, rgba(4, 12, 22, .18), rgba(4, 12, 22, .88)),
+    radial-gradient(circle at 50% 18%, rgba(120, 150, 190, .12), transparent 28%),
     var(--scene-bg, url("/assets/ui/backgrounds/bg_global_moonlit_village_day.png")) center / cover no-repeat;
   mask-image: linear-gradient(180deg, black 72%, transparent 100%);
   -webkit-mask-image: linear-gradient(180deg, black 72%, transparent 100%);
@@ -751,6 +877,7 @@ img {
 .mode-card {
   position: relative;
   overflow: hidden;
+  z-index: 1;
   display: flex;
   flex-direction: column;
   padding: 60px 38px 22px;
@@ -815,6 +942,7 @@ img {
   position: absolute;
   left: 50%;
   top: -37px;
+  pointer-events: none;
   width: 92px;
   height: 92px;
   padding: 16px;
@@ -847,6 +975,7 @@ img {
   min-height: 220px;
   max-height: 360px;
   position: relative;
+  pointer-events: none;
   margin: 0 -38px 10px;
   display: grid;
   place-items: end center;
@@ -889,6 +1018,7 @@ img {
 .mode-silhouette {
   position: relative;
   z-index: 1;
+  pointer-events: none;
   width: auto;
   max-width: 70%;
   height: 90%;
@@ -940,6 +1070,8 @@ img {
 
 .mode-card button {
   flex-shrink: 0;
+  position: relative;
+  z-index: 4;
   width: 100%;
   height: 62px;
   border-radius: 14px;
@@ -965,6 +1097,7 @@ img {
   left: 0;
   right: 0;
   bottom: 0;
+  z-index: 5;
   height: 92px;
   display: flex;
   justify-content: center;
@@ -1136,7 +1269,7 @@ img {
   font-size: 17px;
 }
 
-.vote-grid {
+.vote-records .vote-grid {
   display: grid;
   grid-template-columns: repeat(6, 1fr);
   gap: 6px;
@@ -1470,6 +1603,50 @@ img {
   display: grid;
   place-items: center;
   background: rgba(3, 8, 14, .62);
+}
+
+.info-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  display: grid;
+  place-items: center;
+  background: rgba(3, 8, 14, .58);
+}
+
+.info-dialog {
+  position: relative;
+  width: min(460px, 90vw);
+  padding: 30px;
+  border: 1px solid rgba(232, 172, 61, .32);
+  border-radius: 18px;
+  background: linear-gradient(180deg, rgba(18, 31, 47, .96), rgba(8, 17, 29, .98));
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.08), 0 24px 70px rgba(0,0,0,.48);
+}
+
+.info-dialog h2 {
+  margin: 0 0 16px;
+  color: var(--gold-soft);
+  font-size: 26px;
+  text-align: center;
+}
+
+.info-dialog p {
+  margin: 0 0 24px;
+  color: rgba(244,240,232,.78);
+  font-size: 17px;
+  line-height: 1.65;
+}
+
+.info-dialog .drawer-close {
+  top: 10px;
+  right: 10px;
+}
+
+.info-dialog .primary-action {
+  width: 100%;
+  min-height: 52px;
+  font-size: 20px;
 }
 
 .skill-card {

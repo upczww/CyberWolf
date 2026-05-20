@@ -120,7 +120,7 @@ const PHASE_META: Record<string, PhaseMeta> = {
     shortLabel: '发言阶段',
     tone: 'day',
     icon: `${A}/icons/actions/icon_action_chat.png`,
-    background: `${A}/backgrounds/bg_global_moonlit_village_day.png`,
+    background: `${A}/backgrounds/bg_global_moonlit_village_night.png`,
     actionLabel: '号玩家发言中',
   },
   day_vote: {
@@ -278,8 +278,11 @@ export default function App() {
   const [inspectorOpen, setInspectorOpen] = useState(false)
   const [skillOpen, setSkillOpen] = useState(false)
   const [legendOpen, setLegendOpen] = useState(false)
+  const [infoPanel, setInfoPanel] = useState<{ title: string; body: string } | null>(null)
   const [landingMode, setLandingMode] = useState<ViewMode>('self')
   const [loadingStart, setLoadingStart] = useState(false)
+  const [selectedVote, setSelectedVote] = useState<number | null>(8)
+  const [voteConfirmed, setVoteConfirmed] = useState(false)
 
   useGameWS(gameId, viewMode === 'self' ? humanSeat : null)
 
@@ -372,6 +375,7 @@ export default function App() {
     setInspectorOpen(false)
     setSkillOpen(false)
     setLegendOpen(false)
+    setVoteConfirmed(false)
   }
 
   if (!gameId) {
@@ -397,6 +401,7 @@ export default function App() {
         round={round || 1}
         meta={meta}
         remaining={visiblePhase === 'day_speech' ? 60 : visiblePhase === 'night_witch' ? 120 : 45}
+        onMenu={resetToLanding}
         onHistory={() => {
           setHistoryOpen(true)
           setHistoryTab('vote')
@@ -426,7 +431,24 @@ export default function App() {
           inspectorOpen={inspectorOpen}
           onCloseInspector={() => setInspectorOpen(false)}
           onSetPhase={setPhase}
-          onVote={() => setPhase('day_vote')}
+          selectedVote={selectedVote}
+          voteConfirmed={voteConfirmed}
+          onSelectVote={(vote) => {
+            setSelectedVote(vote)
+            setVoteConfirmed(false)
+          }}
+          onVote={() => {
+            if (visiblePhase === 'day_vote') {
+              setVoteConfirmed(true)
+              setInfoPanel({
+                title: selectedVote == null ? '已选择弃票' : `已投给 ${selectedVote} 号`,
+                body: '投票结果已记录到当前演示局面中。切换到记录面板可以查看投票统计。'
+              })
+              return
+            }
+            setPhase('day_vote')
+            setVoteConfirmed(false)
+          }}
           onSkill={() => {
             setPhase('night_witch')
             setSkillOpen(true)
@@ -445,8 +467,19 @@ export default function App() {
       </main>
 
       <footer className="bottom-dock">
-        <DockButton icon={`${A}/icons/actions/icon_action_chat.png`} label="聊天" />
-        <DockButton icon={`${A}/icons/actions/icon_landing_match_records.png`} label="送礼" />
+        <DockButton
+          icon={`${A}/icons/actions/icon_action_chat.png`}
+          label="聊天"
+          onClick={() => {
+            setHistoryTab('chat')
+            setHistoryOpen(true)
+          }}
+        />
+        <DockButton
+          icon={`${A}/icons/actions/icon_landing_match_records.png`}
+          label="送礼"
+          onClick={() => setInfoPanel({ title: '送礼', body: '送礼入口已打开。当前可用于预览交互，后续可接入礼物动画、礼物记录和亲密度变化。' })}
+        />
       </footer>
 
       {historyOpen && (
@@ -459,6 +492,7 @@ export default function App() {
         />
       )}
       {legendOpen && <StatusLegend onClose={() => setLegendOpen(false)} />}
+      {infoPanel && <InfoDialog title={infoPanel.title} body={infoPanel.body} onClose={() => setInfoPanel(null)} />}
       {skillOpen && (
         <SkillModal
           phase={visiblePhase}
@@ -484,6 +518,7 @@ function TopBar({
   meta,
   remaining,
   ttsEnabled,
+  onMenu,
   onHistory,
   onInspector,
   onSettings,
@@ -493,13 +528,14 @@ function TopBar({
   meta: PhaseMeta
   remaining: number
   ttsEnabled: boolean
+  onMenu: () => void
   onHistory: () => void
   onInspector: () => void
   onSettings: () => void
 }) {
   return (
     <header className="game-topbar">
-      <button className="round-icon" aria-label="菜单"><span /><span /><span /></button>
+      <button className="round-icon" aria-label="菜单" onClick={onMenu}><span /><span /><span /></button>
       <div className="room-meta">
         <span>房间 {roomId}</span>
         <b>12人标准场</b>
@@ -538,6 +574,7 @@ function LandingScreen({
   onStart: (useLlm: boolean) => void
   onToggleTts: () => void
 }) {
+  const [panel, setPanel] = useState<{ title: string; body: string } | null>(null)
   return (
     <div className="landing-page">
       <div className="landing-bg" />
@@ -551,8 +588,8 @@ function LandingScreen({
         </div>
         <div className="landing-sound">
           <IconButton icon={ttsEnabled ? `${A}/icons/actions/icon_landing_sound_on.png` : `${A}/icons/actions/icon_landing_sound_off.png`} label={ttsEnabled ? '声音开' : '声音关'} onClick={onToggleTts} active={ttsEnabled} />
-          <IconButton icon={`${A}/icons/actions/icon_landing_help.png`} label="帮助" />
-          <IconButton icon={`${A}/icons/actions/icon_landing_settings.png`} label="设置" />
+          <IconButton icon={`${A}/icons/actions/icon_landing_help.png`} label="帮助" onClick={() => setPanel({ title: '帮助', body: '个人视角只显示自己的身份和操作；上帝视角显示全局身份、技能与投票。点击两张模式卡可选择开局方式。' })} />
+          <IconButton icon={`${A}/icons/actions/icon_landing_settings.png`} label="设置" onClick={() => setPanel({ title: '设置', body: `声音状态：${ttsEnabled ? '已开启' : '已关闭'}。你可以点击声音按钮实时切换。` })} />
         </div>
       </header>
 
@@ -589,13 +626,14 @@ function LandingScreen({
       </section>
 
       <footer className="landing-nav">
-        <LandingNavItem icon={`${A}/icons/actions/icon_landing_match_records.png`} label="对局记录" />
-        <LandingNavItem icon={`${A}/icons/actions/icon_landing_ai_autoplay.png`} label="AI 托管" badge="NEW" />
-        <LandingNavItem icon={`${A}/icons/actions/icon_landing_ai_summary.png`} label="游戏总结" />
-        <LandingNavItem icon={`${A}/icons/actions/icon_landing_achievement.png`} label="成就" />
-        <LandingNavItem icon={`${A}/icons/actions/icon_landing_ranking.png`} label="排行榜" />
+        <LandingNavItem icon={`${A}/icons/actions/icon_landing_match_records.png`} label="对局记录" onClick={() => setPanel({ title: '对局记录', body: '这里展示历史对局入口。进入对局后可在右侧记录面板查看聊天、投票和结算记录。' })} />
+        <LandingNavItem icon={`${A}/icons/actions/icon_landing_ai_autoplay.png`} label="AI 托管" badge="NEW" onClick={() => setPanel({ title: 'AI 托管', body: 'AI 托管已准备。个人视角中可由 AI 接管超时行动，演示局会自动推进。' })} />
+        <LandingNavItem icon={`${A}/icons/actions/icon_landing_ai_summary.png`} label="游戏总结" onClick={() => setPanel({ title: '游戏总结', body: '游戏结束后可查看阵营胜负、投票轨迹、关键发言和 AI 复盘摘要。' })} />
+        <LandingNavItem icon={`${A}/icons/actions/icon_landing_achievement.png`} label="成就" onClick={() => setPanel({ title: '成就', body: '成就系统入口已打开。后续可接入首胜、神职高光、狼队悍跳等成就。' })} />
+        <LandingNavItem icon={`${A}/icons/actions/icon_landing_ranking.png`} label="排行榜" onClick={() => setPanel({ title: '排行榜', body: '排行榜入口已打开。后续可展示胜率、MVP、发言贡献和阵营表现。' })} />
       </footer>
       <span className="version-mark">版本：1.0.0</span>
+      {panel && <InfoDialog title={panel.title} body={panel.body} onClose={() => setPanel(null)} />}
     </div>
   )
 }
@@ -659,9 +697,9 @@ function ModeCard({
   )
 }
 
-function LandingNavItem({ icon, label, badge }: { icon: string; label: string; badge?: string }) {
+function LandingNavItem({ icon, label, badge, onClick }: { icon: string; label: string; badge?: string; onClick: () => void }) {
   return (
-    <button className="landing-nav-item">
+    <button className="landing-nav-item" onClick={onClick}>
       <span>{badge}</span>
       <img src={icon} alt="" />
       <b>{label}</b>
@@ -739,6 +777,9 @@ function CenterStage({
   inspectorOpen,
   onCloseInspector,
   onSetPhase,
+  selectedVote,
+  voteConfirmed,
+  onSelectVote,
   onVote,
   onSkill,
   onReset,
@@ -753,11 +794,15 @@ function CenterStage({
   inspectorOpen: boolean
   onCloseInspector: () => void
   onSetPhase: (phase: string | null) => void
+  selectedVote: number | null
+  voteConfirmed: boolean
+  onSelectVote: (vote: number | null) => void
   onVote: () => void
   onSkill: () => void
   onReset: () => void
 }) {
   const latest = events[events.length - 1]
+  const primaryLabel = isSkillPhase(phase) ? '技能行动' : phase === 'day_vote' ? '确认投票' : '投票'
   if (inspectorOpen || phase === 'sheriff_election') {
     return <SheriffPanel players={players} onClose={onCloseInspector} onSetPhase={onSetPhase} />
   }
@@ -786,12 +831,13 @@ function CenterStage({
         ))}
       </nav>
 
-      {phase === 'day_vote' ? <VotePanel players={players} /> : <NoticePanel latest={latest} connected={connected} />}
+      {phase === 'day_vote'
+        ? <VotePanel players={players} selected={selectedVote} confirmed={voteConfirmed} onSelect={onSelectVote} />
+        : <NoticePanel latest={latest} connected={connected} />}
 
       <section className="stage-actions">
         <button className="ghost-action" onClick={onReset}>结束发言</button>
-        <button className="primary-action" onClick={isSkillPhase(phase) ? onSkill : onVote}>
-          {isSkillPhase(phase) ? '技能行动' : '投票'}
+        <button className="primary-action" onClick={isSkillPhase(phase) ? onSkill : onVote}>          {primaryLabel}
         </button>
       </section>
     </section>
@@ -808,20 +854,40 @@ function NoticePanel({ latest, connected }: { latest?: GameEvent; connected: boo
   )
 }
 
-function VotePanel({ players }: { players: Player[] }) {
+function VotePanel({
+  players,
+  selected,
+  confirmed,
+  onSelect,
+}: {
+  players: Player[]
+  selected: number | null
+  confirmed: boolean
+  onSelect: (vote: number | null) => void
+}) {
   return (
     <section className="vote-panel">
       <header>
         <b>放逐投票</b>
-        <span>选择你认为最像狼人的玩家</span>
+        <span>{confirmed ? (selected == null ? '已选择弃票' : `已投给 ${selected} 号`) : '选择你认为最像狼人的玩家'}</span>
       </header>
       <div className="vote-grid">
         {players.filter((p) => p.survived).map((player) => (
-          <button key={player.seat_index} className={player.seat_index === 8 ? 'selected' : ''}>{player.seat_index}</button>
+          <button
+            key={player.seat_index}
+            className={selected === player.seat_index ? 'selected' : ''}
+            onClick={() => onSelect(player.seat_index)}
+          >
+            {player.seat_index}
+          </button>
         ))}
-        <button>弃票</button>
+        <button
+          className={selected == null ? 'selected' : ''}
+          onClick={() => onSelect(null)}
+        >
+          弃票
+        </button>
       </div>
-      <button className="primary-action">确认投票</button>
     </section>
   )
 }
@@ -836,6 +902,9 @@ function SheriffPanel({
   onSetPhase: (phase: string | null) => void
 }) {
   const candidates = players.filter((p) => [1, 4, 7].includes(p.seat_index))
+  const [registered, setRegistered] = useState(true)
+  const [voteTarget, setVoteTarget] = useState<number | null>(4)
+  const activeCandidates = registered ? candidates : candidates.filter((p) => p.seat_index !== 1)
   return (
     <section className="sheriff-stage">
       <header className="sheriff-title">
@@ -848,13 +917,13 @@ function SheriffPanel({
         <section className="sheriff-card">
           <h2>竞选报名</h2>
           <p>点击下方按钮报名竞选警长</p>
-          <button className="primary-action">我要竞选警长</button>
-          <button className="ghost-action">放弃竞选</button>
+          <button className="primary-action" onClick={() => setRegistered(true)}>我要竞选警长</button>
+          <button className="ghost-action" onClick={() => setRegistered(false)}>放弃竞选</button>
         </section>
         <section className="sheriff-card">
-          <h2>当前竞选者（3/12）</h2>
+          <h2>当前竞选者（{activeCandidates.length}/12）</h2>
           <div className="candidate-row">
-            {candidates.map((player) => (
+            {activeCandidates.map((player) => (
               <div key={player.seat_index} className="candidate-avatar">
                 <img src={portraitForPlayer(player)} alt="" />
                 <b>{player.seat_index}</b>
@@ -867,10 +936,10 @@ function SheriffPanel({
       <section className="speech-order">
         <h3>竞选发言顺序 <span>（按编号升序）</span></h3>
         <div>
-          {candidates.map((player, index) => (
+          {activeCandidates.map((player, index) => (
             <span key={player.seat_index}>
               <b>{player.seat_index}</b> 玩家{player.seat_index}
-              {index < candidates.length - 1 ? <i>→</i> : null}
+              {index < activeCandidates.length - 1 ? <i>→</i> : null}
             </span>
           ))}
         </div>
@@ -879,9 +948,9 @@ function SheriffPanel({
         <h3>警下投票</h3>
         <div className="round-vote-row">
           {[1,2,3,4,5,6,7,8,9,10,11,12].map((seat) => (
-            <button key={seat} className={seat === 4 || seat === 7 ? 'selected' : ''}>{seat}</button>
+            <button key={seat} className={voteTarget === seat ? 'selected' : ''} onClick={() => setVoteTarget(seat)}>{seat}</button>
           ))}
-          <button>弃票</button>
+          <button className={voteTarget == null ? 'selected' : ''} onClick={() => setVoteTarget(null)}>弃票</button>
         </div>
         <div className="sheriff-actions">
           <button className="primary-action" onClick={() => onSetPhase('day_speech')}>开始投票<br /><small>倒计时：60s</small></button>
@@ -1145,6 +1214,19 @@ function StatusLegend({ onClose }: { onClose: () => void }) {
   )
 }
 
+function InfoDialog({ title, body, onClose }: { title: string; body: string; onClose: () => void }) {
+  return (
+    <section className="info-backdrop" onClick={onClose}>
+      <article className="info-dialog" onClick={(event) => event.stopPropagation()}>
+        <button className="drawer-close" onClick={onClose}>×</button>
+        <h2>{title}</h2>
+        <p>{body}</p>
+        <button className="primary-action" onClick={onClose}>确认</button>
+      </article>
+    </section>
+  )
+}
+
 function IconButton({
   icon,
   label,
@@ -1164,9 +1246,9 @@ function IconButton({
   )
 }
 
-function DockButton({ icon, label }: { icon: string; label: string }) {
+function DockButton({ icon, label, onClick }: { icon: string; label: string; onClick: () => void }) {
   return (
-    <button className="dock-button">
+    <button className="dock-button" onClick={onClick}>
       <img src={icon} alt="" />
       <span>{label}</span>
     </button>

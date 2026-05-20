@@ -49,7 +49,7 @@ async function createWindow() {
   // In dev mode, load Vite dev server; in production, load built files
   const isDev = !app.isPackaged
   if (isDev) {
-    mainWindow.loadURL(`http://localhost:${DEV_PORT}`)
+    mainWindow.loadURL(`http://127.0.0.1:${DEV_PORT}`)
     mainWindow.webContents.openDevTools()
   } else {
     mainWindow.loadFile(path.join(__dirname, '../dist/index.html'))
