@@ -1,0 +1,135 @@
+{
+  "type": "button",
+  "processed": 8,
+  "changed": 8,
+  "results": [
+    {
+      "path": "C:\\Work\\LycanTUI\\desktop\\public\\assets\\ui\\buttons\\btn_primary_gold.png",
+      "changed": true,
+      "before_bbox": [
+        11,
+        0,
+        349,
+        96
+      ],
+      "after_bbox": [
+        11,
+        0,
+        349,
+        96
+      ]
+    },
+    {
+      "path": "C:\\Work\\LycanTUI\\desktop\\public\\assets\\ui\\buttons\\btn_secondary_dark.png",
+      "changed": true,
+      "before_bbox": [
+        4,
+        0,
+        355,
+        96
+      ],
+      "after_bbox": [
+        4,
+        0,
+        355,
+        96
+      ]
+    },
+    {
+      "path": "C:\\Work\\LycanTUI\\desktop\\public\\assets\\ui\\buttons\\btn_danger_red.png",
+      "changed": true,
+      "before_bbox": [
+        4,
+        0,
+        355,
+        96
+      ],
+      "after_bbox": [
+        4,
+        0,
+        355,
+        96
+      ]
+    },
+    {
+      "path": "C:\\Work\\LycanTUI\\desktop\\public\\assets\\ui\\buttons\\btn_disabled_gray.png",
+      "changed": true,
+      "before_bbox": [
+        5,
+        0,
+        355,
+        96
+      ],
+      "after_bbox": [
+        5,
+        0,
+        355,
+        96
+      ]
+    },
+    {
+      "path": "C:\\Work\\LycanTUI\\desktop\\public\\assets\\ui\\buttons\\btn_landing_start_blue.png",
+      "changed": true,
+      "before_bbox": [
+        10,
+        0,
+        350,
+        95
+      ],
+      "after_bbox": [
+        8,
+        0,
+        352,
+        96
+      ]
+    },
+    {
+      "path": "C:\\Work\\LycanTUI\\desktop\\public\\assets\\ui\\buttons\\btn_landing_start_red.png",
+      "changed": true,
+      "before_bbox": [
+        8,
+        0,
+        351,
+        96
+      ],
+      "after_bbox": [
+        8,
+        0,
+        351,
+        96
+      ]
+    },
+    {
+      "path": "C:\\Work\\LycanTUI\\desktop\\public\\assets\\ui\\buttons\\btn_auth_primary.png",
+      "changed": true,
+      "before_bbox": [
+        0,
+        1,
+        360,
+        95
+      ],
+      "after_bbox": [
+        0,
+        1,
+        360,
+        95
+      ]
+    },
+    {
+      "path": "C:\\Work\\LycanTUI\\desktop\\public\\assets\\ui\\buttons\\btn_auth_guest.png",
+      "changed": true,
+      "before_bbox": [
+        8,
+        0,
+        351,
+        96
+      ],
+      "after_bbox": [
+        8,
+        0,
+        351,
+        96
+      ]
+    }
+  ]
+}

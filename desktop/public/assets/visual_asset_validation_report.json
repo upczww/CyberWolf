@@ -1,0 +1,57 @@
+{
+  "total": 204,
+  "present": 194,
+  "missing": [
+    {
+      "id": "bg_phase_idiot_reveal",
+      "path": "assets/ui/backgrounds/bg_phase_idiot_reveal.png"
+    },
+    {
+      "id": "bg_phase_sheriff_election",
+      "path": "assets/ui/backgrounds/bg_phase_sheriff_election.png"
+    },
+    {
+      "id": "bg_phase_death_announcement",
+      "path": "assets/ui/backgrounds/bg_phase_death_announcement.png"
+    },
+    {
+      "id": "bg_phase_speech",
+      "path": "assets/ui/backgrounds/bg_phase_speech.png"
+    },
+    {
+      "id": "bg_phase_vote",
+      "path": "assets/ui/backgrounds/bg_phase_vote.png"
+    },
+    {
+      "id": "bg_phase_pk",
+      "path": "assets/ui/backgrounds/bg_phase_pk.png"
+    },
+    {
+      "id": "bg_phase_exile_result",
+      "path": "assets/ui/backgrounds/bg_phase_exile_result.png"
+    },
+    {
+      "id": "bg_phase_game_over_goodwin",
+      "path": "assets/ui/backgrounds/bg_phase_game_over_goodwin.png"
+    },
+    {
+      "id": "bg_phase_game_over_wolfwin",
+      "path": "assets/ui/backgrounds/bg_phase_game_over_wolfwin.png"
+    },
+    {
+      "id": "bg_landing_wolf",
+      "path": "assets/ui/backgrounds/bg_landing_wolf_silhouette.png"
+    }
+  ],
+  "bad_size": [],
+  "bad_alpha": [],
+  "by_type": {
+    "background": 27,
+    "icon": 89,
+    "share_card": 2,
+    "panel": 58,
+    "button": 8,
+    "portrait": 11,
+    "role_intro": 9
+  }
+}

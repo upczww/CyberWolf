@@ -1,0 +1,1431 @@
+{
+  "type": "icon",
+  "processed": 89,
+  "changed": 89,
+  "results": [
+    {
+      "path": "C:\\Work\\LycanTUI\\desktop\\public\\assets\\ui\\logo\\logo_werewolf_title_large.png",
+      "changed": true,
+      "before_bbox": [
+        13,
+        0,
+        1010,
+        512
+      ],
+      "after_bbox": [
+        13,
+        0,
+        1010,
+        512
+      ]
+    },
+    {
+      "path": "C:\\Work\\LycanTUI\\desktop\\public\\assets\\ui\\icons\\status\\icon_status_sheriff.png",
+      "changed": true,
+      "before_bbox": [
+        6,
+        0,
+        250,
+        256
+      ],
+      "after_bbox": [
+        6,
+        0,
+        250,
+        256
+      ]
+    },
+    {
+      "path": "C:\\Work\\LycanTUI\\desktop\\public\\assets\\ui\\icons\\status\\icon_status_speaking.png",
+      "changed": true,
+      "before_bbox": [
+        3,
+        0,
+        253,
+        256
+      ],
+      "after_bbox": [
+        3,
+        0,
+        253,
+        256
+      ]
+    },
+    {
+      "path": "C:\\Work\\LycanTUI\\desktop\\public\\assets\\ui\\icons\\status\\icon_status_voted.png",
+      "changed": true,
+      "before_bbox": [
+        4,
+        0,
+        252,
+        256
+      ],
+      "after_bbox": [
+        4,
+        0,
+        252,
+        256
+      ]
+    },
+    {
+      "path": "C:\\Work\\LycanTUI\\desktop\\public\\assets\\ui\\icons\\status\\icon_status_knifed.png",
+      "changed": true,
+      "before_bbox": [
+        3,
+        0,
+        252,
+        256
+      ],
+      "after_bbox": [
+        3,
+        0,
+        252,
+        256
+      ]
+    },
+    {
+      "path": "C:\\Work\\LycanTUI\\desktop\\public\\assets\\ui\\icons\\status\\icon_status_exiled.png",
+      "changed": true,
+      "before_bbox": [
+        5,
+        0,
+        251,
+        256
+      ],
+      "after_bbox": [
+        5,
+        0,
+        251,
+        256
+      ]
+    },
+    {
+      "path": "C:\\Work\\LycanTUI\\desktop\\public\\assets\\ui\\icons\\status\\icon_status_poisoned.png",
+      "changed": true,
+      "before_bbox": [
+        7,
+        0,
+        248,
+        256
+      ],
+      "after_bbox": [
+        7,
+        0,
+        248,
+        256
+      ]
+    },
+    {
+      "path": "C:\\Work\\LycanTUI\\desktop\\public\\assets\\ui\\icons\\status\\icon_status_saved.png",
+      "changed": true,
+      "before_bbox": [
+        6,
+        0,
+        250,
+        256
+      ],
+      "after_bbox": [
+        6,
+        0,
+        250,
+        256
+      ]
+    },
+    {
+      "path": "C:\\Work\\LycanTUI\\desktop\\public\\assets\\ui\\icons\\status\\icon_status_dead.png",
+      "changed": true,
+      "before_bbox": [
+        5,
+        0,
+        250,
+        256
+      ],
+      "after_bbox": [
+        5,
+        0,
+        250,
+        256
+      ]
+    },
+    {
+      "path": "C:\\Work\\LycanTUI\\desktop\\public\\assets\\ui\\icons\\status\\icon_status_shot.png",
+      "changed": true,
+      "before_bbox": [
+        5,
+        0,
+        249,
+        256
+      ],
+      "after_bbox": [
+        6,
+        0,
+        250,
+        256
+      ]
+    },
+    {
+      "path": "C:\\Work\\LycanTUI\\desktop\\public\\assets\\ui\\icons\\status\\icon_status_last_words.png",
+      "changed": true,
+      "before_bbox": [
+        6,
+        0,
+        250,
+        256
+      ],
+      "after_bbox": [
+        6,
+        0,
+        250,
+        256
+      ]
+    },
+    {
+      "path": "C:\\Work\\LycanTUI\\desktop\\public\\assets\\ui\\icons\\status\\icon_status_pk.png",
+      "changed": true,
+      "before_bbox": [
+        8,
+        0,
+        247,
+        256
+      ],
+      "after_bbox": [
+        8,
+        0,
+        247,
+        256
+      ]
+    },
+    {
+      "path": "C:\\Work\\LycanTUI\\desktop\\public\\assets\\ui\\icons\\status\\icon_status_self_destruct.png",
+      "changed": true,
+      "before_bbox": [
+        6,
+        0,
+        249,
+        256
+      ],
+      "after_bbox": [
+        6,
+        0,
+        249,
+        256
+      ]
+    },
+    {
+      "path": "C:\\Work\\LycanTUI\\desktop\\public\\assets\\ui\\icons\\status\\icon_status_check_good.png",
+      "changed": true,
+      "before_bbox": [
+        7,
+        0,
+        249,
+        256
+      ],
+      "after_bbox": [
+        7,
+        0,
+        249,
+        256
+      ]
+    },
+    {
+      "path": "C:\\Work\\LycanTUI\\desktop\\public\\assets\\ui\\icons\\status\\icon_status_check_wolf.png",
+      "changed": true,
+      "before_bbox": [
+        5,
+        0,
+        250,
+        256
+      ],
+      "after_bbox": [
+        5,
+        0,
+        250,
+        256
+      ]
+    },
+    {
+      "path": "C:\\Work\\LycanTUI\\desktop\\public\\assets\\ui\\icons\\status\\icon_status_identity_hidden.png",
+      "changed": true,
+      "before_bbox": [
+        6,
+        0,
+        249,
+        256
+      ],
+      "after_bbox": [
+        6,
+        0,
+        249,
+        256
+      ]
+    },
+    {
+      "path": "C:\\Work\\LycanTUI\\desktop\\public\\assets\\ui\\icons\\status\\icon_status_ai_player.png",
+      "changed": true,
+      "before_bbox": [
+        6,
+        0,
+        249,
+        256
+      ],
+      "after_bbox": [
+        6,
+        0,
+        249,
+        256
+      ]
+    },
+    {
+      "path": "C:\\Work\\LycanTUI\\desktop\\public\\assets\\ui\\icons\\status\\icon_status_human_player.png",
+      "changed": true,
+      "before_bbox": [
+        6,
+        0,
+        249,
+        256
+      ],
+      "after_bbox": [
+        6,
+        0,
+        249,
+        256
+      ]
+    },
+    {
+      "path": "C:\\Work\\LycanTUI\\desktop\\public\\assets\\ui\\icons\\status\\icon_status_ai_controlling.png",
+      "changed": true,
+      "before_bbox": [
+        6,
+        0,
+        250,
+        256
+      ],
+      "after_bbox": [
+        6,
+        0,
+        250,
+        256
+      ]
+    },
+    {
+      "path": "C:\\Work\\LycanTUI\\desktop\\public\\assets\\ui\\icons\\status\\icon_status_on_stage.png",
+      "changed": true,
+      "before_bbox": [
+        6,
+        0,
+        250,
+        256
+      ],
+      "after_bbox": [
+        6,
+        0,
+        250,
+        256
+      ]
+    },
+    {
+      "path": "C:\\Work\\LycanTUI\\desktop\\public\\assets\\ui\\icons\\status\\icon_status_versus.png",
+      "changed": true,
+      "before_bbox": [
+        6,
+        0,
+        250,
+        256
+      ],
+      "after_bbox": [
+        6,
+        0,
+        250,
+        256
+      ]
+    },
+    {
+      "path": "C:\\Work\\LycanTUI\\desktop\\public\\assets\\ui\\icons\\status\\icon_good_win.png",
+      "changed": true,
+      "before_bbox": [
+        0,
+        0,
+        256,
+        256
+      ],
+      "after_bbox": [
+        0,
+        0,
+        256,
+        256
+      ]
+    },
+    {
+      "path": "C:\\Work\\LycanTUI\\desktop\\public\\assets\\ui\\icons\\status\\icon_wolf_win.png",
+      "changed": true,
+      "before_bbox": [
+        0,
+        0,
+        256,
+        256
+      ],
+      "after_bbox": [
+        0,
+        0,
+        256,
+        256
+      ]
+    },
+    {
+      "path": "C:\\Work\\LycanTUI\\desktop\\public\\assets\\ui\\icons\\actions\\icon_action_record.png",
+      "changed": true,
+      "before_bbox": [
+        53,
+        44,
+        235,
+        229
+      ],
+      "after_bbox": [
+        2,
+        0,
+        254,
+        256
+      ]
+    },
+    {
+      "path": "C:\\Work\\LycanTUI\\desktop\\public\\assets\\ui\\icons\\actions\\icon_action_history.png",
+      "changed": true,
+      "before_bbox": [
+        36,
+        44,
+        220,
+        229
+      ],
+      "after_bbox": [
+        0,
+        0,
+        254,
+        256
+      ]
+    },
+    {
+      "path": "C:\\Work\\LycanTUI\\desktop\\public\\assets\\ui\\icons\\actions\\icon_action_settings.png",
+      "changed": true,
+      "before_bbox": [
+        21,
+        44,
+        203,
+        229
+      ],
+      "after_bbox": [
+        2,
+        0,
+        254,
+        256
+      ]
+    },
+    {
+      "path": "C:\\Work\\LycanTUI\\desktop\\public\\assets\\ui\\icons\\actions\\icon_action_chat.png",
+      "changed": true,
+      "before_bbox": [
+        53,
+        28,
+        235,
+        214
+      ],
+      "after_bbox": [
+        3,
+        0,
+        253,
+        255
+      ]
+    },
+    {
+      "path": "C:\\Work\\LycanTUI\\desktop\\public\\assets\\ui\\icons\\actions\\icon_action_vote.png",
+      "changed": true,
+      "before_bbox": [
+        36,
+        28,
+        220,
+        214
+      ],
+      "after_bbox": [
+        1,
+        0,
+        254,
+        255
+      ]
+    },
+    {
+      "path": "C:\\Work\\LycanTUI\\desktop\\public\\assets\\ui\\icons\\actions\\icon_action_skip.png",
+      "changed": true,
+      "before_bbox": [
+        21,
+        28,
+        203,
+        214
+      ],
+      "after_bbox": [
+        3,
+        0,
+        253,
+        255
+      ]
+    },
+    {
+      "path": "C:\\Work\\LycanTUI\\desktop\\public\\assets\\ui\\icons\\actions\\icon_action_confirm.png",
+      "changed": true,
+      "before_bbox": [
+        53,
+        12,
+        235,
+        198
+      ],
+      "after_bbox": [
+        3,
+        1,
+        253,
+        256
+      ]
+    },
+    {
+      "path": "C:\\Work\\LycanTUI\\desktop\\public\\assets\\ui\\icons\\actions\\icon_action_close.png",
+      "changed": true,
+      "before_bbox": [
+        36,
+        12,
+        220,
+        198
+      ],
+      "after_bbox": [
+        1,
+        1,
+        254,
+        255
+      ]
+    },
+    {
+      "path": "C:\\Work\\LycanTUI\\desktop\\public\\assets\\ui\\icons\\actions\\icon_action_campaign.png",
+      "changed": true,
+      "before_bbox": [
+        21,
+        12,
+        203,
+        198
+      ],
+      "after_bbox": [
+        3,
+        1,
+        253,
+        256
+      ]
+    },
+    {
+      "path": "C:\\Work\\LycanTUI\\desktop\\public\\assets\\ui\\icons\\actions\\icon_action_explode.png",
+      "changed": true,
+      "before_bbox": [
+        49,
+        39,
+        245,
+        238
+      ],
+      "after_bbox": [
+        2,
+        0,
+        254,
+        256
+      ]
+    },
+    {
+      "path": "C:\\Work\\LycanTUI\\desktop\\public\\assets\\ui\\icons\\actions\\icon_vote_token.png",
+      "changed": true,
+      "before_bbox": [
+        31,
+        41,
+        225,
+        239
+      ],
+      "after_bbox": [
+        2,
+        0,
+        253,
+        256
+      ]
+    },
+    {
+      "path": "C:\\Work\\LycanTUI\\desktop\\public\\assets\\ui\\icons\\actions\\icon_landing_personal_mode.png",
+      "changed": true,
+      "before_bbox": [
+        10,
+        39,
+        204,
+        238
+      ],
+      "after_bbox": [
+        3,
+        0,
+        253,
+        256
+      ]
+    },
+    {
+      "path": "C:\\Work\\LycanTUI\\desktop\\public\\assets\\ui\\icons\\actions\\icon_landing_god_mode.png",
+      "changed": true,
+      "before_bbox": [
+        49,
+        26,
+        243,
+        223
+      ],
+      "after_bbox": [
+        2,
+        0,
+        254,
+        256
+      ]
+    },
+    {
+      "path": "C:\\Work\\LycanTUI\\desktop\\public\\assets\\ui\\icons\\actions\\icon_landing_sound_on.png",
+      "changed": true,
+      "before_bbox": [
+        31,
+        28,
+        222,
+        222
+      ],
+      "after_bbox": [
+        3,
+        0,
+        254,
+        256
+      ]
+    },
+    {
+      "path": "C:\\Work\\LycanTUI\\desktop\\public\\assets\\ui\\icons\\actions\\icon_landing_sound_off.png",
+      "changed": true,
+      "before_bbox": [
+        11,
+        28,
+        202,
+        223
+      ],
+      "after_bbox": [
+        2,
+        0,
+        253,
+        256
+      ]
+    },
+    {
+      "path": "C:\\Work\\LycanTUI\\desktop\\public\\assets\\ui\\icons\\actions\\icon_landing_help.png",
+      "changed": true,
+      "before_bbox": [
+        49,
+        9,
+        237,
+        201
+      ],
+      "after_bbox": [
+        2,
+        0,
+        253,
+        256
+      ]
+    },
+    {
+      "path": "C:\\Work\\LycanTUI\\desktop\\public\\assets\\ui\\icons\\actions\\icon_landing_settings.png",
+      "changed": true,
+      "before_bbox": [
+        31,
+        10,
+        221,
+        202
+      ],
+      "after_bbox": [
+        2,
+        0,
+        254,
+        256
+      ]
+    },
+    {
+      "path": "C:\\Work\\LycanTUI\\desktop\\public\\assets\\ui\\icons\\actions\\icon_landing_match_records.png",
+      "changed": true,
+      "before_bbox": [
+        12,
+        10,
+        201,
+        202
+      ],
+      "after_bbox": [
+        2,
+        0,
+        254,
+        256
+      ]
+    },
+    {
+      "path": "C:\\Work\\LycanTUI\\desktop\\public\\assets\\ui\\icons\\actions\\icon_landing_ai_autoplay.png",
+      "changed": true,
+      "before_bbox": [
+        54,
+        43,
+        236,
+        232
+      ],
+      "after_bbox": [
+        4,
+        0,
+        251,
+        256
+      ]
+    },
+    {
+      "path": "C:\\Work\\LycanTUI\\desktop\\public\\assets\\ui\\icons\\actions\\icon_landing_ai_summary.png",
+      "changed": true,
+      "before_bbox": [
+        36,
+        43,
+        218,
+        232
+      ],
+      "after_bbox": [
+        4,
+        0,
+        251,
+        256
+      ]
+    },
+    {
+      "path": "C:\\Work\\LycanTUI\\desktop\\public\\assets\\ui\\icons\\actions\\icon_landing_achievement.png",
+      "changed": true,
+      "before_bbox": [
+        19,
+        43,
+        202,
+        232
+      ],
+      "after_bbox": [
+        4,
+        0,
+        252,
+        256
+      ]
+    },
+    {
+      "path": "C:\\Work\\LycanTUI\\desktop\\public\\assets\\ui\\icons\\actions\\icon_landing_ranking.png",
+      "changed": true,
+      "before_bbox": [
+        54,
+        28,
+        236,
+        217
+      ],
+      "after_bbox": [
+        4,
+        0,
+        251,
+        256
+      ]
+    },
+    {
+      "path": "C:\\Work\\LycanTUI\\desktop\\public\\assets\\ui\\icons\\actions\\icon_auth_user.png",
+      "changed": true,
+      "before_bbox": [
+        36,
+        28,
+        218,
+        217
+      ],
+      "after_bbox": [
+        4,
+        0,
+        251,
+        256
+      ]
+    },
+    {
+      "path": "C:\\Work\\LycanTUI\\desktop\\public\\assets\\ui\\icons\\actions\\icon_auth_password.png",
+      "changed": true,
+      "before_bbox": [
+        19,
+        28,
+        202,
+        217
+      ],
+      "after_bbox": [
+        4,
+        0,
+        252,
+        256
+      ]
+    },
+    {
+      "path": "C:\\Work\\LycanTUI\\desktop\\public\\assets\\ui\\icons\\actions\\icon_auth_guest.png",
+      "changed": true,
+      "before_bbox": [
+        54,
+        9,
+        236,
+        199
+      ],
+      "after_bbox": [
+        5,
+        0,
+        250,
+        256
+      ]
+    },
+    {
+      "path": "C:\\Work\\LycanTUI\\desktop\\public\\assets\\ui\\icons\\actions\\icon_ai_difficulty.png",
+      "changed": true,
+      "before_bbox": [
+        36,
+        9,
+        218,
+        199
+      ],
+      "after_bbox": [
+        5,
+        0,
+        250,
+        256
+      ]
+    },
+    {
+      "path": "C:\\Work\\LycanTUI\\desktop\\public\\assets\\ui\\icons\\actions\\icon_rule_config.png",
+      "changed": true,
+      "before_bbox": [
+        19,
+        9,
+        202,
+        199
+      ],
+      "after_bbox": [
+        4,
+        0,
+        251,
+        256
+      ]
+    },
+    {
+      "path": "C:\\Work\\LycanTUI\\desktop\\public\\assets\\ui\\icons\\actions\\icon_speed_config.png",
+      "changed": true,
+      "before_bbox": [
+        53,
+        47,
+        237,
+        235
+      ],
+      "after_bbox": [
+        2,
+        0,
+        253,
+        256
+      ]
+    },
+    {
+      "path": "C:\\Work\\LycanTUI\\desktop\\public\\assets\\ui\\icons\\actions\\icon_match_continue.png",
+      "changed": true,
+      "before_bbox": [
+        36,
+        47,
+        220,
+        235
+      ],
+      "after_bbox": [
+        2,
+        0,
+        253,
+        256
+      ]
+    },
+    {
+      "path": "C:\\Work\\LycanTUI\\desktop\\public\\assets\\ui\\icons\\actions\\icon_match_delete.png",
+      "changed": true,
+      "before_bbox": [
+        18,
+        47,
+        201,
+        235
+      ],
+      "after_bbox": [
+        3,
+        0,
+        252,
+        256
+      ]
+    },
+    {
+      "path": "C:\\Work\\LycanTUI\\desktop\\public\\assets\\ui\\icons\\actions\\icon_match_summary.png",
+      "changed": true,
+      "before_bbox": [
+        53,
+        30,
+        237,
+        218
+      ],
+      "after_bbox": [
+        2,
+        0,
+        253,
+        256
+      ]
+    },
+    {
+      "path": "C:\\Work\\LycanTUI\\desktop\\public\\assets\\ui\\icons\\actions\\icon_match_replay.png",
+      "changed": true,
+      "before_bbox": [
+        36,
+        30,
+        220,
+        218
+      ],
+      "after_bbox": [
+        2,
+        0,
+        253,
+        256
+      ]
+    },
+    {
+      "path": "C:\\Work\\LycanTUI\\desktop\\public\\assets\\ui\\icons\\actions\\icon_game_pause.png",
+      "changed": true,
+      "before_bbox": [
+        18,
+        30,
+        201,
+        218
+      ],
+      "after_bbox": [
+        3,
+        0,
+        252,
+        256
+      ]
+    },
+    {
+      "path": "C:\\Work\\LycanTUI\\desktop\\public\\assets\\ui\\icons\\actions\\icon_game_stop.png",
+      "changed": true,
+      "before_bbox": [
+        53,
+        12,
+        237,
+        201
+      ],
+      "after_bbox": [
+        3,
+        1,
+        252,
+        256
+      ]
+    },
+    {
+      "path": "C:\\Work\\LycanTUI\\desktop\\public\\assets\\ui\\icons\\actions\\icon_game_resume.png",
+      "changed": true,
+      "before_bbox": [
+        36,
+        12,
+        220,
+        201
+      ],
+      "after_bbox": [
+        3,
+        1,
+        252,
+        256
+      ]
+    },
+    {
+      "path": "C:\\Work\\LycanTUI\\desktop\\public\\assets\\ui\\icons\\actions\\icon_game_save.png",
+      "changed": true,
+      "before_bbox": [
+        18,
+        12,
+        202,
+        201
+      ],
+      "after_bbox": [
+        3,
+        1,
+        252,
+        256
+      ]
+    },
+    {
+      "path": "C:\\Work\\LycanTUI\\desktop\\public\\assets\\ui\\icons\\actions\\icon_ai_suggestion.png",
+      "changed": true,
+      "before_bbox": [
+        55,
+        47,
+        238,
+        236
+      ],
+      "after_bbox": [
+        4,
+        0,
+        252,
+        256
+      ]
+    },
+    {
+      "path": "C:\\Work\\LycanTUI\\desktop\\public\\assets\\ui\\icons\\actions\\icon_ai_autoplay_on.png",
+      "changed": true,
+      "before_bbox": [
+        36,
+        47,
+        219,
+        236
+      ],
+      "after_bbox": [
+        4,
+        0,
+        252,
+        256
+      ]
+    },
+    {
+      "path": "C:\\Work\\LycanTUI\\desktop\\public\\assets\\ui\\icons\\actions\\icon_ai_autoplay_off.png",
+      "changed": true,
+      "before_bbox": [
+        17,
+        47,
+        201,
+        236
+      ],
+      "after_bbox": [
+        3,
+        0,
+        252,
+        256
+      ]
+    },
+    {
+      "path": "C:\\Work\\LycanTUI\\desktop\\public\\assets\\ui\\icons\\actions\\icon_tutorial_next.png",
+      "changed": true,
+      "before_bbox": [
+        54,
+        30,
+        237,
+        218
+      ],
+      "after_bbox": [
+        3,
+        0,
+        252,
+        256
+      ]
+    },
+    {
+      "path": "C:\\Work\\LycanTUI\\desktop\\public\\assets\\ui\\icons\\actions\\icon_tutorial_skip.png",
+      "changed": true,
+      "before_bbox": [
+        36,
+        30,
+        220,
+        218
+      ],
+      "after_bbox": [
+        2,
+        0,
+        253,
+        256
+      ]
+    },
+    {
+      "path": "C:\\Work\\LycanTUI\\desktop\\public\\assets\\ui\\icons\\actions\\icon_summary_timeline.png",
+      "changed": true,
+      "before_bbox": [
+        17,
+        30,
+        201,
+        219
+      ],
+      "after_bbox": [
+        3,
+        0,
+        252,
+        256
+      ]
+    },
+    {
+      "path": "C:\\Work\\LycanTUI\\desktop\\public\\assets\\ui\\icons\\actions\\icon_summary_vote_chart.png",
+      "changed": true,
+      "before_bbox": [
+        53,
+        12,
+        236,
+        199
+      ],
+      "after_bbox": [
+        2,
+        0,
+        253,
+        256
+      ]
+    },
+    {
+      "path": "C:\\Work\\LycanTUI\\desktop\\public\\assets\\ui\\icons\\actions\\icon_summary_ai_comment.png",
+      "changed": true,
+      "before_bbox": [
+        36,
+        12,
+        218,
+        200
+      ],
+      "after_bbox": [
+        4,
+        0,
+        252,
+        256
+      ]
+    },
+    {
+      "path": "C:\\Work\\LycanTUI\\desktop\\public\\assets\\ui\\icons\\actions\\icon_summary_replay.png",
+      "changed": true,
+      "before_bbox": [
+        17,
+        12,
+        201,
+        200
+      ],
+      "after_bbox": [
+        2,
+        0,
+        253,
+        256
+      ]
+    },
+    {
+      "path": "C:\\Work\\LycanTUI\\desktop\\public\\assets\\ui\\icons\\skills\\icon_skill_wolf_kill.png",
+      "changed": true,
+      "before_bbox": [
+        0,
+        0,
+        256,
+        256
+      ],
+      "after_bbox": [
+        0,
+        0,
+        256,
+        256
+      ]
+    },
+    {
+      "path": "C:\\Work\\LycanTUI\\desktop\\public\\assets\\ui\\icons\\skills\\icon_skill_wolf_confirm.png",
+      "changed": true,
+      "before_bbox": [
+        1,
+        0,
+        255,
+        256
+      ],
+      "after_bbox": [
+        1,
+        0,
+        255,
+        256
+      ]
+    },
+    {
+      "path": "C:\\Work\\LycanTUI\\desktop\\public\\assets\\ui\\icons\\skills\\icon_skill_witch_heal.png",
+      "changed": true,
+      "before_bbox": [
+        0,
+        0,
+        256,
+        255
+      ],
+      "after_bbox": [
+        0,
+        0,
+        256,
+        255
+      ]
+    },
+    {
+      "path": "C:\\Work\\LycanTUI\\desktop\\public\\assets\\ui\\icons\\skills\\icon_skill_witch_poison.png",
+      "changed": true,
+      "before_bbox": [
+        0,
+        0,
+        256,
+        256
+      ],
+      "after_bbox": [
+        0,
+        0,
+        256,
+        256
+      ]
+    },
+    {
+      "path": "C:\\Work\\LycanTUI\\desktop\\public\\assets\\ui\\icons\\skills\\icon_skill_seer_check.png",
+      "changed": true,
+      "before_bbox": [
+        0,
+        0,
+        256,
+        255
+      ],
+      "after_bbox": [
+        0,
+        0,
+        256,
+        255
+      ]
+    },
+    {
+      "path": "C:\\Work\\LycanTUI\\desktop\\public\\assets\\ui\\icons\\skills\\icon_skill_hunter_shoot.png",
+      "changed": true,
+      "before_bbox": [
+        0,
+        0,
+        256,
+        256
+      ],
+      "after_bbox": [
+        0,
+        0,
+        256,
+        256
+      ]
+    },
+    {
+      "path": "C:\\Work\\LycanTUI\\desktop\\public\\assets\\ui\\icons\\skills\\icon_skill_idiot_reveal.png",
+      "changed": true,
+      "before_bbox": [
+        0,
+        2,
+        256,
+        254
+      ],
+      "after_bbox": [
+        0,
+        2,
+        256,
+        254
+      ]
+    },
+    {
+      "path": "C:\\Work\\LycanTUI\\desktop\\public\\assets\\ui\\icons\\skills\\icon_result_good.png",
+      "changed": true,
+      "before_bbox": [
+        0,
+        2,
+        256,
+        254
+      ],
+      "after_bbox": [
+        0,
+        2,
+        256,
+        254
+      ]
+    },
+    {
+      "path": "C:\\Work\\LycanTUI\\desktop\\public\\assets\\ui\\icons\\skills\\icon_result_wolf.png",
+      "changed": true,
+      "before_bbox": [
+        0,
+        2,
+        256,
+        253
+      ],
+      "after_bbox": [
+        0,
+        2,
+        256,
+        253
+      ]
+    },
+    {
+      "path": "C:\\Work\\LycanTUI\\desktop\\public\\assets\\ui\\icons\\skills\\icon_hunter_target.png",
+      "changed": true,
+      "before_bbox": [
+        0,
+        1,
+        256,
+        255
+      ],
+      "after_bbox": [
+        0,
+        1,
+        256,
+        255
+      ]
+    },
+    {
+      "path": "C:\\Work\\LycanTUI\\desktop\\public\\assets\\ui\\icons\\roles\\icon_role_villager.png",
+      "changed": true,
+      "before_bbox": [
+        0,
+        0,
+        256,
+        256
+      ],
+      "after_bbox": [
+        0,
+        0,
+        256,
+        256
+      ]
+    },
+    {
+      "path": "C:\\Work\\LycanTUI\\desktop\\public\\assets\\ui\\icons\\roles\\icon_role_werewolf.png",
+      "changed": true,
+      "before_bbox": [
+        0,
+        0,
+        256,
+        256
+      ],
+      "after_bbox": [
+        0,
+        0,
+        256,
+        256
+      ]
+    },
+    {
+      "path": "C:\\Work\\LycanTUI\\desktop\\public\\assets\\ui\\icons\\roles\\icon_role_seer.png",
+      "changed": true,
+      "before_bbox": [
+        0,
+        0,
+        256,
+        256
+      ],
+      "after_bbox": [
+        0,
+        0,
+        256,
+        256
+      ]
+    },
+    {
+      "path": "C:\\Work\\LycanTUI\\desktop\\public\\assets\\ui\\icons\\roles\\icon_role_witch.png",
+      "changed": true,
+      "before_bbox": [
+        0,
+        0,
+        255,
+        256
+      ],
+      "after_bbox": [
+        0,
+        0,
+        255,
+        256
+      ]
+    },
+    {
+      "path": "C:\\Work\\LycanTUI\\desktop\\public\\assets\\ui\\icons\\roles\\icon_role_hunter.png",
+      "changed": true,
+      "before_bbox": [
+        0,
+        0,
+        256,
+        256
+      ],
+      "after_bbox": [
+        0,
+        0,
+        256,
+        256
+      ]
+    },
+    {
+      "path": "C:\\Work\\LycanTUI\\desktop\\public\\assets\\ui\\icons\\roles\\icon_role_idiot.png",
+      "changed": true,
+      "before_bbox": [
+        0,
+        0,
+        256,
+        256
+      ],
+      "after_bbox": [
+        0,
+        0,
+        256,
+        256
+      ]
+    },
+    {
+      "path": "C:\\Work\\LycanTUI\\desktop\\public\\assets\\ui\\states\\state_empty_matches.png",
+      "changed": true,
+      "before_bbox": [
+        31,
+        0,
+        480,
+        512
+      ],
+      "after_bbox": [
+        31,
+        0,
+        480,
+        512
+      ]
+    },
+    {
+      "path": "C:\\Work\\LycanTUI\\desktop\\public\\assets\\ui\\states\\state_empty_history.png",
+      "changed": true,
+      "before_bbox": [
+        28,
+        1,
+        483,
+        512
+      ],
+      "after_bbox": [
+        28,
+        0,
+        484,
+        512
+      ]
+    },
+    {
+      "path": "C:\\Work\\LycanTUI\\desktop\\public\\assets\\ui\\states\\state_error_network.png",
+      "changed": true,
+      "before_bbox": [
+        1,
+        0,
+        511,
+        512
+      ],
+      "after_bbox": [
+        1,
+        0,
+        511,
+        512
+      ]
+    },
+    {
+      "path": "C:\\Work\\LycanTUI\\desktop\\public\\assets\\ui\\states\\state_error_ai.png",
+      "changed": true,
+      "before_bbox": [
+        25,
+        0,
+        486,
+        512
+      ],
+      "after_bbox": [
+        25,
+        0,
+        486,
+        512
+      ]
+    },
+    {
+      "path": "C:\\Work\\LycanTUI\\desktop\\public\\assets\\ui\\states\\state_loading_wolf.png",
+      "changed": true,
+      "before_bbox": [
+        22,
+        0,
+        490,
+        512
+      ],
+      "after_bbox": [
+        22,
+        0,
+        490,
+        512
+      ]
+    }
+  ]
+}

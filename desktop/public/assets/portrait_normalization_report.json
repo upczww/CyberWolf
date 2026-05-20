@@ -1,0 +1,183 @@
+{
+  "type": "portrait",
+  "processed": 11,
+  "changed": 11,
+  "results": [
+    {
+      "path": "C:\\Work\\LycanTUI\\desktop\\public\\assets\\ui\\portraits\\unknown\\portrait_unknown_male_01.png",
+      "changed": true,
+      "before_bbox": [
+        23,
+        53,
+        745,
+        970
+      ],
+      "after_bbox": [
+        0,
+        24,
+        768,
+        999
+      ]
+    },
+    {
+      "path": "C:\\Work\\LycanTUI\\desktop\\public\\assets\\ui\\portraits\\unknown\\portrait_unknown_female_01.png",
+      "changed": true,
+      "before_bbox": [
+        23,
+        42,
+        745,
+        982
+      ],
+      "after_bbox": [
+        0,
+        12,
+        768,
+        1012
+      ]
+    },
+    {
+      "path": "C:\\Work\\LycanTUI\\desktop\\public\\assets\\ui\\portraits\\unknown\\portrait_unknown_cloak_01.png",
+      "changed": true,
+      "before_bbox": [
+        23,
+        53,
+        745,
+        970
+      ],
+      "after_bbox": [
+        0,
+        24,
+        768,
+        999
+      ]
+    },
+    {
+      "path": "C:\\Work\\LycanTUI\\desktop\\public\\assets\\ui\\portraits\\unknown\\portrait_unknown_ai_01.png",
+      "changed": true,
+      "before_bbox": [
+        23,
+        46,
+        745,
+        977
+      ],
+      "after_bbox": [
+        0,
+        17,
+        768,
+        1007
+      ]
+    },
+    {
+      "path": "C:\\Work\\LycanTUI\\desktop\\public\\assets\\ui\\portraits\\roles\\portrait_villager_male_01.png",
+      "changed": true,
+      "before_bbox": [
+        23,
+        66,
+        745,
+        958
+      ],
+      "after_bbox": [
+        0,
+        37,
+        768,
+        986
+      ]
+    },
+    {
+      "path": "C:\\Work\\LycanTUI\\desktop\\public\\assets\\ui\\portraits\\roles\\portrait_villager_female_01.png",
+      "changed": true,
+      "before_bbox": [
+        61,
+        30,
+        707,
+        993
+      ],
+      "after_bbox": [
+        40,
+        0,
+        727,
+        1024
+      ]
+    },
+    {
+      "path": "C:\\Work\\LycanTUI\\desktop\\public\\assets\\ui\\portraits\\roles\\portrait_seer_01.png",
+      "changed": true,
+      "before_bbox": [
+        23,
+        66,
+        745,
+        957
+      ],
+      "after_bbox": [
+        0,
+        38,
+        768,
+        986
+      ]
+    },
+    {
+      "path": "C:\\Work\\LycanTUI\\desktop\\public\\assets\\ui\\portraits\\roles\\portrait_witch_01.png",
+      "changed": true,
+      "before_bbox": [
+        23,
+        37,
+        745,
+        987
+      ],
+      "after_bbox": [
+        1,
+        6,
+        768,
+        1017
+      ]
+    },
+    {
+      "path": "C:\\Work\\LycanTUI\\desktop\\public\\assets\\ui\\portraits\\roles\\portrait_hunter_01.png",
+      "changed": true,
+      "before_bbox": [
+        23,
+        47,
+        745,
+        976
+      ],
+      "after_bbox": [
+        0,
+        18,
+        768,
+        1006
+      ]
+    },
+    {
+      "path": "C:\\Work\\LycanTUI\\desktop\\public\\assets\\ui\\portraits\\roles\\portrait_idiot_01.png",
+      "changed": true,
+      "before_bbox": [
+        23,
+        39,
+        745,
+        985
+      ],
+      "after_bbox": [
+        0,
+        9,
+        768,
+        1015
+      ]
+    },
+    {
+      "path": "C:\\Work\\LycanTUI\\desktop\\public\\assets\\ui\\portraits\\roles\\portrait_werewolf_01.png",
+      "changed": true,
+      "before_bbox": [
+        23,
+        42,
+        745,
+        982
+      ],
+      "after_bbox": [
+        0,
+        12,
+        768,
+        1012
+      ]
+    }
+  ]
+}
