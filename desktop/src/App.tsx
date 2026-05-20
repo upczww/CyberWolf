@@ -566,7 +566,7 @@ function LandingScreen({
           active={mode === 'self'}
           tone="blue"
           icon={`${A}/icons/actions/icon_landing_personal_mode.png`}
-          silhouette={`${A}/portraits/unknown/portrait_unknown_male_01.png`}
+          silhouette={`${A}/portraits/extra/landing_role_personal.png`}
           title="个人视角"
           text="沉浸体验，只属于你的推理之旅"
           bullets={['你是唯一的真人玩家', '其他玩家由AI扮演', '只可见自己的身份与白天操作']}
@@ -578,7 +578,7 @@ function LandingScreen({
           active={mode === 'god'}
           tone="red"
           icon={`${A}/icons/actions/icon_landing_god_mode.png`}
-          silhouette={`${A}/portraits/unknown/portrait_unknown_cloak_01.png`}
+          silhouette={`${A}/portraits/extra/landing_role_god.png`}
           title="上帝视角"
           text="掌控全局，洞悉所有秘密与真相"
           bullets={['上帝视角观战所有信息', '查看所有身份与技能', '复盘分析，掌控全局']}
