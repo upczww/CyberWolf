@@ -204,12 +204,15 @@ async def get_game(game_id: str, event_limit: int = 300, seat: int | None = None
             if isinstance(decoded_snapshot.get("state_json"), str):
                 decoded_snapshot["state_json"] = json.loads(decoded_snapshot["state_json"])
 
-        return GameDetail(
+        detail = GameDetail(
             game=dict(game),
             players=[dict(row) for row in players],
             events=decoded_events,
             snapshot=decoded_snapshot,
         )
+        if seat is not None:
+            return _sanitize_detail_for_seat(detail.model_dump(), seat)
+        return detail
     finally:
         conn.close()
 
@@ -442,3 +445,126 @@ def _serialize_event(event: GameEvent) -> dict[str, Any]:
         "content": event.content,
         "data": event.data,
     }
+
+
+# ---------------------------------------------------------------------------
+# Self-mode information isolation
+# ---------------------------------------------------------------------------
+
+# Fields on `state_snapshots.state_json` that may leak private info to non-self
+# seats; we drop them entirely from the seat=N response and only re-add the
+# slice that belongs to the viewing seat.
+_PRIVATE_STATE_FIELDS = (
+    "private_history",       # mirror of role-private events
+    "night_actions",         # wolf vote tally + witch antidote/poison targets
+    "night_result",          # engine intermediate state
+)
+
+
+def _sanitize_detail_for_seat(detail: dict[str, Any], seat: int | None) -> dict[str, Any]:
+    """Mask other players' identities + private state when serving a self-mode
+    client. Returns the same dict (mutated). For seat=None (god / observer
+    mode the *client* is allowed to see everything) returns unchanged.
+
+    Sanitization rules:
+      * Players that are NOT the viewing seat AND still alive get role/faction
+        replaced with ``"unknown"``.
+      * Wolf-team mates are visible to a wolf viewer (they know each other).
+      * Dead players' roles are revealed (mirrors normal werewolf rules
+        where a dead player's identity is announced at dawn / vote-resolve).
+      * ``snapshot.state_json.players`` is masked the same way.
+      * Other role-private fields are stripped from snapshot.state_json unless
+        the viewing seat owns that role:
+          - ``seer_checks`` is kept only for the seer.
+          - ``witch_antidote_used`` / ``witch_poison_used`` only for the witch.
+          - ``night_actions`` only for wolves.
+      * ``private_history`` and ``night_result`` are always dropped — they
+        contain raw engine state mirroring private events.
+    """
+    if seat is None:
+        return detail
+
+    players = detail.get("players") or []
+    # Locate viewing player to determine faction + role
+    my_player: dict[str, Any] | None = None
+    for p in players:
+        try:
+            if int(p.get("seat_index", -1)) == seat:
+                my_player = p
+                break
+        except (TypeError, ValueError):
+            continue
+    my_role = (my_player or {}).get("role")
+    my_faction = (my_player or {}).get("faction")
+    wolf_seats: set[int] = set()
+    if my_faction == "wolf":
+        for p in players:
+            try:
+                if p.get("faction") == "wolf":
+                    wolf_seats.add(int(p["seat_index"]))
+            except (TypeError, ValueError):
+                continue
+
+    def _visible_role(seat_index: int, alive: bool) -> bool:
+        # Self + dead + wolf-mates (when viewer is wolf) → role visible
+        if seat_index == seat:
+            return True
+        if not alive:
+            return True
+        if seat_index in wolf_seats:
+            return True
+        return False
+
+    # --- Mask top-level `players` list ---
+    masked_players: list[dict[str, Any]] = []
+    for p in players:
+        mp = dict(p)
+        try:
+            si = int(mp.get("seat_index", -1))
+        except (TypeError, ValueError):
+            si = -1
+        alive = bool(mp.get("survived", 1))
+        if not _visible_role(si, alive):
+            mp["role"] = "unknown"
+            mp["faction"] = "unknown"
+        masked_players.append(mp)
+    detail["players"] = masked_players
+
+    # --- Mask snapshot.state_json ---
+    snapshot = detail.get("snapshot")
+    if snapshot and isinstance(snapshot, dict):
+        state = snapshot.get("state_json")
+        if isinstance(state, dict):
+            new_state = dict(state)
+            # Mask `players` dict inside state
+            sp = new_state.get("players")
+            if isinstance(sp, dict):
+                masked_sp: dict[Any, dict[str, Any]] = {}
+                for pid, pl in sp.items():
+                    try:
+                        ipid = int(pid)
+                    except (TypeError, ValueError):
+                        ipid = -1
+                    mpl = dict(pl)
+                    alive = bool(mpl.get("alive", True))
+                    if not _visible_role(ipid, alive):
+                        mpl["role"] = "unknown"
+                        mpl["faction"] = "unknown"
+                    masked_sp[pid] = mpl
+                new_state["players"] = masked_sp
+
+            # Always strip raw private/internal fields
+            for k in _PRIVATE_STATE_FIELDS:
+                new_state.pop(k, None)
+
+            # Role-gated fields
+            if my_role != "seer":
+                new_state["seer_checks"] = []
+            if my_role != "witch":
+                new_state.pop("witch_antidote_used", None)
+                new_state.pop("witch_poison_used", None)
+
+            snapshot["state_json"] = new_state
+            detail["snapshot"] = snapshot
+
+    return detail
