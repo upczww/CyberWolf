@@ -10,7 +10,7 @@ const VITE_URL = process.argv[2] || 'http://localhost:5173/'
 const OUT_DIR = path.resolve(__dirname, 'screenshots')
 mkdirSync(OUT_DIR, { recursive: true })
 
-const VIEWPORT = { width: 1440, height: 900 }
+const VIEWPORT = { width: 1920, height: 1080 }
 
 async function seedDemo(page, phase = 'day_speech') {
   await page.evaluate((nextPhase) => {
