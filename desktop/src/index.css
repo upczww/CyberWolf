@@ -755,22 +755,39 @@ img {
   flex-direction: column;
   padding: 70px 38px 28px;
   border-radius: 8px;
-  border: 1px solid rgba(131, 184, 239, .42);
-  background:
-    linear-gradient(180deg, rgba(21, 42, 64, .62), rgba(10, 20, 34, .9)),
-    url("/assets/ui/backgrounds/bg_global_moonlit_village_night.png") center / cover no-repeat;
-  box-shadow: inset 0 1px 0 rgba(255,255,255,.08), 0 20px 50px rgba(0,0,0,.28);
+  border: 1px solid rgba(131, 184, 239, .55);
+  background: linear-gradient(180deg, rgba(56, 110, 168, .26) 0%, rgba(20, 48, 90, .42) 60%, rgba(12, 28, 56, .58) 100%);
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.12),
+    inset 0 0 32px rgba(86, 142, 200, .14),
+    0 20px 50px rgba(0,0,0,.42);
 }
 
 .mode-card.mode-red {
-  border-color: rgba(235, 96, 83, .48);
-  background:
-    linear-gradient(180deg, rgba(69, 25, 30, .58), rgba(16, 18, 30, .92)),
-    url("/assets/ui/backgrounds/bg_phase_wolf_action.png") center / cover no-repeat;
+  border-color: rgba(235, 96, 83, .62);
+  background: linear-gradient(180deg, rgba(168, 50, 50, .32) 0%, rgba(82, 18, 24, .48) 60%, rgba(40, 10, 16, .6) 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.12),
+    inset 0 0 32px rgba(220, 80, 64, .2),
+    0 20px 50px rgba(0,0,0,.42);
 }
 
 .mode-card.active {
-  box-shadow: inset 0 0 0 1px rgba(255,255,255,.14), 0 0 38px rgba(94, 156, 226, .2);
+  box-shadow:
+    inset 0 0 0 1px rgba(255,255,255,.18),
+    inset 0 0 32px rgba(86, 142, 200, .18),
+    0 0 38px rgba(94, 156, 226, .26),
+    0 20px 50px rgba(0,0,0,.42);
+}
+
+.mode-card.mode-red.active {
+  box-shadow:
+    inset 0 0 0 1px rgba(255,255,255,.18),
+    inset 0 0 32px rgba(220, 80, 64, .28),
+    0 0 38px rgba(220, 80, 64, .32),
+    0 20px 50px rgba(0,0,0,.42);
 }
 
 .mode-icon {
@@ -817,17 +834,22 @@ img {
 .mode-hero::before {
   content: "";
   position: absolute;
-  inset: 0;
+  left: 50%;
+  bottom: 0;
+  width: 88%;
+  height: 96%;
+  transform: translateX(-50%);
   background:
-    radial-gradient(ellipse 80% 70% at 50% 100%, rgba(110, 150, 210, .35), transparent 72%),
-    radial-gradient(ellipse 70% 50% at 50% 100%, rgba(5, 12, 24, .82), transparent 80%);
+    radial-gradient(ellipse 60% 65% at 50% 70%, rgba(96, 152, 220, .55) 0%, rgba(96, 152, 220, .22) 35%, transparent 75%),
+    radial-gradient(ellipse 40% 30% at 50% 100%, rgba(110, 160, 230, .35), transparent 75%);
+  filter: blur(4px);
   pointer-events: none;
 }
 
 .mode-card.mode-red .mode-hero::before {
   background:
-    radial-gradient(ellipse 80% 70% at 50% 100%, rgba(220, 90, 70, .42), transparent 72%),
-    radial-gradient(ellipse 70% 50% at 50% 100%, rgba(20, 6, 8, .82), transparent 80%);
+    radial-gradient(ellipse 60% 65% at 50% 65%, rgba(232, 96, 76, .72) 0%, rgba(220, 70, 56, .36) 32%, transparent 72%),
+    radial-gradient(ellipse 40% 30% at 50% 100%, rgba(240, 110, 90, .42), transparent 75%);
 }
 
 .mode-hero::after {
@@ -836,8 +858,8 @@ img {
   left: 0;
   right: 0;
   bottom: 0;
-  height: 32px;
-  background: radial-gradient(ellipse 60% 100% at 50% 50%, rgba(0,0,0,.85), transparent 70%);
+  height: 36px;
+  background: radial-gradient(ellipse 55% 100% at 50% 50%, rgba(0,0,0,.78), transparent 72%);
   pointer-events: none;
   z-index: 2;
 }
