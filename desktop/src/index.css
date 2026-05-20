@@ -97,7 +97,7 @@ img {
   inset: 0;
   background-image:
     linear-gradient(180deg, rgba(4, 11, 20, .08), rgba(4, 11, 20, .72)),
-    url("/assets/ui/backgrounds/bg_landing_moonlit_village.png");
+    url("/assets/ui/backgrounds/bg_landing.png");
 }
 
 .game-topbar,
