@@ -503,35 +503,61 @@ export default function App() {
         />
       )}
       {legendOpen && <StatusLegend onClose={() => setLegendOpen(false)} />}
-      {infoPanel && <InfoDialog title={infoPanel.title} body={infoPanel.body} onClose={() => setInfoPanel(null)} />}
-      {skillOpen && (
-        <SkillModal
-          phase={visiblePhase}
-          players={visiblePlayers}
-          onClose={() => setSkillOpen(false)}
-          onProtect={() => {
-            setSkillOpen(false)
-            setPhase('day_speech')
-          }}
-        />
-      )}
-      {awaitingHuman && gameId && viewMode === 'self' && humanSeat != null && awaitingHuman.actor_id === humanSeat && (
-        <HumanActionPanel request={awaitingHuman} gameId={gameId} players={visiblePlayers} />
-      )}
 
+      {/* In-game modal stack — strict priority, only one is mounted at a time
+          so dialogs never visually overlap.
+          1) IdentityReveal — must finish before anything else (开局必读)
+          2) HumanActionPanel — your turn
+          3) SkillModal — demo-only middle panel
+          4) InfoDialog — passive notifications */}
       {(() => {
-        if (!gameId || gameId === 'demo') return null
-        if (viewMode !== 'self' || humanSeat == null) return null
-        if (identityRevealed) return null
-        const me = players.find((p) => p.seat_index === humanSeat)
-        if (!me || !me.role || me.role === 'unknown') return null
-        return (
-          <IdentityReveal
-            gameId={gameId}
-            player={me}
-            onClose={() => setIdentityRevealed(true)}
-          />
-        )
+        const needsIdentity =
+          gameId && gameId !== 'demo'
+          && viewMode === 'self' && humanSeat != null
+          && !identityRevealed
+          && (() => {
+            const me = players.find((p) => p.seat_index === humanSeat)
+            return !!me && !!me.role && me.role !== 'unknown'
+          })()
+
+        if (needsIdentity) {
+          const me = players.find((p) => p.seat_index === humanSeat)!
+          return (
+            <IdentityReveal
+              gameId={gameId!}
+              player={me}
+              onClose={() => setIdentityRevealed(true)}
+            />
+          )
+        }
+
+        const needsHumanAction =
+          !!awaitingHuman && !!gameId
+          && viewMode === 'self' && humanSeat != null
+          && awaitingHuman.actor_id === humanSeat
+        if (needsHumanAction) {
+          return <HumanActionPanel request={awaitingHuman!} gameId={gameId!} players={visiblePlayers} />
+        }
+
+        if (skillOpen) {
+          return (
+            <SkillModal
+              phase={visiblePhase}
+              players={visiblePlayers}
+              onClose={() => setSkillOpen(false)}
+              onProtect={() => {
+                setSkillOpen(false)
+                setPhase('day_speech')
+              }}
+            />
+          )
+        }
+
+        if (infoPanel) {
+          return <InfoDialog title={infoPanel.title} body={infoPanel.body} onClose={() => setInfoPanel(null)} />
+        }
+
+        return null
       })()}
 
       {/* Top-level personal-mode "AI 正在行动" hint — hidden when the
