@@ -60,12 +60,12 @@ export function useGameWS(gameId: string | null, seat: number | null = null) {
       const payload = JSON.parse(msg.data)
 
       if (payload.type === 'history') {
-        const ev = payload.event as GameEvent
+        const ev = normalizeEvent(payload.event)
         addEvent(ev)
       } else if (payload.type === 'history_complete') {
         // History loading done
       } else if (payload.type === 'live') {
-        const ev = payload.event as GameEvent
+        const ev = normalizeEvent(payload.event)
         addEvent(ev)
 
         if (ev.event_type === 'phase_started' && ev.data?.phase) {
@@ -98,4 +98,12 @@ export function useGameWS(gameId: string | null, seat: number | null = null) {
       wsRef.current = null
     }
   }, [gameId, seat])
+}
+
+function normalizeEvent(raw: any): GameEvent {
+  return {
+    ...raw,
+    data: raw?.data_json || raw?.data || {},
+    event_type: raw?.event_type,
+  } as GameEvent
 }

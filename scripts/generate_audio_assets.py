@@ -1,9 +1,10 @@
-"""Generate procedural gothic storybook audio assets for LycanTUI.
+"""Generate procedural friendly-gothic storybook audio assets for LycanTUI.
 
 The source prompts live in desktop/prompts_copy_ready_gothic_storybook_audio.md.
 This script creates deterministic 44.1 kHz stereo WAV assets for the SFX and BGM
 listed there. It intentionally avoids external encoders so it can run in a plain
-Python environment without ffmpeg.
+Python environment without ffmpeg. The sound palette should feel mysterious and
+storybook-like, not horror-heavy or hostile to players.
 """
 from __future__ import annotations
 
@@ -166,13 +167,11 @@ def pluck(freq: float, duration: float, amp=0.28, pan=0.0) -> np.ndarray:
 
 
 def sfx_phase_night() -> np.ndarray:
-    out = wind(3.0, 0.18, 10)
-    for st in [0.18, 0.42, 0.71]:
-        chirp = highpass(noise(0.08, 0.045, int(st*1000)), 4200) * adsr(0.08, 0.002, 0.01, 0.4, 0.02)
-        add(out, stereo(chirp, -0.6), st)
-    add(out, bell(330, 1.8, 0.34, -0.25), 0.5)
-    add(out, howl(1.35, 0.36, 330, 0.45), 1.15)
-    add(out, chord([36.7, 55.0, 73.4], 1.4, 0.34, 0.0), 1.65)
+    out = wind(3.0, 0.075, 10)
+    for st, f, pan in [(0.28, 523, -0.35), (0.72, 659, 0.25), (1.18, 784, -0.1), (1.68, 659, 0.32)]:
+        add(out, bell(f, 1.1, 0.1, pan), st)
+    add(out, chord([110.0, 146.8, 220.0], 1.8, 0.22, 0.0, tremolo=0.9), 0.72)
+    add(out, shimmer(1.15, 740, 0.11), 1.65)
     return out
 
 
@@ -188,11 +187,12 @@ def sfx_phase_dawn() -> np.ndarray:
 
 def sfx_wolf_kill() -> np.ndarray:
     out = np.zeros((int(SR*1.5), 2))
-    for i, st in enumerate([0.18, 0.31, 0.44]):
-        slash = highpass(noise(0.24, 0.65, 20+i), 900) * np.linspace(1, 0, int(SR*0.24))
+    for i, st in enumerate([0.18, 0.32, 0.47]):
+        slash = highpass(noise(0.22, 0.24, 20+i), 1200) * np.linspace(1, 0, int(SR*0.22))
         add(out, stereo(slash, -0.6 + i*0.55), st)
-    add(out, howl(0.8, 0.34, 115, -0.2), 0.1)
-    add(out, drum(55, 0.65, 0.82, 0.0), 0.62)
+    add(out, pluck(196, 0.72, 0.2, -0.15), 0.12)
+    add(out, drum(82, 0.48, 0.42, 0.0), 0.62)
+    add(out, bell(294, 0.7, 0.1, 0.2), 0.82)
     return out
 
 
@@ -219,13 +219,13 @@ def sfx_antidote() -> np.ndarray:
 
 def sfx_poison() -> np.ndarray:
     out = np.zeros((int(SR*2.0), 2))
-    add(out, drum(95, 0.22, 0.34, 0.1), 0.03)
-    bubble = lowpass(noise(0.9, 0.38, 35), 420) * (0.55 + 0.45*np.sin(2*np.pi*13*t(0.9))**2)
+    add(out, drum(128, 0.18, 0.18, 0.1), 0.03)
+    bubble = lowpass(noise(0.9, 0.18, 35), 520) * (0.55 + 0.45*np.sin(2*np.pi*13*t(0.9))**2)
     add(out, stereo(bubble, -0.15), 0.22)
-    add(out, chord([196, 233.1, 277.2], 1.2, 0.25, 0.15, tremolo=7), 0.45)
-    down = sine(260, 0.7, 0.25) * np.linspace(1, 0.2, int(SR*0.7))
+    add(out, chord([196, 247, 330], 1.2, 0.18, 0.15, tremolo=3), 0.45)
+    down = sine(260, 0.7, 0.12) * np.linspace(1, 0.2, int(SR*0.7))
     add(out, stereo(down, 0.0), 1.05)
-    add(out, drum(43, 0.55, 0.76, 0.0), 1.45)
+    add(out, bell(392, 0.7, 0.12, 0.0), 1.35)
     return out
 
 
@@ -242,11 +242,11 @@ def sfx_hunter_shoot() -> np.ndarray:
 
 def sfx_self_destruct() -> np.ndarray:
     out = np.zeros((int(SR*2.0), 2))
-    add(out, howl(0.9, 0.45, 160, -0.1), 0.0)
-    cracks = highpass(noise(0.5, 0.42, 50), 1200) * adsr(0.5, 0.002, 0.04, 0.4, 0.18)
+    add(out, chord([73.4, 110, 146.8], 0.9, 0.32, -0.1, tremolo=3), 0.0)
+    cracks = highpass(noise(0.42, 0.24, 50), 1400) * adsr(0.42, 0.002, 0.04, 0.4, 0.18)
     add(out, stereo(cracks, 0.3), 0.55)
-    add(out, drum(36, 1.0, 0.95, 0), 0.85)
-    add(out, shimmer(0.8, 640, 0.24), 0.9)
+    add(out, drum(58, 0.72, 0.56, 0), 0.85)
+    add(out, shimmer(0.8, 640, 0.22), 0.9)
     return out
 
 
@@ -262,13 +262,13 @@ def sfx_vote_result() -> np.ndarray:
 
 def sfx_exile() -> np.ndarray:
     out = np.zeros((int(SR*2.0), 2))
-    add(out, chord([55, 82.4, 110], 0.8, 0.42, 0.0), 0.0)
-    chains = highpass(noise(0.6, 0.28, 70), 1400) * adsr(0.6, 0.005, 0.05, 0.45, 0.15)
+    add(out, chord([82.4, 123.5, 164.8], 0.8, 0.28, 0.0), 0.0)
+    chains = highpass(noise(0.5, 0.14, 70), 1600) * adsr(0.5, 0.005, 0.05, 0.45, 0.15)
     add(out, stereo(chains, -0.4), 0.28)
-    creak = sine(110, 0.8, 0.2) * (1 + 0.35*np.sin(2*np.pi*7*t(0.8))) * adsr(0.8, 0.05, 0.2, 0.6, 0.2)
+    creak = sine(132, 0.8, 0.12) * (1 + 0.25*np.sin(2*np.pi*7*t(0.8))) * adsr(0.8, 0.05, 0.2, 0.6, 0.2)
     add(out, stereo(creak, 0.2), 0.65)
-    add(out, drum(48, 0.8, 0.88, 0), 1.18)
-    add(out, bell(147, 1.0, 0.22, 0), 1.4)
+    add(out, drum(76, 0.58, 0.46, 0), 1.18)
+    add(out, bell(294, 1.0, 0.15, 0), 1.4)
     return out
 
 
@@ -296,13 +296,12 @@ def sfx_victory_good() -> np.ndarray:
 
 def sfx_victory_wolf() -> np.ndarray:
     out = np.zeros((int(SR*4.0), 2))
-    add(out, chord([36.7, 55, 73.4], 1.3, 0.52, 0, tremolo=5), 0)
-    add(out, drum(34, 1.2, 0.9, 0), 0.25)
-    add(out, howl(1.9, 0.45, 260, -0.4), 0.7)
-    add(out, howl(2.1, 0.38, 330, 0.35), 1.05)
-    thunder = lowpass(noise(1.2, 0.6, 90), 180) * adsr(1.2, 0.005, 0.4, 0.45, 0.5)
-    add(out, stereo(thunder, 0), 1.55)
-    add(out, wind(1.6, 0.18, 91), 2.1)
+    add(out, chord([73.4, 110, 146.8], 1.3, 0.34, 0, tremolo=2.5), 0)
+    add(out, drum(70, 0.7, 0.42, 0), 0.25)
+    for st, f in [(0.82, 294), (1.25, 370), (1.72, 440)]:
+        add(out, bell(f, 1.0, 0.16, -0.25 + st * 0.2), st)
+    add(out, shimmer(1.5, 587, 0.15), 2.0)
+    add(out, wind(1.25, 0.06, 91), 2.35)
     return out
 
 
@@ -342,8 +341,9 @@ def bgm_loop(duration: float, bpm: int, key: str, mode: str) -> np.ndarray:
                 add(out, chord([root*3, minor*3, fifth*3], 0.45, 0.17, 0.1), st)
             add(out, drum(135, 0.12, 0.11, -0.2), st + beat/2)
     if mode == "night":
-        add(out, howl(2.2, 0.16, 300, 0.45), duration * 0.48)
-        out += wind(duration, 0.08, 120)
+        for st in np.arange(3.0, duration, 6.0):
+            add(out, bell(740, 1.2, 0.07, 0.28), float(st))
+        out += wind(duration, 0.035, 120)
     if mode == "day":
         out += stereo(lowpass(noise(duration, 0.035, 130), 1300), 0.1)
     if mode == "vote":
@@ -369,14 +369,14 @@ def bgm_victory_good() -> np.ndarray:
 
 def bgm_victory_wolf() -> np.ndarray:
     out = np.zeros((int(SR*15), 2))
-    add(out, chord([36.7, 55, 73.4], 4.5, 0.44, 0, tremolo=5), 0)
-    add(out, drum(34, 2.0, 0.75, 0), 0.3)
-    add(out, howl(3.2, 0.38, 220, -0.35), 0.5)
-    for st in [5.0, 6.5, 8.0]:
-        add(out, chord([55, 82.4, 110], 1.2, 0.32, 0.05, tremolo=6), st)
-        add(out, drum(45, 0.65, 0.55, 0), st)
-    add(out, wind(5.0, 0.16, 150), 9.7)
-    add(out, howl(3.0, 0.28, 300, 0.4), 11.4)
+    add(out, chord([73.4, 110, 146.8], 4.5, 0.32, 0, tremolo=2.5), 0)
+    add(out, drum(72, 1.2, 0.44, 0), 0.3)
+    melody = [294, 330, 370, 330, 294, 247, 220, 294]
+    for i, f in enumerate(melody):
+        add(out, pluck(f, 0.95, 0.16, -0.2 + (i % 3) * 0.2), 4.3 + i * 0.62)
+    for st in [9.8, 11.0, 12.2]:
+        add(out, bell(587, 1.1, 0.13, 0.25), st)
+    add(out, wind(4.4, 0.055, 150), 10.2)
     return out
 
 

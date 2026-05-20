@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { apiPost } from '../hooks/useApi'
-import { useGameStore, type AwaitingHumanRequest, type Player } from '../stores/game'
+import { useGameStore, type AwaitingHumanRequest, type GameEvent, type Player } from '../stores/game'
 
 interface Props {
   request: AwaitingHumanRequest
@@ -20,8 +20,12 @@ const TOOL_TITLES: Record<string, string> = {
   sheriff_candidacy: '警长竞选',
 }
 
+const UNKNOWN_AVATAR = '/assets/ui/icons/status/icon_status_identity_hidden.png'
+const ROLE_CARD_BACK = '/assets/ui/role_intro/role_intro_card_base_neutral.png'
+const SHERIFF_BADGE = '/assets/ui/icons/status/icon_status_sheriff.png'
+
 export default function HumanActionPanel({ request, gameId, players }: Props) {
-  const { clearAwaitingHuman } = useGameStore()
+  const { clearAwaitingHuman, events } = useGameStore()
   const [remaining, setRemaining] = useState(Math.max(5, Math.floor(request.timeout_seconds || 60)))
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -57,7 +61,13 @@ export default function HumanActionPanel({ request, gameId, players }: Props) {
         { actor_id: request.actor_id, tool_name: request.tool_name, args },
       )
       if (!res.accepted) {
-        setError(res.reason || '后端未接受')
+        const reason = res.reason || 'not_pending'
+        if (reason === 'no_human_in_game' || reason === 'not_pending') {
+          setError('当前行动已过期，已交由 AI 接管')
+          window.setTimeout(() => clearAwaitingHuman(), 1200)
+          return
+        }
+        setError(reason || '后端未接受')
       } else {
         clearAwaitingHuman()
       }
@@ -107,6 +117,8 @@ export default function HumanActionPanel({ request, gameId, players }: Props) {
             onAbstain={() => submit({ target_id: null })}
             submitting={submitting}
             allowAbstain
+            events={events}
+            toolName={request.tool_name}
           />
         )}
 
@@ -115,6 +127,8 @@ export default function HumanActionPanel({ request, gameId, players }: Props) {
             candidates={alivePlayers.filter((p) => p.faction !== 'wolf')}
             onPick={(target) => submit({ target_id: target })}
             submitting={submitting}
+            events={events}
+            toolName={request.tool_name}
           />
         )}
 
@@ -123,6 +137,8 @@ export default function HumanActionPanel({ request, gameId, players }: Props) {
             candidates={candidates}
             onPick={(target) => submit({ target_id: target })}
             submitting={submitting}
+            events={events}
+            toolName={request.tool_name}
           />
         )}
 
@@ -198,6 +214,8 @@ function TargetGrid({
   onAbstain,
   submitting,
   allowAbstain = false,
+  events = [],
+  toolName = '',
   abstainLabel = '弃权',
 }: {
   candidates: Player[]
@@ -205,6 +223,8 @@ function TargetGrid({
   onAbstain?: () => void
   submitting: boolean
   allowAbstain?: boolean
+  events?: GameEvent[]
+  toolName?: string
   abstainLabel?: string
 }) {
   return (
@@ -216,16 +236,56 @@ function TargetGrid({
           disabled={submitting}
           className="target-button"
         >
-          <span>{p.seat_index} 号</span>
+          <span className="target-portrait">
+            <img className="target-avatar" src={UNKNOWN_AVATAR} alt="" />
+            <img className="target-card-back" src={ROLE_CARD_BACK} alt="" />
+            {p.is_sheriff ? <img className="target-sheriff" src={SHERIFF_BADGE} alt="" /> : null}
+          </span>
+          <small className="target-reason">{candidateReason(p, events, toolName)}</small>
+          <b>{p.seat_index} 号</b>
+          <small>{p.survived ? '可选择' : '已出局'}</small>
         </button>
       ))}
       {allowAbstain && onAbstain && (
         <button className="target-button abstain" onClick={onAbstain} disabled={submitting}>
-          {abstainLabel}
+          <span className="target-portrait">
+            <img className="target-avatar" src="/assets/ui/vote/abstain_mark.png" alt="" />
+          </span>
+          <b>{abstainLabel}</b>
+          <small>保留行动</small>
         </button>
       )}
     </div>
   )
+}
+
+function candidateReason(player: Player, events: GameEvent[], toolName: string) {
+  if (!player.survived) return '已出局'
+  if (player.is_sheriff) return '持有警徽'
+
+  let votes = 0
+  for (const ev of events) {
+    if (ev.event_type !== 'vote_cast') continue
+    if (Number(ev.data?.target_id) === player.seat_index) votes += 1
+  }
+  if (votes > 0) return `${votes} 票指向`
+
+  for (let i = events.length - 1; i >= 0; i -= 1) {
+    const ev = events[i]
+    const target = Number(ev.data?.target_id ?? ev.data?.chosen)
+    if (target !== player.seat_index) continue
+    if (ev.event_type === 'wolf_target_selected') return '昨夜被刀'
+    if (ev.event_type === 'seer_checked') return '曾被查验'
+    if (ev.event_type === 'witch_used_antidote') return '曾被救下'
+    if (ev.event_type === 'witch_used_poison') return '毒药目标'
+    if (ev.event_type === 'vote_resolved') return '上轮焦点'
+  }
+
+  if (toolName === 'seer_check') return '可查验'
+  if (toolName === 'wolf_kill_proposal') return '可夜刀'
+  if (toolName === 'hunter_shoot') return '可带走'
+  if (toolName === 'witch_poison') return '可下毒'
+  return '可投票'
 }
 
 const ROLE_LABELS: Record<string, string> = {

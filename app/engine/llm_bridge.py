@@ -174,6 +174,7 @@ async def _await_human_action(
     awaiter = services.human_awaiter
     if awaiter is None:
         return local_args
+    timeout_seconds = _human_timeout_seconds(tool_name, phase)
 
     # Emit awaiting_human (private to the actor) so the frontend can render the action panel
     payload = {
@@ -208,6 +209,23 @@ async def _await_human_action(
             data={"actor_id": actor_id, "tool_name": tool_name},
         ))
     return args
+
+
+def _human_timeout_seconds(tool_name: str, phase: Phase) -> float:
+    """Longer thinking windows for the human-controlled local seat."""
+    if tool_name in {"public_speech", "death_speech"}:
+        return 180.0
+    if tool_name == "vote_target":
+        return 120.0
+    if tool_name == "wolf_kill_proposal":
+        return 120.0
+    if tool_name in {"seer_check", "witch_antidote", "witch_poison", "hunter_shoot"}:
+        return 105.0
+    if tool_name == "sheriff_candidacy":
+        return 75.0
+    if phase in {Phase.DAY_SPEECH, Phase.SHERIFF_ELECTION}:
+        return 150.0
+    return 90.0
 
 
 async def llm_death_speech(

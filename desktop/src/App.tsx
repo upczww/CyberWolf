@@ -1,60 +1,251 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { useGameStore, type GameEvent, type Player } from './stores/game'
-import { useGameWS } from './hooks/useGameWS'
-import { apiGet, apiPost } from './hooks/useApi'
 import GameAudio from './components/GameAudio'
 import GameEffects from './components/GameEffects'
 import HumanActionPanel from './components/HumanActionPanel'
-import MusicStudio from './components/MusicStudio'
-import Toolbar from './components/Toolbar'
-import GameList from './components/GameList'
-
-const PHASE_META: Record<string, { label: string; asset: string; channel: string }> = {
-  setup_game: { label: '准备局', asset: 'phase_day_discussion.png', channel: '裁判准备' },
-  night_start: { label: '入夜', asset: 'phase_night.png', channel: '夜晚频道' },
-  night_wolf: { label: '狼人行动', asset: 'phase_night.png', channel: '狼队私聊' },
-  night_seer: { label: '预言家查验', asset: 'phase_night.png', channel: '私人查验' },
-  night_witch: { label: '女巫行动', asset: 'phase_night.png', channel: '私人行动' },
-  night_resolve: { label: '夜晚结算', asset: 'phase_dawn.png', channel: '裁判结算' },
-  day_announce: { label: '天亮公布', asset: 'phase_dawn.png', channel: '公开频道' },
-  sheriff_election: { label: '警长竞选', asset: 'phase_day_discussion.png', channel: '公开竞选' },
-  day_speech: { label: '白天发言', asset: 'phase_day_discussion.png', channel: '公开讨论' },
-  day_vote: { label: '投票放逐', asset: 'phase_vote.png', channel: '投票频道' },
-  day_resolve: { label: '放逐结算', asset: 'phase_vote.png', channel: '裁判结算' },
-  pending_skills: { label: '技能结算', asset: 'phase_last_words.png', channel: '技能频道' },
-  check_win: { label: '胜负检查', asset: 'phase_endgame.png', channel: '裁判检查' },
-  game_over: { label: '游戏结束', asset: 'phase_endgame.png', channel: '结算频道' },
-}
-
-const ROLE_META: Record<string, { label: string; avatar: string; tone: 'wolf' | 'god' | 'good' }> = {
-  wolf: { label: '狼人', avatar: '/assets/avatars/wolf.png', tone: 'wolf' },
-  seer: { label: '预言家', avatar: '/assets/avatars/seer.png', tone: 'god' },
-  witch: { label: '女巫', avatar: '/assets/avatars/witch.png', tone: 'god' },
-  hunter: { label: '猎人', avatar: '/assets/avatars/hunter.png', tone: 'god' },
-  idiot: { label: '白痴', avatar: '/assets/avatars/idiot.png', tone: 'god' },
-  guard: { label: '守卫', avatar: '/assets/avatars/variants/villager_03.png', tone: 'god' },
-  villager: { label: '村民', avatar: '/assets/avatars/villager.png', tone: 'good' },
-}
-
-const VILLAGER_VARIANTS = [
-  '/assets/avatars/villager.png',
-  '/assets/avatars/variants/villager_01.png',
-  '/assets/avatars/variants/villager_02.png',
-  '/assets/avatars/variants/villager_03.png',
-]
-
-const WOLF_VARIANTS = [
-  '/assets/avatars/wolf.png',
-  '/assets/avatars/variants/wolf_01.png',
-  '/assets/avatars/variants/wolf_02.png',
-]
-
-const UNKNOWN_AVATAR = '/assets/ui/cards/unknown_avatar.png'
-const ROLE_CARD_BACK = '/assets/ui/cards/role_card_back.png'
+import { apiGet, apiPost } from './hooks/useApi'
+import { useGameWS } from './hooks/useGameWS'
+import { useGameStore, type GameEvent, type Player } from './stores/game'
 
 type ViewMode = 'god' | 'observer' | 'self'
+type PhaseTone = 'day' | 'night' | 'vote' | 'skill' | 'result'
+type RoleTone = 'good' | 'god' | 'wolf' | 'neutral' | 'unknown'
+type DrawerTab = 'chat' | 'vote'
 
-type PlayerStatus = 'speaking' | 'voted' | 'targeted' | 'saved' | 'waiting' | null
+interface RoleMeta {
+  label: string
+  camp: string
+  tone: RoleTone
+  portrait: string
+  icon: string
+}
+
+interface PhaseMeta {
+  label: string
+  shortLabel: string
+  tone: PhaseTone
+  icon: string
+  background: string
+  actionLabel: string
+}
+
+interface VisiblePlayer {
+  player: Player
+  meta: RoleMeta
+  hidden: boolean
+  portrait: string
+}
+
+const A = '/assets/ui'
+const UNKNOWN_CLOAK = `${A}/portraits/unknown/portrait_unknown_cloak_01.png`
+const UNKNOWN_AI = `${A}/portraits/unknown/portrait_unknown_ai_01.png`
+
+const ROLE_META: Record<string, RoleMeta> = {
+  villager: {
+    label: '平民',
+    camp: '好人阵营',
+    tone: 'good',
+    portrait: `${A}/portraits/roles/portrait_villager_male_01.png`,
+    icon: `${A}/icons/roles/icon_role_villager.png`,
+  },
+  wolf: {
+    label: '狼人',
+    camp: '狼人阵营',
+    tone: 'wolf',
+    portrait: `${A}/portraits/roles/portrait_werewolf_01.png`,
+    icon: `${A}/icons/roles/icon_role_werewolf.png`,
+  },
+  werewolf: {
+    label: '狼人',
+    camp: '狼人阵营',
+    tone: 'wolf',
+    portrait: `${A}/portraits/roles/portrait_werewolf_01.png`,
+    icon: `${A}/icons/roles/icon_role_werewolf.png`,
+  },
+  seer: {
+    label: '预言家',
+    camp: '神职',
+    tone: 'god',
+    portrait: `${A}/portraits/roles/portrait_seer_01.png`,
+    icon: `${A}/icons/roles/icon_role_seer.png`,
+  },
+  witch: {
+    label: '女巫',
+    camp: '神职',
+    tone: 'god',
+    portrait: `${A}/portraits/roles/portrait_witch_01.png`,
+    icon: `${A}/icons/roles/icon_role_witch.png`,
+  },
+  hunter: {
+    label: '猎人',
+    camp: '神职',
+    tone: 'god',
+    portrait: `${A}/portraits/roles/portrait_hunter_01.png`,
+    icon: `${A}/icons/roles/icon_role_hunter.png`,
+  },
+  idiot: {
+    label: '白痴',
+    camp: '神职',
+    tone: 'god',
+    portrait: `${A}/portraits/roles/portrait_idiot_01.png`,
+    icon: `${A}/icons/roles/icon_role_idiot.png`,
+  },
+  guard: {
+    label: '守卫',
+    camp: '神职',
+    tone: 'god',
+    portrait: `${A}/portraits/roles/portrait_guard_01.png`,
+    icon: `${A}/icons/roles/icon_role_guard.png`,
+  },
+  unknown: {
+    label: '未知',
+    camp: '身份未公开',
+    tone: 'unknown',
+    portrait: UNKNOWN_CLOAK,
+    icon: `${A}/icons/status/icon_status_identity_hidden.png`,
+  },
+}
+
+const EXTRA_PORTRAITS = [
+  `${A}/portraits/extra/portrait_elder_male_01.png`,
+  `${A}/portraits/extra/portrait_elder_female_01.png`,
+  `${A}/portraits/extra/portrait_boy_01.png`,
+  `${A}/portraits/extra/portrait_girl_01.png`,
+  `${A}/portraits/extra/portrait_villager_lantern_01.png`,
+  `${A}/portraits/roles/portrait_villager_female_01.png`,
+]
+
+const PHASE_META: Record<string, PhaseMeta> = {
+  day_speech: {
+    label: '第 1 天 · 白天',
+    shortLabel: '发言阶段',
+    tone: 'day',
+    icon: `${A}/icons/actions/icon_action_chat.png`,
+    background: `${A}/backgrounds/bg_global_moonlit_village_day.png`,
+    actionLabel: '号玩家发言中',
+  },
+  day_vote: {
+    label: '第 1 天 · 白天',
+    shortLabel: '投票阶段',
+    tone: 'vote',
+    icon: `${A}/icons/actions/icon_action_vote.png`,
+    background: `${A}/backgrounds/bg_phase_vote.png`,
+    actionLabel: '等待投票',
+  },
+  sheriff_election: {
+    label: '第 1 天 · 白天 · 警长竞选',
+    shortLabel: '警长竞选',
+    tone: 'day',
+    icon: `${A}/icons/actions/icon_action_campaign.png`,
+    background: `${A}/backgrounds/bg_phase_sheriff_election.png`,
+    actionLabel: '警长竞选阶段',
+  },
+  night_wolf: {
+    label: '第 1 夜 · 夜晚',
+    shortLabel: '狼人行动',
+    tone: 'night',
+    icon: `${A}/icons/skills/icon_skill_wolf_kill.png`,
+    background: `${A}/backgrounds/bg_phase_wolf_action.png`,
+    actionLabel: '狼队夜刀目标',
+  },
+  night_witch: {
+    label: '第 1 夜 · 夜晚',
+    shortLabel: '女巫行动',
+    tone: 'skill',
+    icon: `${A}/icons/skills/icon_skill_witch_heal.png`,
+    background: `${A}/backgrounds/bg_phase_witch_action.png`,
+    actionLabel: '女巫请睁眼',
+  },
+  night_seer: {
+    label: '第 1 夜 · 夜晚',
+    shortLabel: '预言家行动',
+    tone: 'skill',
+    icon: `${A}/icons/skills/icon_skill_seer_check.png`,
+    background: `${A}/backgrounds/bg_phase_seer_action.png`,
+    actionLabel: '预言家查验',
+  },
+  night_guard: {
+    label: '第 1 夜 · 夜晚',
+    shortLabel: '守卫行动',
+    tone: 'skill',
+    icon: `${A}/icons/skills/icon_skill_guard_protect.png`,
+    background: `${A}/backgrounds/bg_phase_night_overview.png`,
+    actionLabel: '守卫行动',
+  },
+  game_over: {
+    label: '游戏结束',
+    shortLabel: '结算',
+    tone: 'result',
+    icon: `${A}/icons/actions/icon_match_summary.png`,
+    background: `${A}/backgrounds/bg_global_result_hall.png`,
+    actionLabel: '查看结果',
+  },
+}
+
+const PHASE_STEPS = [
+  ['警长竞选', 'sheriff_election', `${A}/icons/actions/icon_action_campaign.png`],
+  ['发言阶段', 'day_speech', `${A}/icons/actions/icon_action_chat.png`],
+  ['放逐投票', 'day_vote', `${A}/icons/actions/icon_action_vote.png`],
+  ['夜晚阶段', 'night_witch', `${A}/icons/actions/icon_landing_ai_autoplay.png`],
+] as const
+
+const DEMO_PLAYERS: Player[] = [
+  player(1, 'villager', 'good'),
+  player(2, 'witch', 'good'),
+  player(3, 'hunter', 'good'),
+  player(4, 'villager', 'good'),
+  player(5, 'seer', 'good'),
+  player(6, 'villager', 'good'),
+  player(7, 'guard', 'good'),
+  player(8, 'werewolf', 'wolf'),
+  player(9, 'werewolf', 'wolf'),
+  player(10, 'villager', 'good'),
+  player(11, 'idiot', 'good'),
+  player(12, 'villager', 'good'),
+]
+
+const DEMO_EVENTS: GameEvent[] = [
+  event('phase_started', '游戏开始，12人标准场。', { phase: 'setup_game' }, 1),
+  event('phase_started', '昨晚是平安夜，无人出局。', { phase: 'day_speech' }, 2),
+  event('sheriff_campaign', '4号玩家报名竞选警长。', { player_id: 4 }, 3),
+  event('public_speech_made', '1号玩家认为8号发言逻辑有问题。', { player_id: 1, public_speech: '我觉得8号发言逻辑有问题。' }, 4),
+  event('public_speech_made', '7号玩家支持4号。', { player_id: 7, public_speech: '支持4号。' }, 5),
+  event('vote_cast', '8号投给4号。', { voter_id: 8, target_id: 4 }, 6),
+  event('vote_cast', '9号投给8号。', { voter_id: 9, target_id: 8 }, 7),
+]
+
+const STATUS_LEGEND = [
+  ['警长', `${A}/icons/status/icon_status_sheriff.png`],
+  ['被刀', `${A}/icons/skills/icon_skill_wolf_kill.png`],
+  ['被驱逐', `${A}/icons/status/icon_status_exiled.png`],
+  ['被毒死', `${A}/icons/skills/icon_skill_witch_poison.png`],
+  ['被救', `${A}/icons/status/icon_status_guarded.png`],
+  ['死亡', `${A}/icons/status/icon_status_dead.png`],
+  ['被猎人射中', `${A}/icons/skills/icon_hunter_target.png`],
+] as const
+
+function player(seat: number, role: string, faction: string): Player {
+  return {
+    player_id: seat,
+    seat_index: seat,
+    role,
+    faction,
+    is_sheriff: seat === 1 || seat === 7 ? 1 : 0,
+    survived: 1,
+  }
+}
+
+function event(eventType: string, content: string, data: Record<string, unknown>, seq: number): GameEvent {
+  return {
+    game_id: 'demo',
+    phase: 'day_speech',
+    scope: 'public',
+    event_type: eventType,
+    content,
+    data,
+    seq,
+    round: 1,
+  }
+}
 
 export default function App() {
   const {
@@ -63,7 +254,6 @@ export default function App() {
     events,
     phase,
     round,
-    status,
     winner,
     connected,
     viewMode,
@@ -82,21 +272,36 @@ export default function App() {
     setTtsEnabled,
     reset,
   } = useGameStore()
-  const [showMusicStudio, setShowMusicStudio] = useState(false)
-  const [showGameList, setShowGameList] = useState(false)
+
+  const [historyOpen, setHistoryOpen] = useState(false)
+  const [historyTab, setHistoryTab] = useState<DrawerTab>('chat')
+  const [inspectorOpen, setInspectorOpen] = useState(false)
+  const [skillOpen, setSkillOpen] = useState(false)
+  const [legendOpen, setLegendOpen] = useState(false)
+  const [landingMode, setLandingMode] = useState<ViewMode>('self')
+  const [loadingStart, setLoadingStart] = useState(false)
 
   useGameWS(gameId, viewMode === 'self' ? humanSeat : null)
 
   useEffect(() => {
-    if (!gameId) return
+    if (!gameId || gameId === 'demo') return
     loadGameDetail(gameId)
-  }, [gameId, humanSeat])
+  }, [gameId, humanSeat, viewMode])
 
   useEffect(() => {
     apiGet<{ enabled: boolean }>('/api/tts/status')
       .then((res) => setTtsEnabled(!!res.enabled))
       .catch(() => undefined)
   }, [setTtsEnabled])
+
+  const visiblePlayers = players.length ? players : DEMO_PLAYERS
+  const visibleEvents = events.length ? events : DEMO_EVENTS
+  const visiblePhase = phase || 'day_speech'
+  const meta = PHASE_META[visiblePhase] || PHASE_META.day_speech
+  const latestEvent = visibleEvents[visibleEvents.length - 1] || null
+  const voteCounts = useMemo(() => buildVoteCounts(visibleEvents), [visibleEvents])
+  const currentSpeaker = latestSpeaker(visibleEvents) || 3
+  const roomId = gameId && gameId !== 'demo' ? gameId.slice(0, 6) : '123456'
 
   const loadGameDetail = async (gid: string) => {
     try {
@@ -117,636 +322,792 @@ export default function App() {
         setWinner(state.winner || null)
       }
     } catch {
-      // server still warming up, director shell stays rendered
+      seedDemoGame()
     }
   }
 
-  const handleGameStarted = useCallback((newGameId: string) => {
-    reset()
-    setGameId(newGameId)
-  }, [reset, setGameId])
+  const seedDemoGame = useCallback((nextPhase = 'day_speech', nextViewMode: ViewMode = viewMode) => {
+    setGameId('demo')
+    setPlayers(DEMO_PLAYERS)
+    setEvents(DEMO_EVENTS)
+    setPhase(nextPhase)
+    setRound(1)
+    setStatus('running')
+    setWinner(null)
+    setViewMode(nextViewMode)
+    if (nextViewMode === 'self') setHumanSeat(3)
+  }, [setEvents, setGameId, setHumanSeat, setPhase, setPlayers, setRound, setStatus, setViewMode, setWinner, viewMode])
 
-  const handleSelectGame = useCallback((gid: string) => {
-    reset()
-    setGameId(gid)
-  }, [reset, setGameId])
+  const startGame = async (useLlm: boolean, mode: ViewMode = landingMode) => {
+    setLoadingStart(true)
+    setViewMode(mode)
+    setHumanSeat(mode === 'self' ? 3 : null)
+    try {
+      const payload: Record<string, unknown> = { config_id: '12p_pre_witch_hunter_idiot', use_llm: useLlm }
+      if (mode === 'self') payload.human_join = true
+      const res = await apiPost<{ game_id: string; human_seat?: number | null }>('/api/games/start', payload)
+      reset()
+      setViewMode(mode)
+      setHumanSeat(mode === 'self' && typeof res.human_seat === 'number' ? res.human_seat : null)
+      setGameId(res.game_id)
+    } catch {
+      seedDemoGame('day_speech', mode)
+    } finally {
+      setLoadingStart(false)
+    }
+  }
 
-  const handleToggleTts = useCallback(async () => {
+  const toggleTts = async () => {
     try {
       const res = await apiPost<{ enabled: boolean }>('/api/tts/toggle', {})
       setTtsEnabled(!!res.enabled)
-    } catch (error) {
-      console.error('TTS toggle failed:', error)
+    } catch {
+      setTtsEnabled(!ttsEnabled)
     }
-  }, [setTtsEnabled])
+  }
 
-  const sortedPlayers = useMemo(() => {
-    const bySeat = [...players].sort((a, b) => a.seat_index - b.seat_index)
-    const slots: Array<Player | null> = Array.from({ length: 12 }, (_, index) => {
-      return bySeat.find((p) => p.seat_index === index + 1) || null
-    })
-    return slots
-  }, [players])
+  const resetToLanding = () => {
+    reset()
+    setHistoryOpen(false)
+    setInspectorOpen(false)
+    setSkillOpen(false)
+    setLegendOpen(false)
+  }
 
-  const voteCounts = useMemo(() => {
-    const counts: Record<number, number> = {}
-    if (phase !== 'day_vote' && phase !== 'day_resolve') return counts
-    for (const ev of events) {
-      if (ev.event_type !== 'vote_cast') continue
-      if (typeof ev.round === 'number' && ev.round !== round) continue
-      const target = Number(ev.data?.target_id)
-      if (!Number.isFinite(target)) continue
-      counts[target] = (counts[target] || 0) + 1
-    }
-    return counts
-  }, [events, phase, round])
-
-  const meta = phase ? PHASE_META[phase] : null
-  const aliveCount = players.filter((p) => p.survived).length
-  const deadCount = players.length ? players.length - aliveCount : 0
-  const wolvesAlive = players.filter((p) => p.survived && p.faction === 'wolf').length
-  const latestEvent = events.length > 0 ? events[events.length - 1] : null
-  const conversation = useMemo(() => buildConversation(events, humanSeat), [events, humanSeat])
-  const judgeEvents = useMemo(() => buildJudgeEvents(events), [events])
-  const playerStatuses = useMemo(() => computePlayerStatuses(events, round, phase), [events, round, phase])
-  const currentSpeakerId = useMemo(() => {
-    for (let i = events.length - 1; i >= 0; i -= 1) {
-      const ev = events[i]
-      if (ev.event_type === 'speaking_started') {
-        return Number(ev.data?.player_id) || null
-      }
-      if (ev.event_type === 'public_speech_made' || ev.event_type === 'sheriff_campaign' || ev.event_type === 'death_speech') {
-        return null
-      }
-    }
-    return null
-  }, [events])
-  const waitingActorId = awaitingHuman?.actor_id ?? null
-  const avatarOverrides = useMemo(() => computeAvatarOverrides(events), [events])
-  const voteTie = useMemo(() => {
-    for (let i = events.length - 1; i >= 0; i -= 1) {
-      const ev = events[i]
-      if (ev.event_type === 'vote_resolved') {
-        return ev.data?.chosen == null && Object.keys(ev.data?.votes || {}).length > 0
-      }
-      if (ev.event_type === 'phase_started' && ev.data?.phase === 'day_vote') break
-    }
-    return false
-  }, [events])
-  const latestSeerCheck = useMemo(() => {
-    for (let i = events.length - 1; i >= 0; i -= 1) {
-      const ev = events[i]
-      if (ev.event_type === 'seer_checked') return ev
-    }
-    return null
-  }, [events])
-  const sceneBgUrl = sceneBackground(phase, winner)
+  if (!gameId) {
+    return (
+      <LandingScreen
+        mode={landingMode}
+        loading={loadingStart}
+        ttsEnabled={ttsEnabled}
+        onModeChange={setLandingMode}
+        onStart={(useLlm) => startGame(useLlm)}
+        onToggleTts={toggleTts}
+      />
+    )
+  }
 
   return (
-    <div className="director-app">
-      <GameAudio phase={phase} latestEvent={latestEvent} winner={winner} />
-      <GameEffects latestEvent={latestEvent} />
-      <div className="director-shell">
-        <header className="director-topbar">
-          <section className="brand-block">
-            <img src="/assets/ui/logo.png" alt="" />
-            <div>
-              <h1>AI 狼人杀{viewMode === 'self' ? '现场' : '导演台'}</h1>
-              <p>
-                {viewMode === 'god' && '12 名 AI 玩家自动博弈，裁判引擎掌握真实状态'}
-                {viewMode === 'observer' && '旁观席：所有身份保密，仅根据公开信息判断'}
-                {viewMode === 'self' && `你是 ${humanSeat ?? '?'} 号玩家，其它身份保密`}
-              </p>
-            </div>
-          </section>
+    <div className={`sample-app phase-${meta.tone}`} style={{ '--scene-bg': `url("${meta.background}")` } as React.CSSProperties}>
+      <GameAudio phase={visiblePhase} latestEvent={latestEvent} winner={winner} ttsEnabled={ttsEnabled} />
+      <GameEffects latestEvent={gameId === 'demo' ? null : latestEvent} />
 
-          <section
-            className={`phase-banner ${awaitingHuman && viewMode === 'self' && awaitingHuman.actor_id === humanSeat ? 'is-your-turn' : ''}`}
-            style={{ backgroundImage: `linear-gradient(90deg, rgba(14,10,8,.22), rgba(14,10,8,.42)), url(/assets/ui/phases/${meta?.asset || 'phase_night.png'})` }}
-          >
-            <span>第 {round || 1} 轮</span>
-            <strong>{winner ? `${winner === 'good' ? '好人阵营' : '狼人阵营'}胜利` : meta?.label || '等待开始'}</strong>
-            <span>
-              {awaitingHuman && viewMode === 'self' && awaitingHuman.actor_id === humanSeat
-                ? '⚡ 你的回合'
-                : meta?.channel || '导演频道'}
-            </span>
-          </section>
+      <TopBar
+        roomId={roomId}
+        round={round || 1}
+        meta={meta}
+        remaining={visiblePhase === 'day_speech' ? 60 : visiblePhase === 'night_witch' ? 120 : 45}
+        onHistory={() => {
+          setHistoryOpen(true)
+          setHistoryTab('chat')
+        }}
+        onInspector={() => setInspectorOpen(true)}
+        onSettings={toggleTts}
+        ttsEnabled={ttsEnabled}
+      />
 
-          <section className="score-grid">
-            <Stat label="存活" value={players.length ? aliveCount : 12} />
-            <Stat label="出局" value={deadCount} />
-            <Stat label="狼队" value={players.length ? (viewMode === 'god' ? wolvesAlive : '?') : 3} />
-            <Stat
-              label={viewMode === 'self' ? '我的席位' : '当前回合'}
-              value={viewMode === 'self' ? (humanSeat ? `${humanSeat}号` : '未选') : round || 1}
-            />
-          </section>
-        </header>
-
-        <main className="director-main">
-          <section className="theater-panel">
-            <div
-              className="scene-bg"
-              style={{
-                backgroundImage: `linear-gradient(180deg, rgba(8,8,11,.20), rgba(10,6,4,.9)), url(${sceneBgUrl})`,
-              }}
-            />
-            <div className="channel-note">
-              <img src="/assets/ui/icons/claw_slash.png" alt="" />
-              <span>{channelNote(phase, winner, meta?.channel)}</span>
-            </div>
-
-            <div className="seat-rail rail-top" />
-            <div className="seat-rail rail-bottom" />
-            <div className="table-core">
-              <div className="table-art" />
-              {phase === 'night_seer' && (
-                <img className="table-effect table-eye" src="/assets/ui/effects/seer_eye_glow_overlay.png" alt="" />
-              )}
-              {phase === 'night_wolf' && (
-                <img className="table-effect table-claw" src="/assets/ui/effects/wolf_claw_overlay.png" alt="" />
-              )}
-              {!winner && gameId && (
-                <div className="judge-card">
-                  <h2>当前裁判判定</h2>
-                  <p>{buildJudgeSummary(phase, events, viewMode)}</p>
-                </div>
-              )}
-            </div>
-
-            {sortedPlayers.map((player, index) => (
-              <PlayerCard
-                key={player?.player_id || `empty-${index + 1}`}
-                player={player}
-                seatIndex={index + 1}
-                phase={phase}
-                viewMode={viewMode}
-                humanSeat={humanSeat}
-                voteCount={voteCounts[index + 1] || 0}
-                playerStatus={playerStatuses[index + 1]}
-                seerHint={latestSeerCheck && Number(latestSeerCheck.data?.target_id) === index + 1 ? (latestSeerCheck.data?.result === 'wolf' ? 'wolf' : 'good') : null}
-                avatarOverride={avatarOverrides[index + 1]}
-                isEndgame={!!winner}
-                isCurrentSpeaker={currentSpeakerId === index + 1}
-                isWaiting={waitingActorId === index + 1 && humanSeat !== index + 1}
-              />
-            ))}
-            {voteTie && (
-              <img className="tie-mark" src="/assets/ui/vote/tie_mark.png" alt="" />
-            )}
-            {!gameId && (
-              <img className="loading-splash" src="/assets/ui/loading_card.png" alt="" />
-            )}
-          </section>
-
-          <aside className="side-console">
-            <section className="console-panel feed-panel parchment-bg">
-              <PanelTitle title="AI 对话流" icon="/assets/ui/icons/ballot_vote.png" />
-              <div className="message-feed">
-                {conversation.map((item, index) => (
-                  <article className={`speech-card ${item.isHuman ? 'is-human' : ''}`} key={`${item.title}-${index}`}>
-                    <img src={item.avatar} alt="" />
-                    <div>
-                      <b>
-                        {item.title}
-                        <i>{item.channel}</i>
-                      </b>
-                      <p>{item.text}</p>
-                    </div>
-                  </article>
-                ))}
-                {conversation.length === 0 && (
-                  <div className="message-empty">等待 AI 发言⋯</div>
-                )}
-              </div>
-            </section>
-
-            <section className="console-panel parchment-bg">
-              <PanelTitle title="裁判日志" icon="/assets/ui/status/waiting.png" />
-              <div className="event-list">
-                {judgeEvents.map((item, index) => (
-                  <div className="event-row" key={`${item.text}-${index}`}>
-                    <img src={item.icon} alt="" />
-                    <span>{item.text}</span>
-                  </div>
-                ))}
-                {judgeEvents.length === 0 && (
-                  <div className="event-empty">尚无裁判事件</div>
-                )}
-              </div>
-            </section>
-          </aside>
-        </main>
-
-        <Toolbar
-          onGameStarted={handleGameStarted}
-          onOpenMusic={() => setShowMusicStudio(true)}
-          onOpenGameList={() => setShowGameList(true)}
+      <main className="game-board">
+        <PlayerColumn
+          players={visiblePlayers.slice(0, 6)}
           viewMode={viewMode}
-          onViewModeChange={setViewMode}
           humanSeat={humanSeat}
-          onHumanSeatChange={setHumanSeat}
-          ttsEnabled={ttsEnabled}
-          onTtsToggle={handleToggleTts}
+          activeSeat={currentSpeaker}
+          voteCounts={voteCounts}
         />
-      </div>
 
-      <div className={`connection-pill ${connected ? 'online' : ''}`}>
-        <span />
-        {connected ? '实时连接' : status === 'completed' ? '对局完成' : '等待连接'}
-      </div>
+        <CenterStage
+          phase={visiblePhase}
+          meta={meta}
+          players={visiblePlayers}
+          events={visibleEvents}
+          currentSpeaker={currentSpeaker}
+          winner={winner}
+          connected={connected}
+          inspectorOpen={inspectorOpen}
+          onCloseInspector={() => setInspectorOpen(false)}
+          onSetPhase={setPhase}
+          onVote={() => setPhase('day_vote')}
+          onSkill={() => {
+            setPhase('night_witch')
+            setSkillOpen(true)
+          }}
+          onReset={resetToLanding}
+        />
 
-      {winner && (
-        <div className={`endgame-overlay ${winner}`}>
-          <img className="defeat-bg" src="/assets/ui/endgame/defeat_overlay.png" alt="" />
-          <div className="endgame-stack">
-            <h1>{winner === 'wolf' ? '狼人阵营胜利' : '好人阵营胜利'}</h1>
-            <img
-              className="winner-badge"
-              src={`/assets/ui/endgame/${winner === 'wolf' ? 'wolf_victory_badge' : 'good_victory_badge'}.png`}
-              alt=""
-            />
-            <p>第 {round} 轮 · {players.length ? `存活 ${aliveCount} / ${players.length}` : ''}</p>
+        <PlayerColumn
+          players={visiblePlayers.slice(6, 12)}
+          viewMode={viewMode}
+          humanSeat={humanSeat}
+          activeSeat={currentSpeaker}
+          voteCounts={voteCounts}
+          reverse
+        />
+      </main>
+
+      <footer className="bottom-dock">
+        <DockButton icon={`${A}/icons/actions/icon_action_chat.png`} label="聊天" />
+        <DockButton icon={`${A}/icons/actions/icon_landing_match_records.png`} label="送礼" />
+      </footer>
+
+      {historyOpen && (
+        <HistoryDrawer
+          tab={historyTab}
+          events={visibleEvents}
+          players={visiblePlayers}
+          onTab={setHistoryTab}
+          onClose={() => setHistoryOpen(false)}
+        />
+      )}
+      {legendOpen && <StatusLegend onClose={() => setLegendOpen(false)} />}
+      {skillOpen && (
+        <SkillModal
+          phase={visiblePhase}
+          players={visiblePlayers}
+          onClose={() => setSkillOpen(false)}
+          onProtect={() => {
+            setSkillOpen(false)
+            setPhase('day_speech')
+          }}
+        />
+      )}
+      {awaitingHuman && gameId && (
+        <HumanActionPanel request={awaitingHuman} gameId={gameId} players={visiblePlayers} />
+      )}
+      <button className="legend-hotspot" onClick={() => setLegendOpen(true)}>状态图标</button>
+    </div>
+  )
+}
+
+function TopBar({
+  roomId,
+  round,
+  meta,
+  remaining,
+  ttsEnabled,
+  onHistory,
+  onInspector,
+  onSettings,
+}: {
+  roomId: string
+  round: number
+  meta: PhaseMeta
+  remaining: number
+  ttsEnabled: boolean
+  onHistory: () => void
+  onInspector: () => void
+  onSettings: () => void
+}) {
+  return (
+    <header className="game-topbar">
+      <button className="round-icon" aria-label="菜单"><span /><span /><span /></button>
+      <div className="room-meta">
+        <span>房间 {roomId}</span>
+        <b>12人标准场</b>
+      </div>
+      <div className="day-stack">
+        <div className="day-pill">
+          <span>{meta.label.replace('第 1', `第 ${round}`)}</span>
+          <img src={meta.tone === 'night' || meta.tone === 'skill' ? `${A}/icons/actions/icon_landing_ai_autoplay.png` : `${A}/icons/actions/icon_speed_config.png`} alt="" />
+        </div>
+        <div className="phase-mini">
+          <span>{meta.shortLabel}</span>
+          <b>{remaining}s</b>
+        </div>
+      </div>
+      <div className="top-actions">
+        <IconButton icon={`${A}/icons/actions/icon_action_record.png`} label="记录" onClick={onHistory} />
+        <IconButton icon={`${A}/icons/actions/icon_action_history.png`} label="历史" onClick={onInspector} />
+        <IconButton icon={`${A}/icons/actions/icon_action_settings.png`} label="设置" onClick={onSettings} active={ttsEnabled} />
+      </div>
+    </header>
+  )
+}
+
+function LandingScreen({
+  mode,
+  loading,
+  ttsEnabled,
+  onModeChange,
+  onStart,
+  onToggleTts,
+}: {
+  mode: ViewMode
+  loading: boolean
+  ttsEnabled: boolean
+  onModeChange: (mode: ViewMode) => void
+  onStart: (useLlm: boolean) => void
+  onToggleTts: () => void
+}) {
+  return (
+    <div className="landing-page">
+      <div className="landing-bg" />
+      <header className="landing-top">
+        <div className="profile-chip">
+          <img src={`${A}/portraits/roles/portrait_villager_male_01.png`} alt="" />
+          <div>
+            <b>玩家昵称七个字</b>
+            <span>ID: 123456</span>
           </div>
         </div>
-      )}
+        <div className="landing-sound">
+          <IconButton icon={ttsEnabled ? `${A}/icons/actions/icon_landing_sound_on.png` : `${A}/icons/actions/icon_landing_sound_off.png`} label={ttsEnabled ? '声音开' : '声音关'} onClick={onToggleTts} active={ttsEnabled} />
+          <IconButton icon={`${A}/icons/actions/icon_landing_help.png`} label="帮助" />
+          <IconButton icon={`${A}/icons/actions/icon_landing_settings.png`} label="设置" />
+        </div>
+      </header>
 
-      {showGameList && <GameList onSelect={handleSelectGame} onClose={() => setShowGameList(false)} />}
-      {showMusicStudio && <MusicStudio onClose={() => setShowMusicStudio(false)} />}
-      {awaitingHuman && gameId && viewMode === 'self' && awaitingHuman.actor_id === humanSeat && (
-        <HumanActionPanel request={awaitingHuman} gameId={gameId} players={players} />
-      )}
+      <section className="landing-logo">
+        <img src={`${A}/logo/logo_werewolf_title_large.png`} alt="狼人杀" />
+        <span>12人标准版</span>
+      </section>
+
+      <section className="mode-cards">
+        <ModeCard
+          active={mode === 'self'}
+          tone="blue"
+          icon={`${A}/icons/actions/icon_landing_personal_mode.png`}
+          title="个人视角"
+          text="沉浸体验，只属于你的推理之旅"
+          bullets={['你是唯一的真人玩家', '其他玩家由AI扮演', '只可见自己的身份与白天操作']}
+          onClick={() => onModeChange('self')}
+          onStart={() => onStart(true)}
+          loading={loading && mode === 'self'}
+        />
+        <ModeCard
+          active={mode === 'god'}
+          tone="red"
+          icon={`${A}/icons/actions/icon_landing_god_mode.png`}
+          title="上帝视角"
+          text="掌控全局，洞悉所有秘密与真相"
+          bullets={['上帝视角观战所有信息', '查看所有身份与技能', '复盘分析，掌控全局']}
+          onClick={() => onModeChange('god')}
+          onStart={() => onStart(false)}
+          loading={loading && mode === 'god'}
+        />
+      </section>
+
+      <footer className="landing-nav">
+        <LandingNavItem icon={`${A}/icons/actions/icon_landing_match_records.png`} label="对局记录" />
+        <LandingNavItem icon={`${A}/icons/actions/icon_landing_ai_autoplay.png`} label="AI 托管" badge="NEW" />
+        <LandingNavItem icon={`${A}/icons/actions/icon_landing_ai_summary.png`} label="游戏总结" />
+        <LandingNavItem icon={`${A}/icons/actions/icon_landing_achievement.png`} label="成就" />
+        <LandingNavItem icon={`${A}/icons/actions/icon_landing_ranking.png`} label="排行榜" />
+      </footer>
+      <span className="version-mark">版本：1.0.0</span>
     </div>
   )
 }
 
-function Stat({ label, value }: { label: string; value: string | number }) {
-  return (
-    <div className="score-card">
-      <span>{label}</span>
-      <b>{value}</b>
-    </div>
-  )
-}
-
-function PlayerCard({
-  player,
-  seatIndex,
-  phase,
-  viewMode,
-  humanSeat,
-  voteCount,
-  playerStatus,
-  seerHint,
-  avatarOverride,
-  isEndgame,
-  isCurrentSpeaker,
-  isWaiting,
+function ModeCard({
+  active,
+  tone,
+  icon,
+  title,
+  text,
+  bullets,
+  loading,
+  onClick,
+  onStart,
 }: {
-  player: Player | null
-  seatIndex: number
-  phase: string | null
-  viewMode: ViewMode
-  humanSeat: number | null
-  voteCount: number
-  playerStatus: PlayerStatus | undefined
-  seerHint: 'wolf' | 'good' | null
-  avatarOverride: string | undefined
-  isEndgame: boolean
-  isCurrentSpeaker: boolean
-  isWaiting: boolean
+  active: boolean
+  tone: 'blue' | 'red'
+  icon: string
+  title: string
+  text: string
+  bullets: string[]
+  loading: boolean
+  onClick: () => void
+  onStart: () => void
 }) {
-  const isHuman = humanSeat === seatIndex
-  const role = player?.role || 'unknown'
-  const alive = player ? !!player.survived : true
-  const acting = isActing(player, phase)
-
-  const revealReason = !player
-    ? 'unknown'
-    : viewMode === 'god'
-      ? 'god'
-      : !player.survived
-        ? 'dead'
-        : viewMode === 'self' && isHuman
-          ? 'self'
-          : null
-
-  const trueMeta = getRoleMeta(player, seatIndex)
-  const effectiveAvatar = revealReason && avatarOverride ? avatarOverride : trueMeta.avatar
-  const meta = revealReason
-    ? { ...trueMeta, avatar: effectiveAvatar }
-    : { label: '?', avatar: UNKNOWN_AVATAR, tone: 'good' as const }
-
-  const statusAsset = getStatusAsset(player, acting, playerStatus)
-  const aliveStamp = !player
-    ? null
-    : !alive
-      ? '/assets/ui/endgame/dead_mark.png'
-      : isEndgame
-        ? '/assets/ui/endgame/alive_mark.png'
-        : null
-  const exileStamp = player && !alive && player.death_cause === 'exile'
-  const isAbstain = !!(player && alive && phase === 'day_resolve' && playerStatus !== 'voted')
-  const frameAsset = revealReason && player
-    ? (player.faction === 'wolf' ? '/assets/ui/frame_wolf.png' : '/assets/ui/frame_good.png')
-    : null
-
   return (
-    <article
-      className={`player-card seat-${seatIndex} ${acting ? 'is-acting' : ''} ${!alive ? 'is-dead' : ''} ${isHuman ? 'is-human' : ''} ${isCurrentSpeaker ? 'is-speaking' : ''} ${isWaiting ? 'is-waiting' : ''}`}
-    >
-      <div className={`avatar-frame ${meta.tone}`}>
-        <img className="avatar-img" src={meta.avatar} alt="" />
-        {!revealReason && player && (
-          <img className="role-card-back" src={ROLE_CARD_BACK} alt="" />
-        )}
-        {frameAsset ? <img className="card-frame" src={frameAsset} alt="" /> : null}
-        {player?.is_sheriff ? <img className="sheriff-badge" src="/assets/ui/badge_sheriff.png" alt="" /> : null}
-        {statusAsset ? <img className="status-badge" src={statusAsset} alt="" /> : null}
-        {aliveStamp ? <img className="alive-stamp" src={aliveStamp} alt="" /> : null}
-        {exileStamp ? <img className="exile-stamp" src="/assets/ui/vote/exile_stamp.png" alt="" /> : null}
-        {isAbstain ? <img className="abstain-mark" src="/assets/ui/vote/abstain_mark.png" alt="" /> : null}
-        {playerStatus === 'voted' ? <img className="vote-arrow" src="/assets/ui/vote/vote_arrow.png" alt="" /> : null}
-        {voteCount > 0 && (
-          <span className="vote-count">
-            <img src="/assets/ui/vote/vote_count_token.png" alt="" />
-            <b>{voteCount}</b>
-          </span>
-        )}
-        {seerHint && (
-          <img
-            className="seer-result"
-            src={seerHint === 'wolf' ? '/assets/ui/results/seer_result_wolf.png' : '/assets/ui/results/seer_result_good.png'}
-            alt=""
-          />
-        )}
-        <span className={`identity-plate ${meta.tone}`}>{meta.label}</span>
-      </div>
-      <div className="seat-name">
-        {seatIndex}号 {playerName(role, seatIndex)}
-        {isHuman ? ' · 你' : ''}
-      </div>
-      <div className="seat-state">{seatState(player, role, !!revealReason)}</div>
+    <article className={`mode-card mode-${tone} ${active ? 'active' : ''}`} onClick={onClick}>
+      <img className="mode-icon" src={icon} alt="" />
+      <h2>{title}</h2>
+      <p>{text}</p>
+      <ul>
+        {bullets.map((item) => <li key={item}>{item}</li>)}
+      </ul>
+      <button onClick={(event) => {
+        event.stopPropagation()
+        onStart()
+      }}>{loading ? '启动中' : '开始游戏'}<span>›</span></button>
     </article>
   )
 }
 
-function PanelTitle({ title, icon }: { title: string; icon: string }) {
+function LandingNavItem({ icon, label, badge }: { icon: string; label: string; badge?: string }) {
   return (
-    <div className="panel-title">
-      <h2>{title}</h2>
+    <button className="landing-nav-item">
+      <span>{badge}</span>
       <img src={icon} alt="" />
-    </div>
+      <b>{label}</b>
+    </button>
   )
 }
 
-function getRoleMeta(player: Player | null, seatIndex: number) {
-  if (!player) return { label: '未知', avatar: UNKNOWN_AVATAR, tone: 'good' as const }
-  if (player.faction === 'wolf') {
-    return { ...ROLE_META.wolf, avatar: WOLF_VARIANTS[(seatIndex - 1) % WOLF_VARIANTS.length] }
+function PlayerColumn({
+  players,
+  viewMode,
+  humanSeat,
+  activeSeat,
+  voteCounts,
+  reverse = false,
+}: {
+  players: Player[]
+  viewMode: ViewMode
+  humanSeat: number | null
+  activeSeat: number
+  voteCounts: Record<number, number>
+  reverse?: boolean
+}) {
+  return (
+    <section className={`seat-column ${reverse ? 'seat-column-right' : 'seat-column-left'}`}>
+      {players.map((player) => (
+        <PlayerCard
+          key={player.seat_index}
+          visible={visiblePlayer(player, viewMode, humanSeat)}
+          active={player.seat_index === activeSeat}
+          voteCount={voteCounts[player.seat_index] || 0}
+          reverse={reverse}
+        />
+      ))}
+    </section>
+  )
+}
+
+function PlayerCard({
+  visible,
+  active,
+  voteCount,
+  reverse = false,
+}: {
+  visible: VisiblePlayer
+  active: boolean
+  voteCount: number
+  reverse?: boolean
+}) {
+  const { player, meta, hidden, portrait } = visible
+  const dead = !player.survived
+  return (
+    <article className={`player-card tone-${meta.tone} ${active ? 'active' : ''} ${dead ? 'dead' : ''} ${reverse ? 'reverse' : ''}`}>
+      <div className="seat-number">{player.seat_index}</div>
+      <div className="player-copy">
+        <span>{`玩家${player.seat_index}`}</span>
+        <strong>{hidden ? '未知' : meta.label}</strong>
+      </div>
+      <img className="player-portrait" src={portrait} alt="" />
+      <div className="status-stack">
+        {player.is_sheriff ? <img src={`${A}/icons/status/icon_status_sheriff.png`} alt="" /> : null}
+        {voteCount ? <b>{voteCount}</b> : null}
+      </div>
+    </article>
+  )
+}
+
+function CenterStage({
+  phase,
+  meta,
+  players,
+  events,
+  currentSpeaker,
+  winner,
+  connected,
+  inspectorOpen,
+  onCloseInspector,
+  onSetPhase,
+  onVote,
+  onSkill,
+  onReset,
+}: {
+  phase: string
+  meta: PhaseMeta
+  players: Player[]
+  events: GameEvent[]
+  currentSpeaker: number
+  winner: string | null
+  connected: boolean
+  inspectorOpen: boolean
+  onCloseInspector: () => void
+  onSetPhase: (phase: string | null) => void
+  onVote: () => void
+  onSkill: () => void
+  onReset: () => void
+}) {
+  const latest = events[events.length - 1]
+  if (inspectorOpen || phase === 'sheriff_election') {
+    return <SheriffPanel players={players} onClose={onCloseInspector} onSetPhase={onSetPhase} />
   }
-  if (player.role === 'villager') {
-    return { ...ROLE_META.villager, avatar: VILLAGER_VARIANTS[(seatIndex - 1) % VILLAGER_VARIANTS.length] }
+
+  return (
+    <section className="center-stage">
+      <div className="village-window" />
+      <section className="speaker-status">
+        <h1>
+          <span>{currentSpeaker}</span>
+          {winner ? `${winner === 'wolf' ? '狼人' : '好人'}阵营胜利` : `${currentSpeaker}${meta.actionLabel}`}
+        </h1>
+        <div className="timer-row">
+          <img src={`${A}/icons/actions/icon_speed_config.png`} alt="" />
+          <div className="timer-track"><span /></div>
+          <b>{phase === 'night_witch' ? '120s' : '60s'}</b>
+        </div>
+      </section>
+
+      <nav className="phase-tabs">
+        {PHASE_STEPS.map(([label, stepPhase, icon]) => (
+          <button key={label} className={phase === stepPhase ? 'active' : ''} onClick={() => onSetPhase(stepPhase)}>
+            <img src={icon} alt="" />
+            <span>{label}</span>
+          </button>
+        ))}
+      </nav>
+
+      {phase === 'day_vote' ? <VotePanel players={players} /> : <NoticePanel latest={latest} connected={connected} />}
+
+      <section className="stage-actions">
+        <button className="ghost-action" onClick={onReset}>结束发言</button>
+        <button className="primary-action" onClick={isSkillPhase(phase) ? onSkill : onVote}>
+          {isSkillPhase(phase) ? '技能行动' : '投票'}
+        </button>
+      </section>
+    </section>
+  )
+}
+
+function NoticePanel({ latest, connected }: { latest?: GameEvent; connected: boolean }) {
+  return (
+    <section className="notice-panel">
+      <p><i />昨晚是平安夜，无人出局。</p>
+      <p><i />警长决定顺序发言。</p>
+      <p><i />{latest?.content || (connected ? '实时连接已建立。' : '离线演示模式，界面数据用于预览。')}</p>
+    </section>
+  )
+}
+
+function VotePanel({ players }: { players: Player[] }) {
+  return (
+    <section className="vote-panel">
+      <header>
+        <b>放逐投票</b>
+        <span>选择你认为最像狼人的玩家</span>
+      </header>
+      <div className="vote-grid">
+        {players.filter((p) => p.survived).map((player) => (
+          <button key={player.seat_index} className={player.seat_index === 8 ? 'selected' : ''}>{player.seat_index}</button>
+        ))}
+        <button>弃票</button>
+      </div>
+      <button className="primary-action">确认投票</button>
+    </section>
+  )
+}
+
+function SheriffPanel({
+  players,
+  onClose,
+  onSetPhase,
+}: {
+  players: Player[]
+  onClose: () => void
+  onSetPhase: (phase: string | null) => void
+}) {
+  const candidates = players.filter((p) => [1, 4, 7].includes(p.seat_index))
+  return (
+    <section className="sheriff-stage">
+      <header className="sheriff-title">
+        <img src={`${A}/icons/status/icon_status_sheriff.png`} alt="" />
+        <h1>警长竞选阶段</h1>
+        <p>竞选警长可获得1.5票归票权，出局时可指定一名玩家出局。</p>
+      </header>
+      <button className="drawer-close floating" onClick={onClose}>×</button>
+      <div className="sheriff-grid">
+        <section className="sheriff-card">
+          <h2>竞选报名</h2>
+          <p>点击下方按钮报名竞选警长</p>
+          <button className="primary-action">我要竞选警长</button>
+          <button className="ghost-action">放弃竞选</button>
+        </section>
+        <section className="sheriff-card">
+          <h2>当前竞选者（3/12）</h2>
+          <div className="candidate-row">
+            {candidates.map((player) => (
+              <div key={player.seat_index} className="candidate-avatar">
+                <img src={portraitForPlayer(player)} alt="" />
+                <b>{player.seat_index}</b>
+                <span>玩家{player.seat_index}</span>
+              </div>
+            ))}
+          </div>
+        </section>
+      </div>
+      <section className="speech-order">
+        <h3>竞选发言顺序 <span>（按编号升序）</span></h3>
+        <div>
+          {candidates.map((player, index) => (
+            <span key={player.seat_index}>
+              <b>{player.seat_index}</b> 玩家{player.seat_index}
+              {index < candidates.length - 1 ? <i>→</i> : null}
+            </span>
+          ))}
+        </div>
+      </section>
+      <section className="sheriff-vote">
+        <h3>警下投票</h3>
+        <div className="round-vote-row">
+          {[1,2,3,4,5,6,7,8,9,10,11,12].map((seat) => (
+            <button key={seat} className={seat === 4 || seat === 7 ? 'selected' : ''}>{seat}</button>
+          ))}
+          <button>弃票</button>
+        </div>
+        <div className="sheriff-actions">
+          <button className="primary-action" onClick={() => onSetPhase('day_speech')}>开始投票<br /><small>倒计时：60s</small></button>
+          <button className="ghost-action" onClick={() => onSetPhase('day_speech')}>稍后投票</button>
+        </div>
+      </section>
+    </section>
+  )
+}
+
+function SkillModal({
+  phase,
+  players,
+  onClose,
+  onProtect,
+}: {
+  phase: string
+  players: Player[]
+  onClose: () => void
+  onProtect: () => void
+}) {
+  const victim = players.find((p) => p.seat_index === 8)
+  const skill = skillForPhase(phase)
+  return (
+    <section className="skill-backdrop">
+      <div className="skill-card">
+        <button className="drawer-close floating" onClick={onClose}>×</button>
+        <img className="skill-orb" src={skill.icon} alt="" />
+        <h2>{skill.title}</h2>
+        <p>昨晚 <b>{victim?.seat_index || 8}</b> 号玩家被狼人击杀</p>
+        <div className="skill-actions">
+          <button className="heal" onClick={onProtect}><img src={`${A}/icons/skills/icon_skill_witch_heal.png`} alt="" />使用解药<br /><span>救8号</span></button>
+          <button className="poison" onClick={onProtect}><img src={`${A}/icons/skills/icon_skill_witch_poison.png`} alt="" />使用毒药</button>
+          <button className="skip" onClick={onClose}><img src={`${A}/icons/actions/icon_action_close.png`} alt="" />不使用</button>
+        </div>
+        <p className="skill-hint">每晚只能使用一种药剂，不能自救</p>
+        <div className="night-steps">
+          <span><img src={`${A}/icons/skills/icon_skill_wolf_kill.png`} alt="" />狼人行动<small>已结束</small></span>
+          <span className="active"><img src={`${A}/icons/skills/icon_skill_witch_heal.png`} alt="" />女巫行动<small>进行中</small></span>
+          <span><img src={`${A}/icons/skills/icon_skill_seer_check.png`} alt="" />预言家行动<small>即将开始</small></span>
+        </div>
+      </div>
+    </section>
+  )
+}
+
+function HistoryDrawer({
+  tab,
+  events,
+  players,
+  onTab,
+  onClose,
+}: {
+  tab: DrawerTab
+  events: GameEvent[]
+  players: Player[]
+  onTab: (tab: DrawerTab) => void
+  onClose: () => void
+}) {
+  return (
+    <aside className="history-drawer">
+      <header>
+        <h2>历史记录</h2>
+        <button className="drawer-close" onClick={onClose}>×</button>
+      </header>
+      <div className="drawer-tabs">
+        <button className={tab === 'chat' ? 'active' : ''} onClick={() => onTab('chat')}>聊天记录</button>
+        <button className={tab === 'vote' ? 'active' : ''} onClick={() => onTab('vote')}>投票记录</button>
+      </div>
+      {tab === 'chat' ? (
+        <section className="drawer-feed">
+          {events.slice().reverse().map((ev, index) => {
+            const seat = Number(ev.data?.player_id || ev.data?.actor_id || ev.data?.voter_id || 0)
+            return (
+              <article key={`${ev.event_type}-${index}`} className="record-row">
+                <img src={avatarForSeat(players, seat)} alt="" />
+                <div>
+                  <b>{seat ? `${seat}号玩家` : '系统'}</b>
+                  <p>{ev.content || eventTitle(ev)}</p>
+                </div>
+                <time>第1天 07:{String(index).padStart(2, '0')}</time>
+              </article>
+            )
+          })}
+        </section>
+      ) : (
+        <VoteRecords />
+      )}
+    </aside>
+  )
+}
+
+function VoteRecords() {
+  const rows = [
+    ['第 1 天 警长竞选', '结果：1号当选警长', 1, [4,4,4,4,4,4,7,4,4,4,4,4]],
+    ['第 1 天 放逐投票', '结果：8号出局', 8, [8,8,8,8,8,8,8,0,8,8,8,8]],
+    ['第 2 天 放逐投票', '结果：平票，未放逐', 8, [3,7,7,3,7,3,3,0,7,3,7,3]],
+  ] as const
+  return (
+    <section className="vote-records">
+      {rows.map(([title, result, focus, votes]) => (
+        <article key={title} className="vote-record-card">
+          <header><b>{title}</b><span>{result}</span></header>
+          <div className="vote-line">
+            {votes.map((vote, index) => (
+              <span key={`${title}-${index}`} className={index + 1 === focus ? 'focus' : ''}>
+                <b>{index + 1}</b>
+                <i>↓</i>
+                <em>{vote || '-'}</em>
+              </span>
+            ))}
+          </div>
+        </article>
+      ))}
+    </section>
+  )
+}
+
+function StatusLegend({ onClose }: { onClose: () => void }) {
+  return (
+    <aside className="status-legend">
+      <header>
+        <h2>状态图标</h2>
+        <button className="drawer-close" onClick={onClose}>×</button>
+      </header>
+      {STATUS_LEGEND.map(([label, icon]) => (
+        <div key={label}>
+          <img src={icon} alt="" />
+          <span>{label}</span>
+        </div>
+      ))}
+    </aside>
+  )
+}
+
+function IconButton({
+  icon,
+  label,
+  active,
+  onClick,
+}: {
+  icon: string
+  label: string
+  active?: boolean
+  onClick?: () => void
+}) {
+  return (
+    <button className={`icon-button ${active ? 'active' : ''}`} onClick={onClick}>
+      <img src={icon} alt="" />
+      <span>{label}</span>
+    </button>
+  )
+}
+
+function DockButton({ icon, label }: { icon: string; label: string }) {
+  return (
+    <button className="dock-button">
+      <img src={icon} alt="" />
+      <span>{label}</span>
+    </button>
+  )
+}
+
+function visiblePlayer(player: Player, viewMode: ViewMode, humanSeat: number | null): VisiblePlayer {
+  const selfCanSee = viewMode === 'self' && player.seat_index === humanSeat
+  const revealAll = viewMode === 'god' || viewMode === 'observer'
+  const hidden = !(selfCanSee || revealAll)
+  if (hidden) {
+    return {
+      player,
+      meta: ROLE_META.unknown,
+      hidden: true,
+      portrait: player.seat_index % 3 === 0 ? UNKNOWN_AI : UNKNOWN_CLOAK,
+    }
   }
+  return {
+    player,
+    meta: roleMeta(player),
+    hidden: false,
+    portrait: portraitForPlayer(player),
+  }
+}
+
+function roleMeta(player: Player): RoleMeta {
   return ROLE_META[player.role] || ROLE_META.villager
 }
 
-function isNightPhase(phase: string | null) {
-  return !!phase && phase.startsWith('night')
-}
-
-function channelNote(phase: string | null, winner: string | null, fallback?: string) {
-  if (winner) return `${winner === 'wolf' ? '狼人阵营' : '好人阵营'}获胜，公开频道关闭`
-  if (!phase) return '等待对局开始'
-  if (phase === 'check_win') return '裁判检查胜负条件中'
-  if (phase === 'game_over') return '对局结束'
-  if (phase === 'pending_skills') return '猎人/白痴技能结算中'
-  const channel = fallback || '导演频道'
-  return `${channel}，公开频道${isNightPhase(phase) ? '已冻结' : '正在记录'}`
-}
-
-function isActing(player: Player | null, phase: string | null) {
-  if (!player || !player.survived || !phase) return false
-  if (phase === 'night_wolf') return player.faction === 'wolf'
-  if (phase === 'night_seer') return player.role === 'seer'
-  if (phase === 'night_witch') return player.role === 'witch'
-  if (phase === 'pending_skills') return ['hunter', 'idiot'].includes(player.role)
-  return false
-}
-
-function getStatusAsset(player: Player | null, acting: boolean, status: PlayerStatus | undefined) {
-  if (!player) return null
-  if (!player.survived) {
-    if (player.death_cause === 'exile') return '/assets/ui/status/exiled.png'
-    if (player.death_cause === 'poison') return '/assets/ui/status/poisoned.png'
-    return '/assets/ui/status/dead.png'
+function portraitForPlayer(player: Player): string {
+  if (player.role === 'villager') {
+    const extraIndex = (player.seat_index - 1) % EXTRA_PORTRAITS.length
+    return EXTRA_PORTRAITS[extraIndex]
   }
-  if (acting) return '/assets/ui/status/selected.png'
-  if (status === 'speaking') return '/assets/ui/status/speaking.png'
-  if (status === 'voted') return '/assets/ui/status/voted.png'
-  if (status === 'targeted') return '/assets/ui/status/targeted.png'
-  if (status === 'saved') return '/assets/ui/status/saved.png'
-  if (status === 'waiting') return '/assets/ui/status/waiting.png'
+  return roleMeta(player).portrait
+}
+
+function avatarForSeat(players: Player[], seat: number): string {
+  const player = players.find((item) => item.seat_index === seat)
+  return player ? portraitForPlayer(player) : UNKNOWN_CLOAK
+}
+
+function buildVoteCounts(events: GameEvent[]): Record<number, number> {
+  const counts: Record<number, number> = {}
+  for (const ev of events) {
+    if (ev.event_type !== 'vote_cast') continue
+    const target = Number(ev.data?.target_id)
+    if (Number.isFinite(target)) counts[target] = (counts[target] || 0) + 1
+  }
+  return counts
+}
+
+function latestSpeaker(events: GameEvent[]): number | null {
+  for (let i = events.length - 1; i >= 0; i -= 1) {
+    const ev = events[i]
+    if (ev.event_type === 'speaking_started' || ev.event_type === 'public_speech_made') {
+      const seat = Number(ev.data?.player_id || ev.data?.actor_id)
+      return Number.isFinite(seat) ? seat : null
+    }
+  }
   return null
 }
 
-function computePlayerStatuses(events: GameEvent[], round: number, phase: string | null): Record<number, PlayerStatus> {
-  const result: Record<number, PlayerStatus> = {}
-  // Voted: anyone with a vote_cast event in current round
-  if (phase === 'day_vote' || phase === 'day_resolve') {
-    for (const ev of events) {
-      if (ev.event_type !== 'vote_cast') continue
-      if (typeof ev.round === 'number' && ev.round !== round) continue
-      const voter = Number(ev.data?.voter_id)
-      const target = Number(ev.data?.target_id)
-      if (Number.isFinite(voter)) result[voter] = 'voted'
-      if (Number.isFinite(target) && !result[target]) result[target] = 'targeted'
-    }
+function eventTitle(ev: GameEvent): string {
+  const titles: Record<string, string> = {
+    phase_started: '阶段开始',
+    public_speech_made: '玩家发言',
+    sheriff_campaign: '警长竞选',
+    vote_cast: '投票',
+    vote_resolved: '投票结算',
+    seer_checked: '预言家查验',
+    wolf_killed: '狼人刀人',
+    witch_saved: '女巫救人',
+    witch_poisoned: '女巫毒人',
+    hunter_shot: '猎人开枪',
   }
-  // Speaking: latest public_speech_made player
-  if (phase === 'day_speech' || phase === 'sheriff_election') {
-    for (let i = events.length - 1; i >= 0; i -= 1) {
-      const ev = events[i]
-      if (ev.event_type === 'public_speech_made' || ev.event_type === 'sheriff_campaign') {
-        const p = Number(ev.data?.player_id)
-        if (Number.isFinite(p)) result[p] = 'speaking'
-        break
-      }
-    }
+  return titles[ev.event_type] || ev.event_type
+}
+
+function isSkillPhase(phase: string): boolean {
+  return ['night_wolf', 'night_seer', 'night_witch', 'night_guard'].includes(phase)
+}
+
+function skillForPhase(phase: string) {
+  if (phase === 'night_wolf') {
+    return { title: '狼队夜刀目标', icon: `${A}/icons/skills/icon_skill_wolf_kill.png` }
   }
-  // Witch saved someone — saved icon for that target (visible during witch/night_resolve/day_announce)
-  if (phase && (phase.startsWith('night') || phase === 'day_announce')) {
-    for (const ev of events) {
-      if (ev.event_type !== 'witch_used_antidote') continue
-      if (typeof ev.round === 'number' && ev.round !== round) continue
-      const target = Number(ev.data?.target_id)
-      if (Number.isFinite(target)) result[target] = 'saved'
-    }
-    for (const ev of events) {
-      if (ev.event_type !== 'wolf_target_selected') continue
-      if (typeof ev.round === 'number' && ev.round !== round) continue
-      const target = Number(ev.data?.target_id)
-      if (Number.isFinite(target) && result[target] !== 'saved') result[target] = 'targeted'
-    }
+  if (phase === 'night_seer') {
+    return { title: '预言家查验', icon: `${A}/icons/skills/icon_skill_seer_check.png` }
   }
-  return result
-}
-
-function computeAvatarOverrides(events: GameEvent[]): Record<number, string> {
-  const result: Record<number, string> = {}
-  // hunter_shot: hunter (player_id) → hunter_shooting.png for the rest of the game
-  // witch_used_antidote / witch_used_poison: witch (player_id) → witch_antidote/poison.png latest wins
-  // idiot_reveal: idiot (target_id from skill_triggered) → idiot_reveal.png
-  for (const ev of events) {
-    const d = ev.data || {}
-    if (ev.event_type === 'hunter_shot' || ev.content === 'event.hunter_shot') {
-      const p = Number(d.player_id)
-      if (Number.isFinite(p)) result[p] = '/assets/avatars/hunter_shooting.png'
-    } else if (ev.event_type === 'seer_checked') {
-      const p = Number(d.player_id)
-      if (Number.isFinite(p)) result[p] = '/assets/avatars/seer_v2.png'
-    } else if (ev.event_type === 'witch_used_antidote') {
-      const p = Number(d.player_id)
-      if (Number.isFinite(p)) result[p] = '/assets/avatars/witch_antidote.png'
-    } else if (ev.event_type === 'witch_used_poison') {
-      const p = Number(d.player_id)
-      if (Number.isFinite(p)) result[p] = '/assets/avatars/witch_poison.png'
-    } else if (ev.event_type === 'skill_triggered' && (d.skill === 'idiot_reveal' || d.role === 'idiot')) {
-      const p = Number(d.player_id ?? d.target_id)
-      if (Number.isFinite(p)) result[p] = '/assets/avatars/idiot_reveal.png'
-    }
+  if (phase === 'night_guard') {
+    return { title: '守卫行动', icon: `${A}/icons/skills/icon_skill_guard_protect.png` }
   }
-  return result
-}
-
-function sceneBackground(phase: string | null, winner: string | null) {
-  if (winner === 'wolf') return '/assets/backgrounds/victory_wolf.jpg'
-  if (winner === 'good') return '/assets/backgrounds/victory_good.jpg'
-  if (!phase) return '/assets/backgrounds/night_village.jpg'
-  if (phase === 'night_wolf') return '/assets/backgrounds/night_wolf_pov.jpg'
-  if (phase.startsWith('night')) return '/assets/backgrounds/night_village.jpg'
-  if (phase === 'day_announce' || phase === 'night_resolve') return '/assets/backgrounds/dawn_transition.jpg'
-  if (phase === 'day_vote' || phase === 'day_resolve') return '/assets/backgrounds/day_execution.jpg'
-  if (phase === 'day_speech' || phase === 'sheriff_election') return '/assets/backgrounds/day_meeting.jpg'
-  return '/assets/backgrounds/night_village.jpg'
-}
-
-function playerName(role: string, seatIndex: number) {
-  const names = ['墨爪', '星眼', '阿杯', '药婆', '弩手', '麦穗', '黑吻', '铃铛', '灯婆', '老弩', '灰耳', '木匠']
-  return names[seatIndex - 1] || (ROLE_META[role]?.label || '玩家')
-}
-
-function seatState(player: Player | null, role: string, revealed: boolean) {
-  if (!player) return '等待入座'
-  if (!player.survived) return player.death_cause === 'exile' ? '已放逐' : '已出局'
-  if (player.is_sheriff) return '警长'
-  if (!revealed) return '身份保密'
-  if (role === 'witch') return '药剂待定'
-  if (role === 'hunter') return '可开枪'
-  return player.faction === 'wolf' ? '阵营：狼队' : '阵营：好人'
-}
-
-function buildJudgeSummary(phase: string | null, events: GameEvent[], viewMode: ViewMode) {
-  if (viewMode !== 'god') {
-    if (phase === 'day_speech') return '公开频道开放，根据发言自行判断。'
-    if (phase === 'day_vote') return '裁判正在收集投票，公开投票顺序可见。'
-    if (phase === 'day_announce') return '裁判公布夜晚结算的公开信息。'
-    if (phase === 'sheriff_election') return '警长竞选公开进行。'
-    if (phase && phase.startsWith('night')) return '夜晚阶段，公开频道关闭。'
-    return events.length ? '只能看到公开信息。' : '等待对局开始。'
-  }
-  if (phase === 'night_wolf') return '狼队正在私聊决策，候选目标已由规则引擎过滤。'
-  if (phase === 'night_seer') return '预言家将获得单人查验结果，其他 AI 不会看到私人信息。'
-  if (phase === 'night_witch') return '女巫只看到今晚死亡信息，并提交救药或毒药动作。'
-  if (phase === 'day_speech') return '公开频道开放，AI 将根据私有记忆和公共发言轮流博弈。'
-  if (phase === 'day_vote') return '裁判收集投票，死者和无票权目标会被自动排除。'
-  if (events.length) return '裁判引擎维护真实状态，AI 只能提交当前阶段合法动作。'
-  return '启动新局后，12 名 AI 会按身份、私有信息和公开记录自动行动。'
-}
-
-function buildConversation(events: GameEvent[], humanSeat: number | null) {
-  const speechEvents = events.filter((ev) =>
-    ['public_speech_made', 'sheriff_campaign', 'death_speech', 'wolf_team_discussion', 'witch_thought', 'seer_thought'].includes(ev.event_type),
-  )
-  if (!speechEvents.length) return []
-
-  return speechEvents.map((ev) => {
-    const playerId = ev.data?.player_id || ev.data?.actor_id || '?'
-    const text = ev.data?.speech || ev.data?.message || ev.data?.text || ev.content || '正在发言'
-    const scope = ev.scope === 'wolf_team' ? '狼队频道' : ev.scope === 'role_private' ? '私人频道' : '公开频道'
-    const isHuman = humanSeat != null && Number(playerId) === humanSeat
-    return {
-      title: isHuman ? `${playerId}号 · 你` : `${playerId}号`,
-      channel: scope,
-      avatar: avatarForEventPlayer(playerId),
-      text: String(text),
-      isHuman,
-    }
-  })
-}
-
-function buildJudgeEvents(events: GameEvent[]) {
-  // Show meaningful events only — strip the noisy ones
-  const interesting = events.filter((ev) => !['phase_ended', 'speaking_started', 'speech_order_announced', 'awaiting_human', 'human_submitted'].includes(ev.event_type))
-  return interesting.slice(-14).map((ev) => {
-    const d = ev.data || {}
-    const pid = d.player_id ?? d.target_id ?? '?'
-    switch (ev.event_type) {
-      case 'seer_checked':
-        return { icon: '/assets/ui/icons/seer_eye.png', text: `预言家查验 ${d.target_id ?? '?'} 号 → ${d.result === 'wolf' ? '狼人' : '好人'}` }
-      case 'witch_used_poison':
-        return { icon: '/assets/ui/icons/poison.png', text: `女巫毒杀 ${d.target_id ?? '?'} 号` }
-      case 'witch_used_antidote':
-        return { icon: '/assets/ui/icons/antidote.png', text: `女巫救活 ${d.target_id ?? '?'} 号` }
-      case 'wolf_target_selected':
-        return { icon: '/assets/ui/icons/claw_slash.png', text: `狼队选定目标 ${d.target_id ?? '?'} 号` }
-      case 'vote_cast':
-        return { icon: '/assets/ui/vote/vote_count_token.png', text: `${d.voter_id ?? '?'} 号投票 → ${d.target_id ?? '?'} 号` }
-      case 'vote_resolved':
-        return { icon: '/assets/ui/vote/exile_stamp.png', text: d.chosen != null ? `投票结果:放逐 ${d.chosen} 号` : '投票结果:平票' }
-      case 'player_died': {
-        const cause = d.cause === 'wolf' ? '夜刀' : d.cause === 'poison' ? '毒杀' : d.cause === 'exile' ? '放逐' : d.cause === 'hunter' ? '猎人' : d.cause === 'self_destruct' ? '自爆' : d.cause ?? '出局'
-        return { icon: '/assets/ui/status/dead.png', text: `${pid} 号出局 · ${cause}` }
-      }
-      case 'sheriff_elected':
-        return { icon: '/assets/ui/icons/sheriff_star.png', text: `${pid} 号当选警长` }
-      case 'sheriff_transferred':
-        return { icon: '/assets/ui/icons/sheriff_star.png', text: `警徽传交 → ${d.target_id ?? '?'} 号` }
-      case 'sheriff_declare':
-        return { icon: '/assets/ui/icons/sheriff_star.png', text: `${pid} 号警上发言` }
-      case 'sheriff_campaign':
-        return { icon: '/assets/ui/icons/sheriff_star.png', text: `${pid} 号竞选警长` }
-      case 'sheriff_direction':
-        return { icon: '/assets/ui/icons/sheriff_star.png', text: `警长指定发言方向 ${d.direction ?? '?'}` }
-      case 'skill_triggered':
-        return { icon: '/assets/ui/effects/hunter_bolt_trail_overlay.png', text: `${pid} 号技能触发 (${d.skill ?? '?'})` }
-      case 'wolf_self_destruct':
-        return { icon: '/assets/ui/icons/self_destruct.png', text: `${pid} 号狼人自爆` }
-      case 'hunter_shot':
-        return { icon: '/assets/ui/icons/crossbow_bolt.png', text: `猎人开枪 → ${d.target_id ?? '?'} 号` }
-      case 'public_speech_made':
-        return { icon: '/assets/ui/icons/ballot_vote.png', text: `${pid} 号公开发言` }
-      case 'death_speech':
-        return { icon: '/assets/ui/icons/ballot_vote.png', text: `${pid} 号遗言` }
-      case 'phase_started':
-        return { icon: '/assets/ui/status/waiting.png', text: `阶段:${PHASE_META[d.phase]?.label || d.phase || '?'}` }
-      case 'game_ended':
-        return { icon: '/assets/ui/endgame/dead_mark.png', text: `游戏结束 · ${d.winner === 'wolf' ? '狼人阵营' : '好人阵营'}获胜` }
-      case 'error_raised':
-        return { icon: '/assets/ui/status/dead.png', text: `引擎错误:${d.error ?? ev.content}` }
-      default:
-        return { icon: '/assets/ui/status/waiting.png', text: (ev.content || ev.event_type).replace(/^event\./, '') }
-    }
-  })
-}
-
-function avatarForEventPlayer(playerId: number | string) {
-  const n = Number(playerId)
-  if (!Number.isFinite(n)) return UNKNOWN_AVATAR
-  return n % 5 === 0 ? '/assets/avatars/hunter.png'
-    : n % 4 === 0 ? '/assets/avatars/witch.png'
-      : n % 3 === 0 ? '/assets/avatars/variants/villager_01.png'
-        : n % 2 === 0 ? '/assets/avatars/seer_v2.png'
-          : '/assets/avatars/variants/wolf_02.png'
+  return { title: '女巫请睁眼', icon: `${A}/icons/skills/icon_skill_witch_heal.png` }
 }

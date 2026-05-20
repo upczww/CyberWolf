@@ -149,18 +149,10 @@ class TTSEngine:
         etype = event.event_type
 
         if etype == EventType.PHASE_STARTED:
-            phase = data.get("phase", "")
-            _PHASE_NARRATION = {
-                "night_start": "天黑请闭眼。",
-                "night_wolf": "狼人请睁眼。",
-                "night_seer": "预言家请睁眼。",
-                "night_witch": "女巫请睁眼。",
-                "night_resolve": "天亮了。",
-                "sheriff_election": "现在开始警长竞选。",
-                "day_speech": "请按顺序发言。",
-                "day_vote": "发言结束，请投票。",
-            }
-            return _PHASE_NARRATION.get(phase, "")
+            # Fixed referee prompts are pre-generated under
+            # desktop/public/assets/narration and played by the desktop client.
+            # Do not send them through live ChatTTS on every phase transition.
+            return ""
 
         if etype == EventType.WOLF_TARGET_SELECTED:
             target = data.get("target_id")
