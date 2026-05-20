@@ -5,14 +5,17 @@ interface Props {
   phase: string | null
   latestEvent: GameEvent | null
   winner: string | null
+  ttsEnabled: boolean
 }
 
 const BGM_VOLUME = 0.28
 const SFX_VOLUME = 0.72
+const NARRATION_VOLUME = 0.9
+const NARRATION_DELAY_MS = 260
 
 const NIGHT_PHASES = new Set(['night_start', 'night_wolf', 'night_seer', 'night_witch', 'night_resolve'])
 
-export default function GameAudio({ phase, latestEvent, winner }: Props) {
+export default function GameAudio({ phase, latestEvent, winner, ttsEnabled }: Props) {
   const bgmRef = useRef<HTMLAudioElement | null>(null)
   const currentBgmRef = useRef<string | null>(null)
   const lastEventSignatureRef = useRef<string | null>(null)
@@ -50,14 +53,23 @@ export default function GameAudio({ phase, latestEvent, winner }: Props) {
     if (signature === lastEventSignatureRef.current) return
     lastEventSignatureRef.current = signature
 
-    const src = sfxForEvent(latestEvent)
-    if (!src) return
+    const sfxSrc = sfxForEvent(latestEvent)
+    const narrationSrc = ttsEnabled ? narrationForEvent(latestEvent) : null
 
-    const audio = new Audio(src)
-    audio.volume = SFX_VOLUME
-    audio.preload = 'auto'
-    void audio.play().catch(() => undefined)
-  }, [latestEvent])
+    if (!sfxSrc && !narrationSrc) return
+
+    if (sfxSrc) playOneShot(sfxSrc, SFX_VOLUME)
+    let narrationTimer: number | null = null
+    if (narrationSrc) {
+      narrationTimer = window.setTimeout(() => {
+        playOneShot(narrationSrc, NARRATION_VOLUME)
+      }, sfxSrc ? NARRATION_DELAY_MS : 0)
+    }
+
+    return () => {
+      if (narrationTimer != null) window.clearTimeout(narrationTimer)
+    }
+  }, [latestEvent, ttsEnabled])
 
   return null
 }
@@ -100,6 +112,38 @@ function sfxForEvent(event: GameEvent) {
   }
 
   return null
+}
+
+function narrationForEvent(event: GameEvent) {
+  if (event.event_type !== 'phase_started') return null
+  const phase = event.data?.phase || event.phase
+  if (!phase) return null
+  const file = PHASE_NARRATION_FILES[phase]
+  return file ? `/assets/narration/${file}` : null
+}
+
+const PHASE_NARRATION_FILES: Record<string, string> = {
+  setup_game: 'setup_game.wav',
+  night_start: 'night_start.wav',
+  night_wolf: 'night_wolf.wav',
+  night_seer: 'night_seer.wav',
+  night_witch: 'night_witch.wav',
+  night_resolve: 'night_resolve.wav',
+  day_announce: 'day_announce.wav',
+  sheriff_election: 'sheriff_election.wav',
+  day_speech: 'day_speech.wav',
+  day_vote: 'day_vote.wav',
+  day_resolve: 'day_resolve.wav',
+  pending_skills: 'pending_skills.wav',
+  check_win: 'check_win.wav',
+  game_over: 'game_over.wav',
+}
+
+function playOneShot(src: string, volume: number) {
+  const audio = new Audio(src)
+  audio.volume = volume
+  audio.preload = 'auto'
+  void audio.play().catch(() => undefined)
 }
 
 function eventSignature(event: GameEvent) {

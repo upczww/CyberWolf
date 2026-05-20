@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { apiPost } from '../hooks/useApi'
-import { useGameStore, type AwaitingHumanRequest, type Player } from '../stores/game'
+import { useGameStore, type AwaitingHumanRequest, type GameEvent, type Player } from '../stores/game'
 
 interface Props {
   request: AwaitingHumanRequest
@@ -9,33 +9,23 @@ interface Props {
 }
 
 const TOOL_TITLES: Record<string, string> = {
-  vote_target: '请投出你的一票',
-  seer_check: '预言家请睁眼',
-  witch_antidote: '女巫请睁眼',
-  witch_poison: '女巫请投毒',
-  wolf_kill_proposal: '狼人请行动',
-  hunter_shoot: '猎人请开枪',
-  public_speech: '请发表你的发言',
-  death_speech: '请留下你的遗言',
+  vote_target: '投票放逐',
+  seer_check: '预言家查验',
+  witch_antidote: '使用解药？',
+  witch_poison: '使用毒药',
+  wolf_kill_proposal: '狼队夜刀目标',
+  hunter_shoot: '猎人开枪',
+  public_speech: '公开发言',
+  death_speech: '遗言',
   sheriff_candidacy: '警长竞选',
 }
 
-const ROLE_LABELS: Record<string, string> = {
-  wolf: '狼人', seer: '预言家', witch: '女巫', hunter: '猎人',
-  idiot: '白痴', guard: '守卫', villager: '村民',
-}
-
-const ROLE_AVATARS: Record<string, string> = {
-  wolf: '/assets/avatars/wolf.png',
-  seer: '/assets/avatars/seer.png',
-  witch: '/assets/avatars/witch.png',
-  hunter: '/assets/avatars/hunter.png',
-  idiot: '/assets/avatars/idiot.png',
-  villager: '/assets/avatars/villager.png',
-}
+const UNKNOWN_AVATAR = '/assets/ui/icons/status/icon_status_identity_hidden.png'
+const ROLE_CARD_BACK = '/assets/ui/role_intro/role_intro_card_base_neutral.png'
+const SHERIFF_BADGE = '/assets/ui/icons/status/icon_status_sheriff.png'
 
 export default function HumanActionPanel({ request, gameId, players }: Props) {
-  const { clearAwaitingHuman } = useGameStore()
+  const { clearAwaitingHuman, events } = useGameStore()
   const [remaining, setRemaining] = useState(Math.max(5, Math.floor(request.timeout_seconds || 60)))
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -71,7 +61,13 @@ export default function HumanActionPanel({ request, gameId, players }: Props) {
         { actor_id: request.actor_id, tool_name: request.tool_name, args },
       )
       if (!res.accepted) {
-        setError(res.reason || '后端未接受')
+        const reason = res.reason || 'not_pending'
+        if (reason === 'no_human_in_game' || reason === 'not_pending') {
+          setError('当前行动已过期，已交由 AI 接管')
+          window.setTimeout(() => clearAwaitingHuman(), 1200)
+          return
+        }
+        setError(reason || '后端未接受')
       } else {
         clearAwaitingHuman()
       }
@@ -85,7 +81,6 @@ export default function HumanActionPanel({ request, gameId, players }: Props) {
   const skip = () => submit(request.local_args || {})
 
   const title = TOOL_TITLES[request.tool_name] || request.tool_name
-  const role = request.role || 'villager'
   const isSpeech = request.tool_name === 'public_speech' || request.tool_name === 'death_speech'
   const isWitchAntidote = request.tool_name === 'witch_antidote'
   const isWitchPoison = request.tool_name === 'witch_poison'
@@ -93,30 +88,17 @@ export default function HumanActionPanel({ request, gameId, players }: Props) {
     request.role === 'wolf' &&
     ['day_speech', 'day_vote', 'sheriff_election'].includes(request.phase)
   const hint = roleHint(request.role, request.tool_name, request.phase)
-  const timelineSteps = buildTimeline(request.phase, request.tool_name)
 
   return (
-    <div className="skill-overlay">
-      <div className="skill-card">
+    <div className="human-action-overlay">
+      <div className="human-action-panel">
         <header>
-          <span className="role-tag">{ROLE_LABELS[role] || '人类'} · {request.actor_id} 号</span>
-          <span className={`skill-timer ${remaining <= 10 ? 'urgent' : ''}`}>{remaining}s</span>
+          <span className="panel-tag">{request.role ? `${roleLabel(request.role)} · ${request.actor_id} 号` : `人类席位 · ${request.actor_id} 号`}</span>
+          <h2>{title}</h2>
+          <span className={`panel-timer ${remaining <= 10 ? 'urgent' : ''}`}>{remaining}s</span>
         </header>
 
-        <h2 className="skill-title">{title}</h2>
-
-        {(isWitchAntidote || isWitchPoison) && (
-          <div className="skill-prompt">
-            <span className="glyph">{isWitchAntidote ? '🧪' : '☠'}</span>
-            <span>
-              {isWitchAntidote ? '药剂' : '毒药'} ·
-              <em>{String(request.local_args?.target_id ?? '?')}</em>号玩家
-              {isWitchAntidote ? '被狼人击杀' : '将被毒杀'}
-            </span>
-          </div>
-        )}
-
-        {hint && <div className="skill-hint">{hint}</div>}
+        {hint && <p className="panel-hint">{hint}</p>}
 
         {isSpeech && (
           <SpeechComposer
@@ -135,6 +117,8 @@ export default function HumanActionPanel({ request, gameId, players }: Props) {
             onAbstain={() => submit({ target_id: null })}
             submitting={submitting}
             allowAbstain
+            events={events}
+            toolName={request.tool_name}
           />
         )}
 
@@ -143,6 +127,8 @@ export default function HumanActionPanel({ request, gameId, players }: Props) {
             candidates={alivePlayers.filter((p) => p.faction !== 'wolf')}
             onPick={(target) => submit({ target_id: target })}
             submitting={submitting}
+            events={events}
+            toolName={request.tool_name}
           />
         )}
 
@@ -151,6 +137,8 @@ export default function HumanActionPanel({ request, gameId, players }: Props) {
             candidates={candidates}
             onPick={(target) => submit({ target_id: target })}
             submitting={submitting}
+            events={events}
+            toolName={request.tool_name}
           />
         )}
 
@@ -166,30 +154,18 @@ export default function HumanActionPanel({ request, gameId, players }: Props) {
         )}
 
         {isWitchAntidote && (
-          <div className="skill-choices">
-            <button className="skill-choice primary" onClick={() => submit({ use_antidote: true })} disabled={submitting}>
-              <span className="glyph">🧪</span>
-              <b>使用解药</b>
-              <small>救回今晚目标</small>
-            </button>
-            <button className="skill-choice" onClick={skip} disabled={submitting}>
-              <span className="glyph">👁</span>
-              <b>静默观察</b>
-              <small>暂不出手</small>
-            </button>
-            <button className="skill-choice" onClick={() => submit({ use_antidote: false })} disabled={submitting}>
-              <span className="glyph">✕</span>
-              <b>不使用</b>
-              <small>保留至后续</small>
-            </button>
+          <div className="witch-action">
+            <p>今晚的死亡目标是 <b>{String(request.local_args?.target_id ?? '?')}</b> 号,是否使用解药?</p>
+            <div className="action-buttons">
+              <button onClick={() => submit({ use_antidote: true })} disabled={submitting}>使用解药</button>
+              <button className="ghost" onClick={() => submit({ use_antidote: false })} disabled={submitting}>不使用</button>
+            </div>
           </div>
         )}
 
         {isWitchPoison && (
-          <>
-            <p style={{ textAlign: 'center', color: 'var(--text-200)', fontSize: 13, letterSpacing: '0.08em', marginBottom: 10 }}>
-              选择毒杀目标（或跳过）
-            </p>
+          <div className="witch-action">
+            <p>选择毒杀目标(或跳过):</p>
             <TargetGrid
               candidates={candidates}
               onPick={(target) => submit({ target_id: target })}
@@ -198,45 +174,26 @@ export default function HumanActionPanel({ request, gameId, players }: Props) {
               allowAbstain
               abstainLabel="不投毒"
             />
-          </>
-        )}
-
-        {request.tool_name === 'sheriff_candidacy' && (
-          <div className="skill-choices">
-            <button className="skill-choice primary" onClick={() => submit({ target_id: request.actor_id })} disabled={submitting}>
-              <span className="glyph">★</span>
-              <b>我要竞选</b>
-              <small>发言权重 1.5</small>
-            </button>
-            <button className="skill-choice" onClick={() => submit({ target_id: null })} disabled={submitting}>
-              <span className="glyph">—</span>
-              <b>不参选</b>
-              <small>放弃警徽</small>
-            </button>
           </div>
         )}
 
-        {timelineSteps.length > 0 && (
-          <div className="skill-timeline">
-            {timelineSteps.map((s, i) => (
-              <span key={s.label} style={{ display: 'contents' }}>
-                <div className={`step ${s.state}`}>
-                  <span className="ico">{s.glyph}</span>
-                  <span>{s.label}</span>
-                </div>
-                {i < timelineSteps.length - 1 && <span className="sep">·</span>}
-              </span>
-            ))}
+        {request.tool_name === 'sheriff_candidacy' && (
+          <div className="witch-action">
+            <p>是否参选警长?警长发言权重 1.5,死亡可传警徽。</p>
+            <div className="action-buttons">
+              <button onClick={() => submit({ target_id: request.actor_id })} disabled={submitting}>参选</button>
+              <button className="ghost" onClick={() => submit({ target_id: null })} disabled={submitting}>不参选</button>
+            </div>
           </div>
         )}
 
         <footer>
-          <button className="ghost-btn" onClick={skip} disabled={submitting}>跳过（AI 推荐）</button>
+          <button className="ghost" onClick={skip} disabled={submitting}>跳过(使用 AI 推荐)</button>
           {canSelfDestruct && (
             <button
-              className="self-destruct"
+              className="danger self-destruct"
               onClick={() => {
-                if (!confirm('确定狼人自爆？当前阶段立即结束。')) return
+                if (!confirm('确定狼人自爆?当前阶段立即结束。')) return
                 submit({ _wolf_self_destruct: true })
               }}
               disabled={submitting}
@@ -257,6 +214,8 @@ function TargetGrid({
   onAbstain,
   submitting,
   allowAbstain = false,
+  events = [],
+  toolName = '',
   abstainLabel = '弃权',
 }: {
   candidates: Player[]
@@ -264,109 +223,125 @@ function TargetGrid({
   onAbstain?: () => void
   submitting: boolean
   allowAbstain?: boolean
+  events?: GameEvent[]
+  toolName?: string
   abstainLabel?: string
 }) {
   return (
-    <div className="skill-targets">
+    <div className="target-grid">
       {candidates.map((p) => (
         <button
           key={p.player_id}
-          className="skill-target"
           onClick={() => onPick(p.seat_index)}
           disabled={submitting}
+          className="target-button"
         >
-          <span className="seat-num">{p.seat_index}</span>
-          <img src={portraitFor(p)} alt="" />
-          <b>{p.seat_index}号</b>
+          <span className="target-portrait">
+            <img className="target-avatar" src={UNKNOWN_AVATAR} alt="" />
+            <img className="target-card-back" src={ROLE_CARD_BACK} alt="" />
+            {p.is_sheriff ? <img className="target-sheriff" src={SHERIFF_BADGE} alt="" /> : null}
+          </span>
+          <small className="target-reason">{candidateReason(p, events, toolName)}</small>
+          <b>{p.seat_index} 号</b>
+          <small>{p.survived ? '可选择' : '已出局'}</small>
         </button>
       ))}
       {allowAbstain && onAbstain && (
-        <button className="skill-target abstain" onClick={onAbstain} disabled={submitting}>
-          <span className="seat-num" style={{ background: '#4a5670' }}>·</span>
-          <b style={{ marginTop: 8 }}>{abstainLabel}</b>
+        <button className="target-button abstain" onClick={onAbstain} disabled={submitting}>
+          <span className="target-portrait">
+            <img className="target-avatar" src="/assets/ui/vote/abstain_mark.png" alt="" />
+          </span>
+          <b>{abstainLabel}</b>
+          <small>保留行动</small>
         </button>
       )}
     </div>
   )
 }
 
-function portraitFor(p: Player): string {
-  if (p.faction === 'wolf') return '/assets/ui/cards/unknown_avatar.png'
-  if (p.role && ROLE_AVATARS[p.role]) return ROLE_AVATARS[p.role]
-  return '/assets/ui/cards/unknown_avatar.png'
+function candidateReason(player: Player, events: GameEvent[], toolName: string) {
+  if (!player.survived) return '已出局'
+  if (player.is_sheriff) return '持有警徽'
+
+  let votes = 0
+  for (const ev of events) {
+    if (ev.event_type !== 'vote_cast') continue
+    if (Number(ev.data?.target_id) === player.seat_index) votes += 1
+  }
+  if (votes > 0) return `${votes} 票指向`
+
+  for (let i = events.length - 1; i >= 0; i -= 1) {
+    const ev = events[i]
+    const target = Number(ev.data?.target_id ?? ev.data?.chosen)
+    if (target !== player.seat_index) continue
+    if (ev.event_type === 'wolf_target_selected') return '昨夜被刀'
+    if (ev.event_type === 'seer_checked') return '曾被查验'
+    if (ev.event_type === 'witch_used_antidote') return '曾被救下'
+    if (ev.event_type === 'witch_used_poison') return '毒药目标'
+    if (ev.event_type === 'vote_resolved') return '上轮焦点'
+  }
+
+  if (toolName === 'seer_check') return '可查验'
+  if (toolName === 'wolf_kill_proposal') return '可夜刀'
+  if (toolName === 'hunter_shoot') return '可带走'
+  if (toolName === 'witch_poison') return '可下毒'
+  return '可投票'
 }
 
-interface TimelineStep {
-  label: string
-  glyph: string
-  state: 'is-done' | 'is-active' | 'is-todo'
+const ROLE_LABELS: Record<string, string> = {
+  wolf: '狼人', seer: '预言家', witch: '女巫', hunter: '猎人', idiot: '白痴', guard: '守卫', villager: '村民',
 }
 
-function buildTimeline(phase: string, tool: string): TimelineStep[] {
-  // Show the night sequence when relevant
-  if (phase.startsWith('night') || tool.startsWith('witch') || tool === 'seer_check' || tool === 'wolf_kill_proposal') {
-    return [
-      { label: '狼人行动', glyph: '🐺', state: phaseOrder('night_wolf', phase) },
-      { label: '预言家查验', glyph: '👁', state: phaseOrder('night_seer', phase) },
-      { label: '女巫行动', glyph: '🧪', state: phaseOrder('night_witch', phase) },
-    ]
-  }
-  if (phase === 'sheriff_election') {
-    return [
-      { label: '竞选报名', glyph: '★', state: 'is-active' },
-      { label: '竞选发言', glyph: '🗣', state: 'is-todo' },
-      { label: '警长投票', glyph: '⚖', state: 'is-todo' },
-    ]
-  }
-  if (phase === 'day_speech' || phase === 'day_vote' || phase === 'day_announce') {
-    return [
-      { label: '警长竞选', glyph: '★', state: 'is-done' },
-      { label: '发言阶段', glyph: '🗣', state: phase === 'day_speech' ? 'is-active' : 'is-done' },
-      { label: '投票阶段', glyph: '⚖', state: phase === 'day_vote' ? 'is-active' : (phase === 'day_announce' ? 'is-done' : 'is-todo') },
-      { label: '夜晚结算', glyph: '🌙', state: 'is-todo' },
-    ]
-  }
-  return []
-}
-
-function phaseOrder(target: string, current: string): 'is-done' | 'is-active' | 'is-todo' {
-  const order = ['night_start', 'night_wolf', 'night_seer', 'night_witch', 'night_resolve']
-  const ci = order.indexOf(current)
-  const ti = order.indexOf(target)
-  if (ti < 0 || ci < 0) return target === current ? 'is-active' : 'is-todo'
-  if (ti < ci) return 'is-done'
-  if (ti === ci) return 'is-active'
-  return 'is-todo'
+function roleLabel(role: string): string {
+  return ROLE_LABELS[role] || role || '未知'
 }
 
 function roleHint(role: string, tool: string, phase: string): string | null {
   if (!role) return null
+  // Wolf
   if (role === 'wolf') {
-    if (tool === 'wolf_kill_proposal') return '夜刀目标：优先击杀强神（预言家／女巫／猎人）。注意不要刀到同伴。'
-    if (tool === 'vote_target' && phase === 'sheriff_election') return '警长竞选投票：狼队通常抱团给设计好的悍跳狼。'
-    if (tool === 'vote_target') return '白天投票：跟刀好人或制造混乱；别投己方狼人除非必须做局。'
-    if (tool === 'public_speech') return '可悍跳预言家／装好人／带节奏。点 💥 自爆可立即结束发言并取消投票。'
-    if (tool === 'sheriff_candidacy') return '狼队通常派一名悍跳预言家。其他狼一般不上警。'
-    if (tool === 'death_speech') return '继续身份伪装／划水／不暴露同伴。'
+    if (tool === 'wolf_kill_proposal') return '夜刀目标:优先击杀强神(预言家/女巫/猎人)。注意不要刀同伴。'
+    if (tool === 'vote_target' && phase === 'sheriff_election') return '警长竞选投票:狼队通常抱团给设计好的悍跳狼,争夺警徽流。'
+    if (tool === 'vote_target') return '白天投票:跟刀好人或制造混乱;别投己方狼人除非必须做局。'
+    if (tool === 'public_speech') return '发言阶段:可悍跳预言家/装好人/带节奏。点 💥 自爆可立即结束发言并取消投票放逐。'
+    if (tool === 'sheriff_candidacy') return '警长竞选:狼队通常派一名悍跳预言家。其他狼一般不上警。'
+    if (tool === 'death_speech') return '遗言:可继续身份伪装/划水/不暴露同伴。'
   }
+  // Seer
   if (role === 'seer') {
-    if (tool === 'seer_check') return '查验目标：验你怀疑的对象。首夜通常验"看起来威胁大"的玩家。'
-    if (tool === 'public_speech') return '作为预言家应主动跳身份，通报昨夜查验结果。'
-    if (tool === 'vote_target') return '跟自己验出的狼或可疑对象。'
-    if (tool === 'sheriff_candidacy') return '预言家几乎必上警争夺警徽，死亡可传警徽流。'
+    if (tool === 'seer_check') return '查验目标:验你怀疑的对象。第一晚通常验"看起来威胁大"的玩家。'
+    if (tool === 'public_speech') return '发言:作为预言家应主动跳身份,通报昨夜查验结果("X 号是狼/好人")。'
+    if (tool === 'vote_target') return '投票:跟自己验出的狼或可疑对象。'
+    if (tool === 'sheriff_candidacy') return '警长竞选:预言家几乎必上警争夺警徽,死亡可传警徽流。'
   }
+  // Witch
   if (role === 'witch') {
-    if (tool === 'witch_antidote') return '解药：首夜可自救；之后救强神价值最高。同时使用解药＋毒药会浪费一晚。'
-    if (tool === 'witch_poison') return '毒药：看到明显是狼的目标再用；乱毒强神是大忌。'
-    if (tool === 'public_speech') return '可隐藏身份，也可在关键时点亮"我是女巫，昨夜救了 X／毒了 Y"。'
+    if (tool === 'witch_antidote') return '解药:首夜可自救;之后救强神价值最高。同时使用解药+毒药会浪费一晚。'
+    if (tool === 'witch_poison') return '毒药:看到明显是狼的目标再用;乱毒强神是大忌。'
+    if (tool === 'public_speech') return '发言:可隐藏身份,也可在关键时点亮"我是女巫,昨夜救了 X / 毒了 Y"。'
+    if (tool === 'vote_target') return '投票:基于私有的死亡 + 救药信息推理。'
   }
+  // Hunter
   if (role === 'hunter') {
-    if (tool === 'hunter_shoot') return '被毒不能开枪；否则可以带走一名怀疑对象。'
-    if (tool === 'public_speech') return '可明跳"我是猎人，大家投我警将开枪"或藏身份。'
+    if (tool === 'hunter_shoot') return '猎人开枪:被毒不能开枪;否则可以带走一名怀疑对象。'
+    if (tool === 'public_speech') return '发言:可明跳"我是猎人,大家投我警将开枪"或藏身份。'
+    if (tool === 'vote_target') return '投票:猎人不怕暴露,可大胆投票。'
   }
-  if (role === 'idiot' && tool === 'public_speech') return '白痴尽量伪装村民。被投出后翻牌可继续存活但失去投票权。'
-  if (role === 'villager' && tool === 'public_speech') return '村民最重要的是逻辑梳理＋给神队让位。'
-  if (tool === 'sheriff_candidacy') return '警长发言权重 1.5 倍，死亡可传警徽。综合身份与局势决定是否参选。'
+  // Idiot
+  if (role === 'idiot') {
+    if (tool === 'public_speech') return '发言:白痴尽量伪装村民。被投出后翻牌可继续存活但失去投票权。'
+    if (tool === 'vote_target') return '投票:跟好人节奏,别乱站边。'
+  }
+  // Villager
+  if (role === 'villager') {
+    if (tool === 'public_speech') return '发言:村民最重要的是逻辑梳理 + 给神队让位。'
+    if (tool === 'vote_target') return '投票:跟预言家给的狼或综合多神判断。'
+    if (tool === 'sheriff_candidacy') return '警长竞选:普通村民原则上不上警,避免扰乱预言家视角。'
+  }
+  // Generic sheriff_candidacy fallback
+  if (tool === 'sheriff_candidacy') {
+    return '警长竞选:警长发言权重 1.5 倍,死亡可传警徽。综合身份与局势决定是否参选。'
+  }
   return null
 }
 
@@ -388,20 +363,13 @@ function SpeechComposer({
       <textarea
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        placeholder="输入你的发言…"
+        placeholder="输入你的发言..."
         rows={4}
         disabled={submitting}
       />
-      <div style={{ display: 'flex', gap: 10, marginTop: 12, justifyContent: 'flex-end' }}>
-        <button className="ghost-btn" onClick={onSkip} disabled={submitting}>选择沉默</button>
-        <button
-          className="stage-btn primary"
-          style={{ minWidth: 140, height: 42, fontSize: 14 }}
-          onClick={onSubmit}
-          disabled={submitting || !value.trim()}
-        >
-          发布发言
-        </button>
+      <div className="action-buttons">
+        <button onClick={onSubmit} disabled={submitting || !value.trim()}>发布发言</button>
+        <button className="ghost" onClick={onSkip} disabled={submitting}>选择沉默</button>
       </div>
     </div>
   )

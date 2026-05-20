@@ -1,0 +1,935 @@
+{
+  "type": "panel",
+  "processed": 58,
+  "changed": 58,
+  "results": [
+    {
+      "path": "C:\\Work\\LycanTUI\\desktop\\public\\assets\\ui\\panels\\panel_main_dark_glass.png",
+      "changed": true,
+      "before_bbox": [
+        60,
+        40,
+        837,
+        561
+      ],
+      "after_bbox": [
+        2,
+        0,
+        897,
+        600
+      ]
+    },
+    {
+      "path": "C:\\Work\\LycanTUI\\desktop\\public\\assets\\ui\\panels\\panel_side_drawer.png",
+      "changed": true,
+      "before_bbox": [
+        48,
+        71,
+        669,
+        1010
+      ],
+      "after_bbox": [
+        3,
+        0,
+        717,
+        1080
+      ]
+    },
+    {
+      "path": "C:\\Work\\LycanTUI\\desktop\\public\\assets\\ui\\panels\\panel_player_slot.png",
+      "changed": true,
+      "before_bbox": [
+        31,
+        30,
+        488,
+        129
+      ],
+      "after_bbox": [
+        0,
+        23,
+        520,
+        136
+      ]
+    },
+    {
+      "path": "C:\\Work\\LycanTUI\\desktop\\public\\assets\\ui\\panels\\panel_vote_main.png",
+      "changed": true,
+      "before_bbox": [
+        60,
+        40,
+        837,
+        561
+      ],
+      "after_bbox": [
+        2,
+        0,
+        897,
+        600
+      ]
+    },
+    {
+      "path": "C:\\Work\\LycanTUI\\desktop\\public\\assets\\ui\\panels\\panel_vote_card.png",
+      "changed": true,
+      "before_bbox": [
+        29,
+        42,
+        450,
+        177
+      ],
+      "after_bbox": [
+        0,
+        33,
+        480,
+        187
+      ]
+    },
+    {
+      "path": "C:\\Work\\LycanTUI\\desktop\\public\\assets\\ui\\panels\\panel_night_phase.png",
+      "changed": true,
+      "before_bbox": [
+        60,
+        40,
+        837,
+        561
+      ],
+      "after_bbox": [
+        2,
+        0,
+        897,
+        600
+      ]
+    },
+    {
+      "path": "C:\\Work\\LycanTUI\\desktop\\public\\assets\\ui\\panels\\panel_witch_action.png",
+      "changed": true,
+      "before_bbox": [
+        60,
+        40,
+        837,
+        561
+      ],
+      "after_bbox": [
+        2,
+        0,
+        897,
+        600
+      ]
+    },
+    {
+      "path": "C:\\Work\\LycanTUI\\desktop\\public\\assets\\ui\\panels\\panel_seer_action.png",
+      "changed": true,
+      "before_bbox": [
+        60,
+        40,
+        837,
+        561
+      ],
+      "after_bbox": [
+        2,
+        0,
+        897,
+        600
+      ]
+    },
+    {
+      "path": "C:\\Work\\LycanTUI\\desktop\\public\\assets\\ui\\panels\\panel_hunter_action.png",
+      "changed": true,
+      "before_bbox": [
+        60,
+        40,
+        837,
+        561
+      ],
+      "after_bbox": [
+        2,
+        0,
+        897,
+        600
+      ]
+    },
+    {
+      "path": "C:\\Work\\LycanTUI\\desktop\\public\\assets\\ui\\panels\\panel_sheriff_election.png",
+      "changed": true,
+      "before_bbox": [
+        60,
+        40,
+        837,
+        561
+      ],
+      "after_bbox": [
+        2,
+        0,
+        897,
+        600
+      ]
+    },
+    {
+      "path": "C:\\Work\\LycanTUI\\desktop\\public\\assets\\ui\\panels\\panel_death_announcement.png",
+      "changed": true,
+      "before_bbox": [
+        60,
+        40,
+        837,
+        561
+      ],
+      "after_bbox": [
+        2,
+        0,
+        897,
+        600
+      ]
+    },
+    {
+      "path": "C:\\Work\\LycanTUI\\desktop\\public\\assets\\ui\\panels\\panel_speech_stage.png",
+      "changed": true,
+      "before_bbox": [
+        60,
+        40,
+        837,
+        561
+      ],
+      "after_bbox": [
+        2,
+        0,
+        897,
+        600
+      ]
+    },
+    {
+      "path": "C:\\Work\\LycanTUI\\desktop\\public\\assets\\ui\\panels\\panel_pk_main.png",
+      "changed": true,
+      "before_bbox": [
+        60,
+        40,
+        837,
+        561
+      ],
+      "after_bbox": [
+        2,
+        0,
+        897,
+        600
+      ]
+    },
+    {
+      "path": "C:\\Work\\LycanTUI\\desktop\\public\\assets\\ui\\panels\\panel_exile_result.png",
+      "changed": true,
+      "before_bbox": [
+        60,
+        40,
+        837,
+        561
+      ],
+      "after_bbox": [
+        2,
+        0,
+        897,
+        600
+      ]
+    },
+    {
+      "path": "C:\\Work\\LycanTUI\\desktop\\public\\assets\\ui\\panels\\panel_game_over.png",
+      "changed": true,
+      "before_bbox": [
+        60,
+        40,
+        837,
+        561
+      ],
+      "after_bbox": [
+        2,
+        0,
+        897,
+        600
+      ]
+    },
+    {
+      "path": "C:\\Work\\LycanTUI\\desktop\\public\\assets\\ui\\panels\\drawer_history_record.png",
+      "changed": true,
+      "before_bbox": [
+        31,
+        34,
+        488,
+        145
+      ],
+      "after_bbox": [
+        0,
+        27,
+        520,
+        153
+      ]
+    },
+    {
+      "path": "C:\\Work\\LycanTUI\\desktop\\public\\assets\\ui\\panels\\card_history_chat.png",
+      "changed": true,
+      "before_bbox": [
+        34,
+        34,
+        525,
+        145
+      ],
+      "after_bbox": [
+        0,
+        26,
+        560,
+        153
+      ]
+    },
+    {
+      "path": "C:\\Work\\LycanTUI\\desktop\\public\\assets\\ui\\panels\\card_history_skill.png",
+      "changed": true,
+      "before_bbox": [
+        34,
+        34,
+        525,
+        145
+      ],
+      "after_bbox": [
+        0,
+        26,
+        560,
+        153
+      ]
+    },
+    {
+      "path": "C:\\Work\\LycanTUI\\desktop\\public\\assets\\ui\\panels\\panel_landing_mode_personal.png",
+      "changed": true,
+      "before_bbox": [
+        36,
+        23,
+        502,
+        337
+      ],
+      "after_bbox": [
+        3,
+        0,
+        537,
+        360
+      ]
+    },
+    {
+      "path": "C:\\Work\\LycanTUI\\desktop\\public\\assets\\ui\\panels\\panel_landing_mode_god.png",
+      "changed": true,
+      "before_bbox": [
+        36,
+        23,
+        502,
+        337
+      ],
+      "after_bbox": [
+        3,
+        0,
+        537,
+        360
+      ]
+    },
+    {
+      "path": "C:\\Work\\LycanTUI\\desktop\\public\\assets\\ui\\panels\\panel_auth_form.png",
+      "changed": true,
+      "before_bbox": [
+        48,
+        57,
+        669,
+        804
+      ],
+      "after_bbox": [
+        2,
+        0,
+        717,
+        860
+      ]
+    },
+    {
+      "path": "C:\\Work\\LycanTUI\\desktop\\public\\assets\\ui\\panels\\panel_register_form.png",
+      "changed": true,
+      "before_bbox": [
+        48,
+        59,
+        669,
+        842
+      ],
+      "after_bbox": [
+        3,
+        0,
+        717,
+        899
+      ]
+    },
+    {
+      "path": "C:\\Work\\LycanTUI\\desktop\\public\\assets\\ui\\panels\\panel_create_match.png",
+      "changed": true,
+      "before_bbox": [
+        60,
+        51,
+        837,
+        729
+      ],
+      "after_bbox": [
+        3,
+        0,
+        897,
+        780
+      ]
+    },
+    {
+      "path": "C:\\Work\\LycanTUI\\desktop\\public\\assets\\ui\\panels\\panel_match_list.png",
+      "changed": true,
+      "before_bbox": [
+        64,
+        48,
+        892,
+        673
+      ],
+      "after_bbox": [
+        3,
+        0,
+        957,
+        720
+      ]
+    },
+    {
+      "path": "C:\\Work\\LycanTUI\\desktop\\public\\assets\\ui\\panels\\card_match_record.png",
+      "changed": true,
+      "before_bbox": [
+        43,
+        42,
+        675,
+        177
+      ],
+      "after_bbox": [
+        0,
+        33,
+        720,
+        187
+      ]
+    },
+    {
+      "path": "C:\\Work\\LycanTUI\\desktop\\public\\assets\\ui\\panels\\panel_settings.png",
+      "changed": true,
+      "before_bbox": [
+        60,
+        51,
+        837,
+        729
+      ],
+      "after_bbox": [
+        3,
+        0,
+        897,
+        780
+      ]
+    },
+    {
+      "path": "C:\\Work\\LycanTUI\\desktop\\public\\assets\\ui\\panels\\panel_ai_autoplay.png",
+      "changed": true,
+      "before_bbox": [
+        45,
+        27,
+        632,
+        393
+      ],
+      "after_bbox": [
+        3,
+        0,
+        677,
+        420
+      ]
+    },
+    {
+      "path": "C:\\Work\\LycanTUI\\desktop\\public\\assets\\ui\\panels\\panel_ai_summary_main.png",
+      "changed": true,
+      "before_bbox": [
+        67,
+        50,
+        929,
+        711
+      ],
+      "after_bbox": [
+        4,
+        0,
+        995,
+        760
+      ]
+    },
+    {
+      "path": "C:\\Work\\LycanTUI\\desktop\\public\\assets\\ui\\panels\\card_summary_event.png",
+      "changed": true,
+      "before_bbox": [
+        43,
+        34,
+        675,
+        145
+      ],
+      "after_bbox": [
+        0,
+        27,
+        720,
+        153
+      ]
+    },
+    {
+      "path": "C:\\Work\\LycanTUI\\desktop\\public\\assets\\ui\\panels\\card_summary_player_score.png",
+      "changed": true,
+      "before_bbox": [
+        31,
+        30,
+        488,
+        129
+      ],
+      "after_bbox": [
+        0,
+        23,
+        520,
+        136
+      ]
+    },
+    {
+      "path": "C:\\Work\\LycanTUI\\desktop\\public\\assets\\ui\\panels\\panel_help_rules.png",
+      "changed": true,
+      "before_bbox": [
+        67,
+        50,
+        929,
+        711
+      ],
+      "after_bbox": [
+        4,
+        0,
+        995,
+        760
+      ]
+    },
+    {
+      "path": "C:\\Work\\LycanTUI\\desktop\\public\\assets\\ui\\panels\\panel_tutorial_tip.png",
+      "changed": true,
+      "before_bbox": [
+        43,
+        42,
+        675,
+        177
+      ],
+      "after_bbox": [
+        0,
+        33,
+        720,
+        187
+      ]
+    },
+    {
+      "path": "C:\\Work\\LycanTUI\\desktop\\public\\assets\\ui\\dialogs\\dialog_delete_match.png",
+      "changed": true,
+      "before_bbox": [
+        48,
+        27,
+        669,
+        393
+      ],
+      "after_bbox": [
+        3,
+        0,
+        716,
+        420
+      ]
+    },
+    {
+      "path": "C:\\Work\\LycanTUI\\desktop\\public\\assets\\ui\\dialogs\\dialog_pause_game.png",
+      "changed": true,
+      "before_bbox": [
+        48,
+        27,
+        669,
+        393
+      ],
+      "after_bbox": [
+        3,
+        0,
+        716,
+        420
+      ]
+    },
+    {
+      "path": "C:\\Work\\LycanTUI\\desktop\\public\\assets\\ui\\dialogs\\dialog_stop_game.png",
+      "changed": true,
+      "before_bbox": [
+        48,
+        27,
+        669,
+        393
+      ],
+      "after_bbox": [
+        3,
+        0,
+        716,
+        420
+      ]
+    },
+    {
+      "path": "C:\\Work\\LycanTUI\\desktop\\public\\assets\\ui\\dialogs\\dialog_exit_save.png",
+      "changed": true,
+      "before_bbox": [
+        48,
+        27,
+        669,
+        393
+      ],
+      "after_bbox": [
+        3,
+        0,
+        716,
+        420
+      ]
+    },
+    {
+      "path": "C:\\Work\\LycanTUI\\desktop\\public\\assets\\ui\\dialogs\\dialog_generic_confirm.png",
+      "changed": true,
+      "before_bbox": [
+        48,
+        27,
+        669,
+        393
+      ],
+      "after_bbox": [
+        3,
+        0,
+        716,
+        420
+      ]
+    },
+    {
+      "path": "C:\\Work\\LycanTUI\\desktop\\public\\assets\\ui\\overlays\\overlay_dim_night.png",
+      "changed": true,
+      "before_bbox": [
+        0,
+        0,
+        1920,
+        1080
+      ],
+      "after_bbox": [
+        0,
+        0,
+        1920,
+        1080
+      ]
+    },
+    {
+      "path": "C:\\Work\\LycanTUI\\desktop\\public\\assets\\ui\\overlays\\overlay_focus_center.png",
+      "changed": true,
+      "before_bbox": [
+        0,
+        0,
+        1920,
+        1080
+      ],
+      "after_bbox": [
+        0,
+        0,
+        1920,
+        1080
+      ]
+    },
+    {
+      "path": "C:\\Work\\LycanTUI\\desktop\\public\\assets\\ui\\overlays\\overlay_wolf_focus.png",
+      "changed": true,
+      "before_bbox": [
+        0,
+        0,
+        1920,
+        1080
+      ],
+      "after_bbox": [
+        0,
+        0,
+        1920,
+        1080
+      ]
+    },
+    {
+      "path": "C:\\Work\\LycanTUI\\desktop\\public\\assets\\ui\\components\\loading_bar_gold.png",
+      "changed": true,
+      "before_bbox": [
+        0,
+        18,
+        512,
+        46
+      ],
+      "after_bbox": [
+        0,
+        18,
+        512,
+        46
+      ]
+    },
+    {
+      "path": "C:\\Work\\LycanTUI\\desktop\\public\\assets\\ui\\components\\toggle_on_gold.png",
+      "changed": true,
+      "before_bbox": [
+        0,
+        9,
+        160,
+        70
+      ],
+      "after_bbox": [
+        0,
+        9,
+        160,
+        70
+      ]
+    },
+    {
+      "path": "C:\\Work\\LycanTUI\\desktop\\public\\assets\\ui\\components\\toggle_off_gray.png",
+      "changed": true,
+      "before_bbox": [
+        0,
+        7,
+        160,
+        72
+      ],
+      "after_bbox": [
+        0,
+        7,
+        160,
+        72
+      ]
+    },
+    {
+      "path": "C:\\Work\\LycanTUI\\desktop\\public\\assets\\ui\\components\\slider_gold.png",
+      "changed": true,
+      "before_bbox": [
+        0,
+        21,
+        360,
+        43
+      ],
+      "after_bbox": [
+        0,
+        21,
+        360,
+        43
+      ]
+    },
+    {
+      "path": "C:\\Work\\LycanTUI\\desktop\\public\\assets\\ui\\components\\toast_success.png",
+      "changed": true,
+      "before_bbox": [
+        0,
+        14,
+        480,
+        81
+      ],
+      "after_bbox": [
+        0,
+        14,
+        480,
+        81
+      ]
+    },
+    {
+      "path": "C:\\Work\\LycanTUI\\desktop\\public\\assets\\ui\\components\\toast_warning.png",
+      "changed": true,
+      "before_bbox": [
+        0,
+        14,
+        480,
+        81
+      ],
+      "after_bbox": [
+        0,
+        14,
+        480,
+        81
+      ]
+    },
+    {
+      "path": "C:\\Work\\LycanTUI\\desktop\\public\\assets\\ui\\components\\toast_error.png",
+      "changed": true,
+      "before_bbox": [
+        0,
+        14,
+        480,
+        81
+      ],
+      "after_bbox": [
+        0,
+        14,
+        480,
+        81
+      ]
+    },
+    {
+      "path": "C:\\Work\\LycanTUI\\desktop\\public\\assets\\ui\\components\\toast_info.png",
+      "changed": true,
+      "before_bbox": [
+        0,
+        14,
+        480,
+        81
+      ],
+      "after_bbox": [
+        0,
+        14,
+        480,
+        81
+      ]
+    },
+    {
+      "path": "C:\\Work\\LycanTUI\\desktop\\public\\assets\\ui\\role_cards\\personal\\card_self_role_base.png",
+      "changed": true,
+      "before_bbox": [
+        25,
+        0,
+        335,
+        520
+      ],
+      "after_bbox": [
+        25,
+        0,
+        335,
+        520
+      ]
+    },
+    {
+      "path": "C:\\Work\\LycanTUI\\desktop\\public\\assets\\ui\\role_cards\\personal\\card_ai_unknown_base.png",
+      "changed": true,
+      "before_bbox": [
+        22,
+        0,
+        337,
+        520
+      ],
+      "after_bbox": [
+        22,
+        0,
+        337,
+        520
+      ]
+    },
+    {
+      "path": "C:\\Work\\LycanTUI\\desktop\\public\\assets\\ui\\role_cards\\personal\\card_ai_unknown_dead.png",
+      "changed": true,
+      "before_bbox": [
+        23,
+        0,
+        337,
+        520
+      ],
+      "after_bbox": [
+        23,
+        0,
+        337,
+        520
+      ]
+    },
+    {
+      "path": "C:\\Work\\LycanTUI\\desktop\\public\\assets\\ui\\role_cards\\personal\\card_ai_revealed_base.png",
+      "changed": true,
+      "before_bbox": [
+        19,
+        0,
+        340,
+        520
+      ],
+      "after_bbox": [
+        19,
+        0,
+        340,
+        520
+      ]
+    },
+    {
+      "path": "C:\\Work\\LycanTUI\\desktop\\public\\assets\\ui\\role_cards\\god\\card_god_villager.png",
+      "changed": true,
+      "before_bbox": [
+        17,
+        0,
+        343,
+        520
+      ],
+      "after_bbox": [
+        17,
+        0,
+        343,
+        520
+      ]
+    },
+    {
+      "path": "C:\\Work\\LycanTUI\\desktop\\public\\assets\\ui\\role_cards\\god\\card_god_werewolf.png",
+      "changed": true,
+      "before_bbox": [
+        21,
+        0,
+        338,
+        520
+      ],
+      "after_bbox": [
+        21,
+        0,
+        338,
+        520
+      ]
+    },
+    {
+      "path": "C:\\Work\\LycanTUI\\desktop\\public\\assets\\ui\\role_cards\\god\\card_god_seer.png",
+      "changed": true,
+      "before_bbox": [
+        21,
+        0,
+        338,
+        520
+      ],
+      "after_bbox": [
+        21,
+        0,
+        338,
+        520
+      ]
+    },
+    {
+      "path": "C:\\Work\\LycanTUI\\desktop\\public\\assets\\ui\\role_cards\\god\\card_god_witch.png",
+      "changed": true,
+      "before_bbox": [
+        23,
+        0,
+        337,
+        520
+      ],
+      "after_bbox": [
+        23,
+        0,
+        337,
+        520
+      ]
+    },
+    {
+      "path": "C:\\Work\\LycanTUI\\desktop\\public\\assets\\ui\\role_cards\\god\\card_god_hunter.png",
+      "changed": true,
+      "before_bbox": [
+        23,
+        0,
+        337,
+        520
+      ],
+      "after_bbox": [
+        23,
+        0,
+        337,
+        520
+      ]
+    },
+    {
+      "path": "C:\\Work\\LycanTUI\\desktop\\public\\assets\\ui\\role_cards\\god\\card_god_idiot.png",
+      "changed": true,
+      "before_bbox": [
+        23,
+        0,
+        337,
+        520
+      ],
+      "after_bbox": [
+        23,
+        0,
+        337,
+        520
+      ]
+    }
+  ]
+}

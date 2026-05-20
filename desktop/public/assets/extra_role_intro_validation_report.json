@@ -1,0 +1,89 @@
+{
+  "contact_sheet": "desktop/review/extra_role_intro_contact_sheet.png",
+  "items": [
+    {
+      "file": "desktop/public/assets/ui/role_intro/extra/role_intro_elder_male.png",
+      "size": [
+        900,
+        1200
+      ],
+      "portrait_bbox": [
+        237,
+        130,
+        663,
+        690
+      ],
+      "clear_of_text_panel": true
+    },
+    {
+      "file": "desktop/public/assets/ui/role_intro/extra/role_intro_elder_female.png",
+      "size": [
+        900,
+        1200
+      ],
+      "portrait_bbox": [
+        236,
+        130,
+        664,
+        690
+      ],
+      "clear_of_text_panel": true
+    },
+    {
+      "file": "desktop/public/assets/ui/role_intro/extra/role_intro_boy.png",
+      "size": [
+        900,
+        1200
+      ],
+      "portrait_bbox": [
+        283,
+        130,
+        616,
+        690
+      ],
+      "clear_of_text_panel": true
+    },
+    {
+      "file": "desktop/public/assets/ui/role_intro/extra/role_intro_girl.png",
+      "size": [
+        900,
+        1200
+      ],
+      "portrait_bbox": [
+        246,
+        130,
+        653,
+        690
+      ],
+      "clear_of_text_panel": true
+    },
+    {
+      "file": "desktop/public/assets/ui/role_intro/role_intro_guard.png",
+      "size": [
+        900,
+        1200
+      ],
+      "portrait_bbox": [
+        225,
+        130,
+        675,
+        690
+      ],
+      "clear_of_text_panel": true
+    },
+    {
+      "file": "desktop/public/assets/ui/role_intro/extra/role_intro_villager_lantern.png",
+      "size": [
+        900,
+        1200
+      ],
+      "portrait_bbox": [
+        215,
+        142,
+        685,
+        690
+      ],
+      "clear_of_text_panel": true
+    }
+  ]
+}

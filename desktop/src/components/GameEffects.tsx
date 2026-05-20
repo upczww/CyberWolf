@@ -1,382 +1,453 @@
 /**
- * Code-based game animations triggered by events.
- * All effects are CSS + Framer Motion, no image assets needed.
+ * Event-driven action cues for key Werewolf moments.
+ *
+ * The goal is clarity first: every critical action should show who acted,
+ * who was targeted, and what the ruling/result was.
  */
 import { useEffect, useState } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { AnimatePresence, motion } from 'framer-motion'
 import { GameEvent } from '../stores/game'
 
 interface Props {
   latestEvent: GameEvent | null
 }
 
-type EffectType = 'slash' | 'poison' | 'heal' | 'seer' | 'shoot' | 'death' | 'vote' | 'victory_good' | 'victory_wolf' | 'shake' | null
+type CueKind =
+  | 'wolf_kill'
+  | 'seer_check'
+  | 'witch_antidote'
+  | 'witch_poison'
+  | 'vote_cast'
+  | 'vote_resolved'
+  | 'hunter_shot'
+  | 'death'
+  | 'self_destruct'
+  | 'victory_good'
+  | 'victory_wolf'
+
+type CueTone = 'wolf' | 'seer' | 'heal' | 'poison' | 'vote' | 'exile' | 'hunter' | 'death' | 'gold'
+
+interface ActionCue {
+  kind: CueKind
+  tone: CueTone
+  icon: string
+  title: string
+  subtitle: string
+  from?: string
+  to?: string
+  result?: string
+  duration: number
+}
+
+interface ActiveCue {
+  id: number
+  cue: ActionCue
+}
+
+const ICONS = {
+  claw: '/assets/ui/icons/skills/icon_skill_wolf_kill.png',
+  seer: '/assets/ui/icons/skills/icon_skill_seer_check.png',
+  antidote: '/assets/ui/icons/skills/icon_skill_witch_heal.png',
+  poison: '/assets/ui/icons/skills/icon_skill_witch_poison.png',
+  vote: '/assets/ui/icons/actions/icon_action_vote.png',
+  hunter: '/assets/ui/icons/skills/icon_skill_hunter_shoot.png',
+  selfDestruct: '/assets/ui/icons/actions/icon_action_explode.png',
+  exile: '/assets/ui/icons/status/icon_status_exiled.png',
+  goodVictory: '/assets/ui/icons/status/icon_good_win.png',
+  wolfVictory: '/assets/ui/icons/status/icon_wolf_win.png',
+}
 
 export default function GameEffects({ latestEvent }: Props) {
-  const [effect, setEffect] = useState<EffectType>(null)
+  const [active, setActive] = useState<ActiveCue | null>(null)
 
   useEffect(() => {
-    if (!latestEvent) return
-    const etype = latestEvent.event_type
-    const content = latestEvent.content
+    const cue = latestEvent ? cueFromEvent(latestEvent) : null
+    if (!cue) return
 
-    if (etype === 'wolf_target_selected') trigger('slash')
-    else if (etype === 'witch_used_poison') trigger('poison')
-    else if (etype === 'witch_used_antidote') trigger('heal')
-    else if (etype === 'seer_checked') trigger('seer')
-    else if (content === 'event.hunter_shot') trigger('shoot')
-    else if (etype === 'player_died') trigger('death')
-    else if (etype === 'vote_resolved') trigger('vote')
-    else if (etype === 'game_ended') {
-      trigger(latestEvent.data?.winner === 'good' ? 'victory_good' : 'victory_wolf')
-    }
+    const id = Date.now()
+    setActive({ id, cue })
+    const timer = window.setTimeout(() => {
+      setActive(null)
+    }, cue.duration)
+
+    return () => window.clearTimeout(timer)
   }, [latestEvent])
-
-  const trigger = (type: EffectType) => {
-    setEffect(type)
-    setTimeout(() => setEffect(null), 1500)
-  }
 
   return (
     <AnimatePresence>
-      {effect === 'slash' && <SlashEffect />}
-      {effect === 'poison' && <PoisonEffect />}
-      {effect === 'heal' && <HealEffect />}
-      {effect === 'seer' && <SeerEffect />}
-      {effect === 'shoot' && <ShootEffect />}
-      {effect === 'death' && <DeathEffect />}
-      {effect === 'vote' && <VoteEffect />}
-      {effect === 'victory_good' && <VictoryEffect color="gold" />}
-      {effect === 'victory_wolf' && <VictoryEffect color="red" />}
+      {active && <ActionCueOverlay key={active.id} cue={active.cue} />}
     </AnimatePresence>
   )
 }
 
-/** Wolf claw swipe — 4 curved claw marks with trailing glow + screen shake */
-function SlashEffect() {
-  // 4 claw marks, slightly curved, from upper-right to lower-left
-  const claws = [
-    { x1: 62, y1: 15, x2: 32, y2: 75, curve: -8 },
-    { x1: 68, y1: 12, x2: 38, y2: 72, curve: -6 },
-    { x1: 74, y1: 10, x2: 44, y2: 70, curve: -4 },
-    { x1: 80, y1: 8, x2: 50, y2: 68, curve: -2 },
-  ]
+function cueFromEvent(event: GameEvent): ActionCue | null {
+  const d = event.data || {}
+  const type = event.event_type
+  const content = event.content
 
+  if (type === 'wolf_target_selected') {
+    const target = seatLabel(d.target_id)
+    const actor = seatLabel(firstValue(d.player_id, d.actor_id, d.source_id, firstVoteActor(d.votes)))
+    return {
+      kind: 'wolf_kill',
+      tone: 'wolf',
+      icon: ICONS.claw,
+      title: '狼刀锁定',
+      subtitle: '狼队夜间袭击目标已确定',
+      from: actor,
+      to: target,
+      result: target ? `${target} 成为夜刀目标` : '夜刀目标已记录',
+      duration: 1900,
+    }
+  }
+
+  if (type === 'seer_checked') {
+    const target = seatLabel(d.target_id)
+    const result = seerResultText(d.result)
+    return {
+      kind: 'seer_check',
+      tone: 'seer',
+      icon: ICONS.seer,
+      title: '预言家查验',
+      subtitle: '查验光束已指向目标',
+      from: seatLabel(firstValue(d.player_id, d.actor_id)),
+      to: target,
+      result: target ? `${target} 的身份倾向：${result}` : `查验结果：${result}`,
+      duration: 2050,
+    }
+  }
+
+  if (type === 'witch_used_antidote') {
+    const target = seatLabel(d.target_id)
+    return {
+      kind: 'witch_antidote',
+      tone: 'heal',
+      icon: ICONS.antidote,
+      title: '女巫使用解药',
+      subtitle: '解药生效，抵消本夜致命伤害',
+      from: seatLabel(firstValue(d.player_id, d.actor_id)),
+      to: target,
+      result: target ? `${target} 被救下` : '解药已生效',
+      duration: 1900,
+    }
+  }
+
+  if (type === 'witch_used_poison') {
+    const target = seatLabel(d.target_id)
+    return {
+      kind: 'witch_poison',
+      tone: 'poison',
+      icon: ICONS.poison,
+      title: '女巫使用毒药',
+      subtitle: '毒药目标已确认',
+      from: seatLabel(firstValue(d.player_id, d.actor_id)),
+      to: target,
+      result: target ? `${target} 中毒出局` : '毒药已投放',
+      duration: 1950,
+    }
+  }
+
+  if (type === 'vote_cast') {
+    const from = seatLabel(d.voter_id)
+    const to = seatLabel(d.target_id)
+    return {
+      kind: 'vote_cast',
+      tone: 'vote',
+      icon: ICONS.vote,
+      title: '投票记录',
+      subtitle: '本票已计入白天投票',
+      from,
+      to,
+      result: from && to ? `${from} 投给 ${to}` : '投票已记录',
+      duration: 1350,
+    }
+  }
+
+  if (type === 'vote_resolved') {
+    const chosen = seatLabel(d.chosen)
+    const tied = !chosen
+    return {
+      kind: 'vote_resolved',
+      tone: tied ? 'vote' : 'exile',
+      icon: tied ? ICONS.vote : ICONS.exile,
+      title: tied ? '投票平局' : '放逐结算',
+      subtitle: tied ? '票数未能形成放逐结果' : '白天投票已经结算',
+      to: chosen,
+      result: tied ? '无人被放逐' : `${chosen} 被放逐出局`,
+      duration: 2100,
+    }
+  }
+
+  if (type === 'hunter_shot' || content === 'event.hunter_shot') {
+    const target = seatLabel(d.target_id)
+    return {
+      kind: 'hunter_shot',
+      tone: 'hunter',
+      icon: ICONS.hunter,
+      title: '猎人发动技能',
+      subtitle: '猎枪目标已确认',
+      from: seatLabel(firstValue(d.player_id, d.actor_id)),
+      to: target,
+      result: target ? `猎人带走 ${target}` : '猎人开枪',
+      duration: 1800,
+    }
+  }
+
+  if (type === 'wolf_self_destruct') {
+    return {
+      kind: 'self_destruct',
+      tone: 'wolf',
+      icon: ICONS.selfDestruct,
+      title: '狼人自爆',
+      subtitle: '发言中断，立即进入夜晚',
+      from: seatLabel(firstValue(d.player_id, d.actor_id)),
+      result: '自爆生效',
+      duration: 2200,
+    }
+  }
+
+  if (type === 'player_died') {
+    const target = seatLabel(d.player_id || d.target_id)
+    return {
+      kind: 'death',
+      tone: 'death',
+      icon: deathIcon(d.cause),
+      title: '玩家出局',
+      subtitle: deathCauseText(d.cause),
+      to: target,
+      result: target ? `${target} 离场` : '出局已结算',
+      duration: 1500,
+    }
+  }
+
+  return null
+}
+
+function ActionCueOverlay({ cue }: { cue: ActionCue }) {
   return (
     <motion.div
-      className="fixed inset-0 pointer-events-none z-50"
-      initial={{ x: 0 }}
-      animate={{ x: [0, -6, 6, -3, 3, 0] }}
-      transition={{ duration: 0.4 }}
+      className={`effect-overlay effect-tone-${cue.tone}`}
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
+      transition={{ duration: 0.18 }}
     >
-      {/* Dark flash overlay */}
       <motion.div
-        className="absolute inset-0 bg-red-900/30"
+        className="effect-vignette"
         initial={{ opacity: 0 }}
-        animate={{ opacity: [0, 0.4, 0] }}
-        transition={{ duration: 0.5 }}
+        animate={{ opacity: [0, 1, 0.72] }}
+        exit={{ opacity: 0 }}
+        transition={{ duration: 0.45 }}
       />
 
-      {/* SVG claw marks */}
-      <svg className="absolute inset-0 w-full h-full">
-        {claws.map((claw, i) => {
-          const mx = (claw.x1 + claw.x2) / 2 + claw.curve
-          const my = (claw.y1 + claw.y2) / 2
-          const path = `M ${claw.x1}% ${claw.y1}% Q ${mx}% ${my}% ${claw.x2}% ${claw.y2}%`
-          return (
-            <motion.path
-              key={i}
-              d={path}
-              fill="none"
-              stroke="url(#clawGradient)"
-              strokeWidth="4"
-              strokeLinecap="round"
-              filter="url(#clawGlow)"
-              initial={{ pathLength: 0, opacity: 0 }}
-              animate={{ pathLength: [0, 1], opacity: [0, 1, 1, 0.3] }}
-              transition={{ duration: 0.4, delay: i * 0.05, ease: 'easeOut' }}
-            />
-          )
-        })}
-        <defs>
-          <linearGradient id="clawGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stopColor="#ff2222" />
-            <stop offset="50%" stopColor="#cc0000" />
-            <stop offset="100%" stopColor="#660000" />
-          </linearGradient>
-          <filter id="clawGlow">
-            <feGaussianBlur stdDeviation="3" result="blur" />
-            <feMerge>
-              <feMergeNode in="blur" />
-              <feMergeNode in="SourceGraphic" />
-            </feMerge>
-          </filter>
-        </defs>
-      </svg>
-
-      {/* Blood splatter particles */}
-      {Array.from({ length: 8 }).map((_, i) => (
-        <motion.div
-          key={`blood-${i}`}
-          className="absolute w-1.5 h-1.5 rounded-full bg-red-600"
-          style={{
-            left: `${45 + Math.random() * 20}%`,
-            top: `${35 + Math.random() * 30}%`,
-            boxShadow: '0 0 4px rgba(220,38,38,0.8)',
-          }}
-          initial={{ scale: 0, opacity: 1 }}
-          animate={{
-            scale: [0, 1.5, 0.5],
-            opacity: [0, 1, 0],
-            x: (Math.random() - 0.5) * 60,
-            y: Math.random() * 40 + 10,
-          }}
-          transition={{ duration: 0.6, delay: 0.2 + Math.random() * 0.2 }}
-        />
-      ))}
-    </motion.div>
-  )
-}
-
-/** Purple radial expansion + floating particles + poison smoke overlay */
-function PoisonEffect() {
-  return (
-    <motion.div
-      className="fixed inset-0 pointer-events-none z-50 flex items-center justify-center"
-      exit={{ opacity: 0 }}
-    >
-      <motion.img
-        src="/assets/ui/effects/poison_smoke_overlay.png"
-        alt=""
-        className="absolute"
-        style={{ width: '420px', height: 'auto', mixBlendMode: 'screen' }}
-        initial={{ scale: 0.6, opacity: 0 }}
-        animate={{ scale: [0.6, 1.05, 1.2], opacity: [0, 0.85, 0] }}
-        transition={{ duration: 1.3 }}
-      />
       <motion.div
-        className="w-64 h-64 rounded-full"
-        style={{
-          background: 'radial-gradient(circle, rgba(147,51,234,0.5) 0%, transparent 70%)',
-        }}
-        initial={{ scale: 0, opacity: 0 }}
-        animate={{ scale: [0, 2.5], opacity: [0, 0.8, 0] }}
-        transition={{ duration: 1.2 }}
-      />
-      {Array.from({ length: 12 }).map((_, i) => (
-        <motion.div
-          key={i}
-          className="absolute w-2 h-2 rounded-full bg-purple-400"
-          style={{ left: `${30 + Math.random() * 40}%`, top: '50%' }}
-          initial={{ y: 0, opacity: 1 }}
-          animate={{ y: -150 - Math.random() * 100, opacity: 0 }}
-          transition={{ duration: 1 + Math.random() * 0.5, delay: Math.random() * 0.3 }}
-        />
-      ))}
-    </motion.div>
-  )
-}
-
-/** Green sparkle particles spiraling upward + antidote glow overlay */
-function HealEffect() {
-  return (
-    <motion.div
-      className="fixed inset-0 pointer-events-none z-50 flex items-center justify-center"
-      exit={{ opacity: 0 }}
-    >
-      <motion.img
-        src="/assets/ui/effects/antidote_glow_overlay.png"
-        alt=""
-        className="absolute"
-        style={{ width: '380px', height: 'auto', mixBlendMode: 'screen' }}
-        initial={{ scale: 0.7, opacity: 0 }}
-        animate={{ scale: [0.7, 1.2, 1.1], opacity: [0, 0.9, 0] }}
-        transition={{ duration: 1.3 }}
-      />
-      <motion.div
-        className="w-32 h-32 rounded-full"
-        style={{ boxShadow: '0 0 60px rgba(34,197,94,0.6)' }}
-        initial={{ scale: 0.5, opacity: 0 }}
-        animate={{ scale: [0.5, 1.5, 1], opacity: [0, 1, 0] }}
-        transition={{ duration: 1.2 }}
-      />
-      {Array.from({ length: 16 }).map((_, i) => (
-        <motion.div
-          key={i}
-          className="absolute w-1.5 h-1.5 rounded-full bg-green-400"
-          style={{
-            left: `${45 + Math.cos(i * 0.5) * 10}%`,
-            top: '55%',
-          }}
-          initial={{ y: 0, opacity: 1, scale: 1 }}
-          animate={{
-            y: -120 - Math.random() * 80,
-            x: Math.sin(i) * 40,
-            opacity: 0,
-            scale: 0.3,
-          }}
-          transition={{ duration: 1.2, delay: i * 0.05 }}
-        />
-      ))}
-    </motion.div>
-  )
-}
-
-/** Purple ring scan */
-function SeerEffect() {
-  return (
-    <motion.div
-      className="fixed inset-0 pointer-events-none z-50 flex items-center justify-center"
-      exit={{ opacity: 0 }}
-    >
-      <motion.div
-        className="w-48 h-48 rounded-full border-4 border-purple-400"
-        style={{ boxShadow: '0 0 30px rgba(147,51,234,0.5), inset 0 0 30px rgba(147,51,234,0.3)' }}
-        initial={{ scale: 2, opacity: 0 }}
-        animate={{ scale: [2, 0.8, 1], opacity: [0, 1, 0] }}
-        transition={{ duration: 1 }}
-      />
-      {/* Scan line */}
-      <motion.div
-        className="absolute h-0.5 bg-purple-300"
-        style={{ width: '50%', top: '50%', boxShadow: '0 0 10px rgba(196,181,253,0.8)' }}
-        initial={{ x: '-100%', opacity: 0 }}
-        animate={{ x: ['−100%', '100%'], opacity: [0, 1, 1, 0] }}
-        transition={{ duration: 0.8, delay: 0.3 }}
-      />
-    </motion.div>
-  )
-}
-
-/** White bolt line + impact ring + hunter bolt trail overlay */
-function ShootEffect() {
-  return (
-    <motion.div
-      className="fixed inset-0 pointer-events-none z-50"
-      exit={{ opacity: 0 }}
-    >
-      <motion.img
-        src="/assets/ui/effects/hunter_bolt_trail_overlay.png"
-        alt=""
-        className="absolute top-[40%] left-[10%]"
-        style={{ width: '70%', height: 'auto', mixBlendMode: 'screen' }}
-        initial={{ opacity: 0, x: -120 }}
-        animate={{ opacity: [0, 0.95, 0], x: [-120, 0, 120] }}
-        transition={{ duration: 0.55 }}
-      />
-      {/* Bolt trail */}
-      <motion.div
-        className="absolute top-1/2 h-0.5 bg-white"
-        style={{ left: '10%', boxShadow: '0 0 8px white' }}
-        initial={{ width: 0, opacity: 1 }}
-        animate={{ width: '60%', opacity: [1, 1, 0] }}
-        transition={{ duration: 0.3 }}
-      />
-      {/* Impact ring */}
-      <motion.div
-        className="absolute top-1/2 left-[70%] -translate-x-1/2 -translate-y-1/2 w-16 h-16 rounded-full border-2 border-white"
-        initial={{ scale: 0, opacity: 1 }}
-        animate={{ scale: 4, opacity: 0 }}
-        transition={{ duration: 0.6, delay: 0.2 }}
-      />
-    </motion.div>
-  )
-}
-
-/** Card shatter — fragments fly outward */
-function DeathEffect() {
-  return (
-    <motion.div
-      className="fixed inset-0 pointer-events-none z-50 flex items-center justify-center"
-      exit={{ opacity: 0 }}
-    >
-      {Array.from({ length: 8 }).map((_, i) => {
-        const angle = (i / 8) * Math.PI * 2
-        return (
-          <motion.div
-            key={i}
-            className="absolute w-6 h-8 bg-gray-600/60 border border-gray-400/30"
-            style={{ clipPath: 'polygon(10% 0%, 90% 20%, 100% 80%, 0% 100%)' }}
-            initial={{ x: 0, y: 0, rotate: 0, opacity: 1 }}
-            animate={{
-              x: Math.cos(angle) * 150,
-              y: Math.sin(angle) * 150,
-              rotate: Math.random() * 360,
-              opacity: 0,
-            }}
-            transition={{ duration: 0.8, ease: 'easeOut' }}
-          />
-        )
-      })}
-    </motion.div>
-  )
-}
-
-/** Paper vote slips falling */
-function VoteEffect() {
-  return (
-    <motion.div
-      className="fixed inset-0 pointer-events-none z-50"
-      exit={{ opacity: 0 }}
-    >
-      {Array.from({ length: 10 }).map((_, i) => (
-        <motion.div
-          key={i}
-          className="absolute w-4 h-5 bg-yellow-100/70 border border-yellow-300/50 rounded-sm"
-          style={{ left: `${15 + Math.random() * 70}%`, top: '-5%' }}
-          initial={{ y: 0, rotate: 0, opacity: 1 }}
-          animate={{
-            y: window.innerHeight + 50,
-            rotate: Math.random() * 720 - 360,
-            opacity: [1, 1, 0.5],
-          }}
-          transition={{ duration: 1.5 + Math.random(), delay: Math.random() * 0.5, ease: 'easeIn' }}
-        />
-      ))}
-    </motion.div>
-  )
-}
-
-/** Victory fireworks — bursts of colored particles */
-function VictoryEffect({ color }: { color: 'gold' | 'red' }) {
-  const baseColor = color === 'gold' ? 'bg-yellow-400' : 'bg-red-500'
-  const centers = [
-    { x: 30, y: 30 }, { x: 70, y: 25 }, { x: 50, y: 50 },
-    { x: 20, y: 60 }, { x: 80, y: 55 },
-  ]
-
-  return (
-    <motion.div
-      className="fixed inset-0 pointer-events-none z-50"
-      exit={{ opacity: 0 }}
-    >
-      {centers.map((center, ci) => (
-        <div key={ci}>
-          {Array.from({ length: 12 }).map((_, i) => {
-            const angle = (i / 12) * Math.PI * 2
-            return (
+        className="effect-motion-stage"
+        initial={{ scale: 0.96, y: 16 }}
+        animate={{ scale: 1, y: 0 }}
+        exit={{ scale: 0.98, y: -10, opacity: 0 }}
+        transition={{ duration: 0.28, ease: 'easeOut' }}
+      >
+        <ActionSymbol cue={cue} />
+        <motion.section
+          className="effect-card"
+          initial={{ opacity: 0, y: 18 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.25, delay: 0.06 }}
+        >
+          <div className="effect-card-header">
+            <img src={cue.icon} alt="" />
+            <div>
+              <span>裁判动作</span>
+              <h2>{cue.title}</h2>
+            </div>
+          </div>
+          <p>{cue.subtitle}</p>
+          {(cue.from || cue.to) && (
+            <div className="effect-route">
+              {cue.from ? <SeatPill label="发起" value={cue.from} /> : <span className="effect-seat-placeholder" />}
               <motion.div
-                key={`${ci}-${i}`}
-                className={`absolute w-2 h-2 rounded-full ${baseColor}`}
-                style={{
-                  left: `${center.x}%`,
-                  top: `${center.y}%`,
-                  boxShadow: `0 0 6px ${color === 'gold' ? 'rgba(250,204,21,0.8)' : 'rgba(239,68,68,0.8)'}`,
-                }}
-                initial={{ x: 0, y: 0, scale: 1, opacity: 1 }}
-                animate={{
-                  x: Math.cos(angle) * (80 + Math.random() * 40),
-                  y: Math.sin(angle) * (80 + Math.random() * 40),
-                  scale: 0,
-                  opacity: 0,
-                }}
-                transition={{ duration: 1 + Math.random() * 0.5, delay: ci * 0.2 }}
+                className="effect-route-arrow"
+                initial={{ scaleX: 0, opacity: 0 }}
+                animate={{ scaleX: 1, opacity: cue.from && cue.to ? 1 : 0.45 }}
+                transition={{ duration: 0.28, delay: 0.16 }}
               />
-            )
-          })}
-        </div>
-      ))}
+              {cue.to ? <SeatPill label="目标" value={cue.to} /> : <span className="effect-seat-placeholder" />}
+            </div>
+          )}
+          {cue.result && <strong>{cue.result}</strong>}
+        </motion.section>
+      </motion.div>
     </motion.div>
   )
+}
+
+function SeatPill({ label, value }: { label: string; value: string }) {
+  return (
+    <span className="effect-seat-pill">
+      <small>{label}</small>
+      <b>{value}</b>
+    </span>
+  )
+}
+
+function ActionSymbol({ cue }: { cue: ActionCue }) {
+  return (
+    <div className={`effect-symbol effect-symbol-${cue.kind}`}>
+      <KindBackdrop kind={cue.kind} />
+      <motion.img
+        src={cue.icon}
+        alt=""
+        className="effect-symbol-icon"
+        initial={{ scale: 0.52, rotate: -8, opacity: 0 }}
+        animate={{ scale: [0.52, 1.12, 1], rotate: [-8, 3, 0], opacity: 1 }}
+        transition={{ duration: 0.42, ease: 'easeOut' }}
+      />
+      <KindAccent kind={cue.kind} />
+    </div>
+  )
+}
+
+function KindBackdrop({ kind }: { kind: CueKind }) {
+  if (kind === 'wolf_kill' || kind === 'self_destruct') {
+    return <motion.img src="/assets/ui/icons/skills/icon_skill_wolf_kill.png" alt="" className="effect-art effect-art-claw" {...popSweep(-10)} />
+  }
+
+  if (kind === 'seer_check') {
+    return <motion.img src="/assets/ui/icons/skills/icon_skill_seer_check.png" alt="" className="effect-art effect-art-seer" {...pulseIn()} />
+  }
+
+  if (kind === 'witch_antidote') {
+    return <motion.img src="/assets/ui/icons/skills/icon_skill_witch_heal.png" alt="" className="effect-art effect-art-antidote" {...pulseIn()} />
+  }
+
+  if (kind === 'witch_poison') {
+    return <motion.img src="/assets/ui/icons/skills/icon_skill_witch_poison.png" alt="" className="effect-art effect-art-poison" {...driftIn()} />
+  }
+
+  if (kind === 'hunter_shot') {
+    return <motion.img src="/assets/ui/icons/skills/icon_skill_hunter_shoot.png" alt="" className="effect-art effect-art-hunter" {...boltIn()} />
+  }
+
+  if (kind === 'vote_resolved') {
+    return <motion.img src="/assets/ui/icons/status/icon_status_exiled.png" alt="" className="effect-art effect-art-exile" {...stampIn()} />
+  }
+
+  return null
+}
+
+function KindAccent({ kind }: { kind: CueKind }) {
+  if (kind === 'vote_cast') {
+    return (
+      <div className="effect-vote-slip-row">
+        <motion.img src="/assets/ui/icons/actions/icon_vote_token.png" alt="" initial={{ x: -54, opacity: 0 }} animate={{ x: 0, opacity: 1 }} transition={{ duration: 0.28 }} />
+        <motion.img src="/assets/ui/icons/actions/icon_tutorial_next.png" alt="" initial={{ scaleX: 0, opacity: 0 }} animate={{ scaleX: 1, opacity: 1 }} transition={{ duration: 0.28, delay: 0.12 }} />
+        <motion.img src="/assets/ui/icons/actions/icon_vote_token.png" alt="" initial={{ x: 54, opacity: 0 }} animate={{ x: 0, opacity: 1 }} transition={{ duration: 0.28, delay: 0.18 }} />
+      </div>
+    )
+  }
+
+  if (kind === 'seer_check') {
+    return (
+      <motion.div
+        className="effect-scan-line"
+        initial={{ x: '-90%', opacity: 0 }}
+        animate={{ x: ['-90%', '90%'], opacity: [0, 1, 1, 0] }}
+        transition={{ duration: 0.9, delay: 0.22 }}
+      />
+    )
+  }
+
+  if (kind === 'death') {
+    return (
+      <motion.div
+        className="effect-break-mark"
+        initial={{ scale: 0, rotate: -16, opacity: 0 }}
+        animate={{ scale: [0, 1.18, 1], rotate: [-16, 3, 0], opacity: [0, 1, 0.92] }}
+        transition={{ duration: 0.42 }}
+      />
+    )
+  }
+
+  return null
+}
+
+function popSweep(rotate: number) {
+  return {
+    initial: { opacity: 0, scale: 0.78, rotate },
+    animate: { opacity: [0, 0.95, 0.36], scale: [0.78, 1.16, 1.24], rotate: [rotate, 0, 4] },
+    transition: { duration: 0.85, ease: 'easeOut' as const },
+  }
+}
+
+function pulseIn() {
+  return {
+    initial: { opacity: 0, scale: 0.68 },
+    animate: { opacity: [0, 0.95, 0.48], scale: [0.68, 1.18, 1.32] },
+    transition: { duration: 1.05, ease: 'easeOut' as const },
+  }
+}
+
+function driftIn() {
+  return {
+    initial: { opacity: 0, scale: 0.72, y: 18 },
+    animate: { opacity: [0, 0.9, 0.52], scale: [0.72, 1.2, 1.34], y: [18, -2, -18] },
+    transition: { duration: 1.1, ease: 'easeOut' as const },
+  }
+}
+
+function boltIn() {
+  return {
+    initial: { opacity: 0, x: -110, scaleX: 0.78 },
+    animate: { opacity: [0, 1, 0.52], x: [-110, 18, 58], scaleX: [0.78, 1, 1.05] },
+    transition: { duration: 0.58, ease: 'easeOut' as const },
+  }
+}
+
+function stampIn() {
+  return {
+    initial: { opacity: 0, scale: 1.8, rotate: -14 },
+    animate: { opacity: [0, 1, 0.86], scale: [1.8, 0.92, 1], rotate: [-14, 2, 0] },
+    transition: { duration: 0.36, ease: 'easeOut' as const },
+  }
+}
+
+function seatLabel(value: unknown) {
+  const seat = Number(value)
+  if (!Number.isFinite(seat) || seat < 1 || seat > 12) return undefined
+  return `${seat}号`
+}
+
+function firstValue(...values: unknown[]) {
+  for (const value of values) {
+    if (value !== undefined && value !== null && value !== '') return value
+  }
+  return undefined
+}
+
+function firstVoteActor(votes: unknown) {
+  if (!votes || typeof votes !== 'object') return undefined
+  return Object.keys(votes as Record<string, unknown>)[0]
+}
+
+function seerResultText(result: unknown) {
+  if (result === 'wolf' || result === 'werewolf') return '狼人'
+  if (result === 'good' || result === 'villager') return '好人'
+  return '未知'
+}
+
+function deathCauseText(cause: unknown) {
+  if (cause === 'wolf') return '被狼队袭击'
+  if (cause === 'poison') return '被女巫毒药带走'
+  if (cause === 'hunter_shot') return '被猎人技能带走'
+  if (cause === 'exile') return '被白天投票放逐'
+  if (cause === 'self_destruct') return '狼人自爆离场'
+  return '死亡结算完成'
+}
+
+function deathIcon(cause: unknown) {
+  if (cause === 'poison') return ICONS.poison
+  if (cause === 'hunter_shot') return ICONS.hunter
+  if (cause === 'exile') return ICONS.exile
+  if (cause === 'self_destruct') return ICONS.selfDestruct
+  return ICONS.claw
 }
