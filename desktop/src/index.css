@@ -739,17 +739,20 @@ img {
 .mode-cards {
   position: absolute;
   left: 50%;
-  top: 315px;
+  top: 290px;
+  bottom: 124px;
   display: grid;
   grid-template-columns: 410px 410px;
   gap: 34px;
   transform: translateX(-50%);
+  align-items: stretch;
 }
 
 .mode-card {
   position: relative;
-  min-height: 510px;
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
   padding: 70px 38px 28px;
   border-radius: 8px;
   border: 1px solid rgba(131, 184, 239, .42);
@@ -795,20 +798,82 @@ img {
 }
 
 .mode-card p {
-  margin: 14px 0 160px;
+  margin: 14px 0 14px;
   color: rgba(247, 242, 232, .86);
   font-size: 18px;
   text-align: center;
 }
 
+.mode-hero {
+  flex: 1;
+  position: relative;
+  min-height: 190px;
+  margin: 4px -38px 14px;
+  display: grid;
+  place-items: end center;
+  overflow: hidden;
+}
+
+.mode-hero::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 80% 70% at 50% 100%, rgba(110, 150, 210, .35), transparent 72%),
+    radial-gradient(ellipse 70% 50% at 50% 100%, rgba(5, 12, 24, .82), transparent 80%);
+  pointer-events: none;
+}
+
+.mode-card.mode-red .mode-hero::before {
+  background:
+    radial-gradient(ellipse 80% 70% at 50% 100%, rgba(220, 90, 70, .42), transparent 72%),
+    radial-gradient(ellipse 70% 50% at 50% 100%, rgba(20, 6, 8, .82), transparent 80%);
+}
+
+.mode-hero::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 32px;
+  background: radial-gradient(ellipse 60% 100% at 50% 50%, rgba(0,0,0,.85), transparent 70%);
+  pointer-events: none;
+  z-index: 2;
+}
+
+.mode-silhouette {
+  position: relative;
+  z-index: 1;
+  width: auto;
+  max-width: 95%;
+  height: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  object-position: bottom center;
+  filter: contrast(1.1) drop-shadow(0 8px 18px rgba(0,0,0,.55));
+  -webkit-mask-image: linear-gradient(180deg, #000 0%, #000 88%, transparent 100%);
+  mask-image: linear-gradient(180deg, #000 0%, #000 88%, transparent 100%);
+}
+
+.mode-card.mode-red .mode-silhouette {
+  filter: contrast(1.1) drop-shadow(0 8px 22px rgba(180, 40, 30, .42));
+}
+
 .mode-card ul {
   display: grid;
-  gap: 13px;
-  margin: 0 0 28px;
+  gap: 10px;
+  margin: 0 0 18px;
   padding: 0;
   list-style: none;
   color: rgba(244,240,232,.86);
-  font-size: 16px;
+  font-size: 15px;
+}
+
+.mode-card li {
+  display: flex;
+  align-items: center;
+  letter-spacing: 0.02em;
 }
 
 .mode-card li::before {
