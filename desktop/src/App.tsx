@@ -9,7 +9,7 @@ import { useGameStore, type GameEvent, type Player } from './stores/game'
 type ViewMode = 'god' | 'observer' | 'self'
 type PhaseTone = 'day' | 'night' | 'vote' | 'skill' | 'result'
 type RoleTone = 'good' | 'god' | 'wolf' | 'neutral' | 'unknown'
-type DrawerTab = 'chat' | 'vote'
+type DrawerTab = 'chat' | 'vote' | 'settle'
 
 interface RoleMeta {
   label: string
@@ -274,7 +274,7 @@ export default function App() {
   } = useGameStore()
 
   const [historyOpen, setHistoryOpen] = useState(false)
-  const [historyTab, setHistoryTab] = useState<DrawerTab>('chat')
+  const [historyTab, setHistoryTab] = useState<DrawerTab>('vote')
   const [inspectorOpen, setInspectorOpen] = useState(false)
   const [skillOpen, setSkillOpen] = useState(false)
   const [legendOpen, setLegendOpen] = useState(false)
@@ -399,7 +399,7 @@ export default function App() {
         remaining={visiblePhase === 'day_speech' ? 60 : visiblePhase === 'night_witch' ? 120 : 45}
         onHistory={() => {
           setHistoryOpen(true)
-          setHistoryTab('chat')
+          setHistoryTab('vote')
         }}
         onInspector={() => setInspectorOpen(true)}
         onSettings={toggleTts}
@@ -924,52 +924,180 @@ function HistoryDrawer({
         <button className="drawer-close" onClick={onClose}>×</button>
       </header>
       <div className="drawer-tabs">
-        <button className={tab === 'chat' ? 'active' : ''} onClick={() => onTab('chat')}>聊天记录</button>
+        <button className={tab === 'chat' ? 'active' : ''} onClick={() => onTab('chat')}>发言记录</button>
         <button className={tab === 'vote' ? 'active' : ''} onClick={() => onTab('vote')}>投票记录</button>
+        <button className={tab === 'settle' ? 'active' : ''} onClick={() => onTab('settle')}>结算记录</button>
       </div>
-      {tab === 'chat' ? (
+      {tab === 'chat' && (
         <section className="drawer-feed">
-          {events.slice().reverse().map((ev, index) => {
-            const seat = Number(ev.data?.player_id || ev.data?.actor_id || ev.data?.voter_id || 0)
-            return (
-              <article key={`${ev.event_type}-${index}`} className="record-row">
-                <img src={avatarForSeat(players, seat)} alt="" />
-                <div>
-                  <b>{seat ? `${seat}号玩家` : '系统'}</b>
-                  <p>{ev.content || eventTitle(ev)}</p>
-                </div>
-                <time>第1天 07:{String(index).padStart(2, '0')}</time>
-              </article>
-            )
-          })}
+          {events
+            .filter((ev) => ['public_speech_made', 'sheriff_campaign', 'death_speech'].includes(ev.event_type))
+            .slice()
+            .reverse()
+            .map((ev, index) => {
+              const seat = Number(ev.data?.player_id || ev.data?.actor_id || 0)
+              const speech = String(ev.data?.public_speech || ev.data?.speech || ev.content || '')
+              return (
+                <article key={`${ev.event_type}-${index}`} className="record-row">
+                  <img src={avatarForSeat(players, seat)} alt="" />
+                  <div>
+                    <b>{seat ? `${seat}号玩家` : '系统'}</b>
+                    <p>{speech}</p>
+                  </div>
+                  <time>第{ev.round || 1}天</time>
+                </article>
+              )
+            })}
+          {events.filter((ev) => ['public_speech_made','sheriff_campaign','death_speech'].includes(ev.event_type)).length === 0 && (
+            <div className="drawer-empty">暂无发言记录</div>
+          )}
         </section>
-      ) : (
-        <VoteRecords />
       )}
+      {tab === 'vote' && <VoteRecords events={events} players={players} />}
+      {tab === 'settle' && <SettleRecords events={events} />}
     </aside>
   )
 }
 
-function VoteRecords() {
-  const rows = [
-    ['第 1 天 警长竞选', '结果：1号当选警长', 1, [4,4,4,4,4,4,7,4,4,4,4,4]],
-    ['第 1 天 放逐投票', '结果：8号出局', 8, [8,8,8,8,8,8,8,0,8,8,8,8]],
-    ['第 2 天 放逐投票', '结果：平票，未放逐', 8, [3,7,7,3,7,3,3,0,7,3,7,3]],
-  ] as const
+interface VoteGroup {
+  key: string
+  title: string
+  result: string
+  focus: number | null
+  byVoter: Record<number, number | null>
+}
+
+function buildVoteGroups(events: GameEvent[]): VoteGroup[] {
+  const groups: VoteGroup[] = []
+  let current: VoteGroup | null = null
+  for (const ev of events) {
+    if (ev.event_type === 'phase_started') {
+      const phase = ev.data?.phase as string
+      const round = typeof ev.round === 'number' ? ev.round : 1
+      if (phase === 'sheriff_election') {
+        current = { key: `s-${round}`, title: `第 ${round} 天 警长竞选`, result: '竞选中', focus: null, byVoter: {} }
+        groups.push(current)
+      } else if (phase === 'day_vote') {
+        current = { key: `d-${round}`, title: `第 ${round} 天 放逐投票`, result: '投票中', focus: null, byVoter: {} }
+        groups.push(current)
+      }
+    }
+    if (!current) continue
+    if (ev.event_type === 'vote_cast') {
+      const voter = Number(ev.data?.voter_id)
+      const target = ev.data?.target_id
+      if (Number.isFinite(voter)) current.byVoter[voter] = target == null ? null : Number(target)
+    }
+    if (ev.event_type === 'sheriff_elected') {
+      const sid = Number(ev.data?.player_id ?? ev.data?.target_id)
+      if (Number.isFinite(sid)) {
+        current.focus = sid
+        current.result = `${sid} 号当选警长`
+      }
+    }
+    if (ev.event_type === 'vote_resolved') {
+      const chosen = ev.data?.chosen
+      if (chosen == null) {
+        current.result = '平票，未放逐'
+        current.focus = null
+      } else {
+        current.focus = Number(chosen)
+        current.result = `${chosen} 号出局`
+      }
+    }
+  }
+  return groups
+}
+
+function VoteRecords({ events, players }: { events: GameEvent[]; players: Player[] }) {
+  const groups = buildVoteGroups(events)
+  if (groups.length === 0) {
+    return <section className="vote-records"><div className="drawer-empty">尚无投票记录</div></section>
+  }
+  const seatList = Array.from({ length: 12 }, (_, i) => i + 1)
   return (
     <section className="vote-records">
-      {rows.map(([title, result, focus, votes]) => (
-        <article key={title} className="vote-record-card">
-          <header><b>{title}</b><span>{result}</span></header>
-          <div className="vote-line">
-            {votes.map((vote, index) => (
-              <span key={`${title}-${index}`} className={index + 1 === focus ? 'focus' : ''}>
-                <b>{index + 1}</b>
-                <i>↓</i>
-                <em>{vote || '-'}</em>
-              </span>
-            ))}
+      {groups.map((g) => (
+        <article key={g.key} className="vote-record-card">
+          <header><b>{g.title}</b><span>{g.result}</span></header>
+          <div className="vote-grid">
+            {seatList.map((seat) => {
+              const target = g.byVoter[seat]
+              const exiled = g.focus === seat
+              const player = players.find((p) => p.seat_index === seat)
+              const dead = player && !player.survived
+              return (
+                <div
+                  key={`${g.key}-${seat}`}
+                  className={`vote-cell ${exiled ? 'exiled' : ''} ${dead ? 'dead' : ''}`}
+                  title={target != null ? `${seat} 号 → ${target} 号` : `${seat} 号 弃票`}
+                >
+                  <b>{seat}</b>
+                  <i>{target != null ? `→ ${target}` : '弃'}</i>
+                </div>
+              )
+            })}
           </div>
+        </article>
+      ))}
+    </section>
+  )
+}
+
+function SettleRecords({ events }: { events: GameEvent[] }) {
+  const rows: Array<{ key: string; round: number; glyph: string; text: string; tone: 'good' | 'bad' | 'neutral' }> = []
+  events.forEach((ev, idx) => {
+    const round = typeof ev.round === 'number' ? ev.round : 1
+    const d = ev.data || {}
+    const key = `${idx}-${ev.event_type}`
+    switch (ev.event_type) {
+      case 'player_died': {
+        const cause = d.cause
+        const causeText = cause === 'wolf' ? '夜刀' : cause === 'poison' ? '毒杀'
+          : cause === 'exile' ? '放逐' : cause === 'hunter' ? '猎人' : cause === 'self_destruct' ? '自爆' : '出局'
+        rows.push({ key, round, glyph: '☠', text: `${d.player_id ?? '?'} 号 · ${causeText}`, tone: 'bad' })
+        break
+      }
+      case 'witch_used_antidote':
+        rows.push({ key, round, glyph: '🧪', text: `女巫救活 ${d.target_id ?? '?'} 号`, tone: 'good' }); break
+      case 'witch_used_poison':
+        rows.push({ key, round, glyph: '☠', text: `女巫毒杀 ${d.target_id ?? '?'} 号`, tone: 'bad' }); break
+      case 'seer_checked':
+        rows.push({
+          key, round, glyph: '👁',
+          text: `预言家查验 ${d.target_id ?? '?'} 号 → ${d.result === 'wolf' ? '狼人' : '好人'}`,
+          tone: d.result === 'wolf' ? 'bad' : 'good',
+        }); break
+      case 'sheriff_elected':
+        rows.push({ key, round, glyph: '★', text: `${d.player_id ?? '?'} 号当选警长`, tone: 'good' }); break
+      case 'hunter_shot':
+        rows.push({ key, round, glyph: '🏹', text: `猎人开枪 → ${d.target_id ?? '?'} 号`, tone: 'bad' }); break
+      case 'wolf_self_destruct':
+        rows.push({ key, round, glyph: '💥', text: `${d.player_id ?? '?'} 号狼人自爆`, tone: 'bad' }); break
+      case 'vote_resolved':
+        rows.push({
+          key, round, glyph: '⚖',
+          text: d.chosen != null ? `投票结算 · 放逐 ${d.chosen} 号` : '投票结算 · 平票',
+          tone: 'neutral',
+        }); break
+      case 'game_ended':
+        rows.push({
+          key, round, glyph: '🏁',
+          text: `游戏结束 · ${d.winner === 'wolf' ? '狼人阵营' : '好人阵营'}获胜`,
+          tone: 'neutral',
+        }); break
+    }
+  })
+  if (rows.length === 0) {
+    return <section className="settle-records"><div className="drawer-empty">尚无结算记录</div></section>
+  }
+  return (
+    <section className="settle-records">
+      {rows.map((r) => (
+        <article key={r.key} className={`settle-row tone-${r.tone}`}>
+          <span className="g">{r.glyph}</span>
+          <p>{r.text}</p>
+          <em>第 {r.round} 天</em>
         </article>
       ))}
     </section>

@@ -266,10 +266,10 @@ img {
   min-height: 82px;
   overflow: hidden;
   display: grid;
-  grid-template-columns: 54px 1fr 118px;
+  grid-template-columns: 44px 1fr 110px;
   align-items: center;
-  gap: 10px;
-  padding: 9px 8px 8px 14px;
+  gap: 6px;
+  padding: 8px 4px 8px 10px;
   border: 1px solid rgba(224, 206, 176, .42);
   border-radius: 10px;
   background:
@@ -367,19 +367,34 @@ img {
 .player-portrait {
   position: absolute;
   z-index: 1;
-  right: 10px;
-  bottom: -8px;
-  width: 132px;
-  height: 118%;
-  object-fit: contain;
-  object-position: right bottom;
+  right: 2px;
+  top: 50%;
+  width: 116px;
+  height: 100%;
+  transform: translateY(-50%);
+  object-fit: cover;
+  object-position: center top;
+  border-radius: 8px;
   pointer-events: none;
+  mask-image: linear-gradient(90deg, transparent 0%, rgba(0,0,0,.4) 12%, #000 36%, #000 100%);
+  -webkit-mask-image: linear-gradient(90deg, transparent 0%, rgba(0,0,0,.4) 12%, #000 36%, #000 100%);
 }
 
 .player-card.reverse .player-portrait {
-  right: 10px;
-  transform: scaleX(-1);
-  object-position: right bottom;
+  right: auto;
+  left: 2px;
+  transform: translateY(-50%) scaleX(-1);
+  mask-image: linear-gradient(90deg, transparent 0%, rgba(0,0,0,.4) 12%, #000 36%, #000 100%);
+  -webkit-mask-image: linear-gradient(90deg, transparent 0%, rgba(0,0,0,.4) 12%, #000 36%, #000 100%);
+}
+
+.player-card.reverse .player-copy {
+  text-align: right;
+}
+
+.player-card.reverse .status-stack {
+  right: auto;
+  left: 14px;
 }
 
 .status-stack {
@@ -999,43 +1014,108 @@ img {
   font-size: 17px;
 }
 
-.vote-line {
+.vote-grid {
   display: grid;
-  grid-template-columns: repeat(12, 1fr);
+  grid-template-columns: repeat(6, 1fr);
+  gap: 6px;
+}
+
+.vote-cell {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  height: 48px;
+  padding: 4px 2px;
+  border: 1px solid rgba(255,255,255,.1);
+  border-radius: 8px;
+  background: linear-gradient(180deg, rgba(38,52,76,.7), rgba(20,30,48,.85));
+  color: var(--text);
+  transition: all .15s ease;
+}
+
+.vote-cell b {
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--gold-soft);
+  line-height: 1;
+}
+
+.vote-cell i {
+  font-style: normal;
+  font-size: 11px;
+  letter-spacing: .04em;
+  color: rgba(242,238,231,.72);
+}
+
+.vote-cell.exiled {
+  background: linear-gradient(180deg, rgba(108, 32, 26, .88), rgba(48, 12, 10, .94));
+  border-color: rgba(224, 104, 88, .65);
+  color: #ffd9d2;
+}
+
+.vote-cell.exiled b { color: #ffe2dc; }
+.vote-cell.exiled i { color: rgba(255, 218, 210, .85); }
+
+.vote-cell.dead {
+  filter: grayscale(.6) brightness(.7);
+}
+
+.drawer-empty {
+  padding: 60px 12px;
+  text-align: center;
+  color: rgba(244,240,232,.52);
+  font-size: 13px;
+  letter-spacing: .14em;
+}
+
+.settle-records {
+  display: grid;
   gap: 8px;
+  padding: 18px 0;
 }
 
-.vote-line span {
+.settle-row {
   display: grid;
-  justify-items: center;
-  gap: 4px;
-  color: rgba(244,240,232,.72);
+  grid-template-columns: 30px 1fr auto;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 12px;
+  border-left: 3px solid var(--gold);
+  border-radius: 6px;
+  background: rgba(255,255,255,.045);
+  color: var(--text);
 }
 
-.vote-line b {
-  width: 26px;
-  height: 26px;
+.settle-row .g {
   display: grid;
   place-items: center;
+  width: 28px;
+  height: 28px;
   border-radius: 50%;
-  background: #bfc5ca;
-  color: #20242a;
+  background: rgba(11,18,32,.7);
+  font-size: 14px;
+  color: var(--gold-soft);
 }
 
-.vote-line span.focus b {
-  background: #d4554a;
-  color: #210b0b;
+.settle-row p {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.4;
 }
 
-.vote-line i {
-  color: #d6dbe1;
+.settle-row em {
   font-style: normal;
+  color: rgba(244,240,232,.6);
+  font-size: 11px;
+  letter-spacing: .08em;
 }
 
-.vote-line em {
-  font-style: normal;
-  color: #f2eee6;
-}
+.settle-row.tone-bad { border-left-color: var(--red); }
+.settle-row.tone-good { border-left-color: var(--green); }
+.settle-row.tone-neutral { border-left-color: var(--gold); }
 
 .status-legend {
   top: 210px;
