@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import GameAudio from './components/GameAudio'
 import GameEffects from './components/GameEffects'
+import GameProgress from './components/GameProgress'
 import HumanActionPanel from './components/HumanActionPanel'
 import IdentityReveal, { hasSeenIdentityReveal } from './components/IdentityReveal'
 import { apiGet, apiPost } from './hooks/useApi'
@@ -565,15 +566,30 @@ export default function App() {
       {viewMode === 'self' && humanSeat != null && !winner && (() => {
         const isMyTurn = !!awaitingHuman && awaitingHuman.actor_id === humanSeat
         if (isMyTurn) return null
-        const hint = selfWaitingHint(visiblePhase, currentSpeaker, humanSeat)
+        const me = players.find((p) => p.seat_index === humanSeat)
+        const isAlive = me ? !!me.survived : true
+        const hint = selfWaitingHint(visiblePhase, currentSpeaker, humanSeat, isAlive)
         if (!hint) return null
         return (
-          <div className="self-status-banner">
-            <span className="dot" /><span className="dot" /><span className="dot" />
+          <div className={`self-status-banner ${!isAlive ? 'observer' : ''}`}>
+            {isAlive
+              ? <><span className="dot" /><span className="dot" /><span className="dot" /></>
+              : <span className="bell">👻</span>}
             <span>{hint}</span>
           </div>
         )
       })()}
+
+      {/* Phase + event flashes for the seated human (skip for god/observer view) */}
+      {gameId && gameId !== 'demo' && viewMode === 'self' && humanSeat != null && (
+        <GameProgress
+          phase={phase}
+          round={round}
+          events={events}
+          humanSeat={humanSeat}
+          winner={winner}
+        />
+      )}
 
       <button className="legend-hotspot" onClick={() => setLegendOpen(true)}>状态图标</button>
     </div>
@@ -1401,7 +1417,18 @@ function isSkillPhase(phase: string): boolean {
   return ['night_wolf', 'night_seer', 'night_witch', 'night_guard'].includes(phase)
 }
 
-function selfWaitingHint(phase: string, currentSpeaker: number, humanSeat: number | null): string | null {
+function selfWaitingHint(
+  phase: string,
+  currentSpeaker: number,
+  humanSeat: number | null,
+  isAlive: boolean = true,
+): string | null {
+  // When the human is out, swap action-phase hints for an observer prompt so
+  // we don't keep telling them to "wait their turn".
+  if (!isAlive) {
+    if (phase === 'game_over' || phase === 'check_win') return '裁判正在结算胜负…'
+    return '你已出局 · 进入观战模式'
+  }
   switch (phase) {
     case 'setup_game':
       return '裁判正在准备对局，请稍候…'
@@ -1416,9 +1443,9 @@ function selfWaitingHint(phase: string, currentSpeaker: number, humanSeat: numbe
     case 'night_guard':
       return '守卫正在守护一名玩家…'
     case 'night_resolve':
-      return '裁判正在结算夜晚行动…'
+      return '天将亮起 · 裁判结算夜晚行动…'
     case 'day_announce':
-      return '裁判正在公布夜晚结果…'
+      return '裁判正在公布昨夜结果…'
     case 'sheriff_election':
       return '警长竞选进行中…'
     case 'day_speech':
@@ -1429,7 +1456,7 @@ function selfWaitingHint(phase: string, currentSpeaker: number, humanSeat: numbe
     case 'day_resolve':
       return '裁判正在结算投票…'
     case 'pending_skills':
-      return '出局玩家正在结算死亡技能…'
+      return '出局玩家正在抉择死亡技能…'
     case 'check_win':
       return '裁判正在检查胜负…'
     default:
