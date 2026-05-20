@@ -1823,71 +1823,89 @@ img {
   to { opacity: 0; transform: scale(.96); }
 }
 
-.identity-card {
+.identity-panel {
   position: relative;
-  width: min(420px, 92vw);
-  padding: clamp(28px, 4vh, 42px) clamp(28px, 3.5vw, 40px) clamp(20px, 3vh, 28px);
+  width: min(480px, 92vw);
+  max-height: 94vh;
+  overflow-y: auto;
+  padding: clamp(20px, 2.6vh, 28px) clamp(22px, 2.4vw, 32px) clamp(16px, 2vh, 22px);
   border-radius: 14px;
-  background-color: rgba(11, 18, 32, .9);
-  background-size: cover;
-  background-position: center;
-  border: 1.5px solid rgba(213, 175, 99, .5);
+  background: linear-gradient(180deg, rgba(20, 30, 54, .82) 0%, rgba(10, 16, 32, .92) 100%);
+  border: 1px solid rgba(213, 175, 99, .35);
   box-shadow:
     0 30px 64px rgba(0,0,0,.7),
-    0 0 36px rgba(213, 175, 99, .25),
-    inset 0 1px 0 rgba(255,255,255,.12);
-  color: #f4e7c4;
-  text-align: center;
+    0 0 36px rgba(213, 175, 99, .18),
+    inset 0 1px 0 rgba(255,255,255,.08);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: clamp(8px, 1.4vh, 14px);
-  animation: identityCardIn .55s cubic-bezier(.16,1,.3,1);
+  gap: clamp(8px, 1.2vh, 12px);
+  color: #f4e7c4;
+  text-align: center;
+  animation: identityCardIn .5s cubic-bezier(.16,1,.3,1);
 }
 
-.identity-card.tone-wolf {
-  border-color: rgba(235, 96, 83, .65);
+.identity-panel.tone-wolf {
+  border-color: rgba(235, 96, 83, .5);
+  background: linear-gradient(180deg, rgba(60, 22, 26, .8) 0%, rgba(24, 10, 14, .94) 100%);
   box-shadow:
     0 30px 64px rgba(0,0,0,.7),
-    0 0 40px rgba(220, 80, 64, .32),
-    inset 0 1px 0 rgba(255,255,255,.12);
+    0 0 36px rgba(220, 80, 64, .28),
+    inset 0 1px 0 rgba(255,255,255,.08);
 }
 
 @keyframes identityCardIn {
-  0% { opacity: 0; transform: translateY(28px) scale(.92) rotateY(-12deg); }
-  60% { opacity: 1; transform: translateY(0) scale(1.02) rotateY(2deg); }
-  100% { transform: translateY(0) scale(1) rotateY(0); }
+  0%   { opacity: 0; transform: translateY(20px) scale(.96); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.identity-head {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 4px;
+}
+
+.identity-head-text {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+}
+
+.identity-head-text h2 {
+  margin: 0;
+  color: #f7e3a4;
+  font-size: clamp(28px, 3.8vh, 40px);
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  line-height: 1;
+  text-shadow: 0 2px 12px rgba(120, 80, 30, .55);
 }
 
 .identity-seat {
-  width: 56px;
-  height: 56px;
+  width: 52px;
+  height: 52px;
   display: grid;
   place-items: center;
   border-radius: 50%;
   background: linear-gradient(180deg, #d6ab4e, #8f5f1d);
   color: #1a120a;
   font-weight: 800;
-  font-size: 24px;
+  font-size: 22px;
   font-family: "Songti SC", "STSong", serif;
   box-shadow: 0 4px 10px rgba(0,0,0,.6), inset 0 1px rgba(255,255,255,.4);
-  border: 2px solid #1a2541;
-  margin-top: -52px;
-}
-
-.identity-title {
-  margin: 4px 0 0;
-  color: #f7e3a4;
-  font-size: clamp(30px, 4.2vh, 44px);
-  font-weight: 800;
-  letter-spacing: 0.16em;
-  text-shadow: 0 2px 12px rgba(120, 80, 30, .55);
+  border: 2px solid rgba(11, 17, 32, .9);
+  flex-shrink: 0;
 }
 
 .identity-camp {
-  padding: 4px 14px;
+  align-self: flex-start;
+  padding: 3px 12px;
   border-radius: 12px;
-  font-size: 13px;
+  font-size: 12px;
   letter-spacing: 0.16em;
 }
 
@@ -1910,11 +1928,20 @@ img {
 }
 
 .identity-art {
-  width: min(260px, 65%);
-  max-height: 38vh;
+  width: auto;
+  max-width: min(340px, 78%);
+  max-height: clamp(220px, 42vh, 420px);
   object-fit: contain;
-  filter: drop-shadow(0 14px 24px rgba(0,0,0,.55));
-  margin: 4px 0;
+  filter: drop-shadow(0 18px 32px rgba(0,0,0,.65));
+  margin: 0;
+}
+
+.identity-panel.tone-wolf .identity-art {
+  filter: drop-shadow(0 18px 32px rgba(0,0,0,.65)) drop-shadow(0 0 28px rgba(220, 70, 56, .35));
+}
+
+.identity-panel.tone-good .identity-art {
+  filter: drop-shadow(0 18px 32px rgba(0,0,0,.65)) drop-shadow(0 0 24px rgba(110, 175, 230, .25));
 }
 
 .identity-description {
@@ -1979,7 +2006,7 @@ img {
   line-height: 1;
 }
 
-.identity-card.tone-wolf .identity-confirm {
+.identity-panel.tone-wolf .identity-confirm {
   background: linear-gradient(180deg, #d95549, #8c2a25);
   color: #fff;
   border-color: #f3a097;
