@@ -43,12 +43,13 @@ class WSSubscriber:
     sheriff_elected arrives, then flush them right before the resolution event.
     """
 
-    __slots__ = ("queue", "seat", "buffered_votes")
+    __slots__ = ("queue", "seat", "buffered_votes", "buffered_declares")
 
     def __init__(self, queue: asyncio.Queue, seat: int | None) -> None:
         self.queue = queue
         self.seat = seat
         self.buffered_votes: list[dict[str, Any]] = []
+        self.buffered_declares: list[dict[str, Any]] = []
 
     def __hash__(self) -> int:
         return id(self)
@@ -282,15 +283,28 @@ async def start_game(req: StartGameRequest):
             if seat is not None and scope in (EventScope.ROLE_PRIVATE, EventScope.WOLF_TEAM):
                 if seat not in targets:
                     continue
-            # Self-mode vote anti-leak: buffer other seats' vote_cast until
-            # vote_resolved / sheriff_elected lands, then flush them right
-            # before the resolution event so the resolution + all individual
-            # casts appear in one batch.
+            # Self-mode anti-leak: buffer other seats' per-player decisions
+            # (vote_cast / sheriff_declare) until their corresponding
+            # resolution lands. The resolution + buffered batch then arrives
+            # in one chunk so the human can't "follow" the AI's choices.
             if seat is not None and et == "vote_cast":
                 voter = event.data.get("voter_id") if isinstance(event.data, dict) else None
                 if voter is not None and int(voter) != seat:
                     sub.buffered_votes.append(event_data)
                     continue
+            if seat is not None and et == "sheriff_declare":
+                pid = event.data.get("player_id") if isinstance(event.data, dict) else None
+                if pid is not None and int(pid) != seat:
+                    sub.buffered_declares.append(event_data)
+                    continue
+            if seat is not None and et in ("sheriff_campaign", "sheriff_elected", "sheriff_direction") and sub.buffered_declares:
+                pending = sub.buffered_declares
+                sub.buffered_declares = []
+                for ev in pending:
+                    try:
+                        sub.queue.put_nowait(ev)
+                    except asyncio.QueueFull:
+                        pass
             if seat is not None and et in ("vote_resolved", "sheriff_elected") and sub.buffered_votes:
                 pending = sub.buffered_votes
                 sub.buffered_votes = []
@@ -500,45 +514,66 @@ def _serialize_event(event: GameEvent) -> dict[str, Any]:
 
 
 def _mask_vote_replay_for_seat(events: list[dict[str, Any]], seat: int | None) -> list[dict[str, Any]]:
-    """Rearrange a historical event list so that other-seat ``vote_cast``
-    events are deferred until the round's resolution (``vote_resolved`` or
-    ``sheriff_elected``) — preventing a self-mode replay from leaking who
-    voted for whom before the human had to cast their own vote.
+    """Rearrange a historical event list so that other-seat per-player
+    decisions land in one batch right before their resolution event,
+    instead of trickling out one at a time and letting a self-mode human
+    "follow" the AI's choices.
 
-    Implementation: walk the list once, buffer other-seat vote_casts; when a
-    resolution event is encountered, emit the buffered casts immediately
-    before it. Self vote_casts are always emitted in place. Buffered casts
-    whose round never resolves (game in progress / cut short) are dropped.
+    Two batched flows:
+      * ``vote_cast`` (others)   →  flushed ahead of ``vote_resolved`` or
+                                     ``sheriff_elected``.
+      * ``sheriff_declare`` (others) → flushed ahead of ``sheriff_campaign``,
+                                       ``sheriff_elected``, or ``sheriff_direction``
+                                       (whichever marks candidacy closing).
+
+    Self events (voter_id == seat / player_id == seat) are emitted in place.
+    Buffered events whose resolution never landed (game in progress, mid-round
+    reconnect) are dropped to avoid leaking partial information.
     """
     if seat is None:
         return events
     out: list[dict[str, Any]] = []
-    buffer: list[dict[str, Any]] = []
+    vote_buf: list[dict[str, Any]] = []
+    declare_buf: list[dict[str, Any]] = []
+    flush_declare = ("sheriff_campaign", "sheriff_elected", "sheriff_direction")
+    flush_vote = ("vote_resolved", "sheriff_elected")
     for ev in events:
         et = ev.get("event_type")
+        data = ev.get("data_json") or ev.get("data") or {}
+        if not isinstance(data, dict):
+            data = {}
+
         if et == "vote_cast":
-            data = ev.get("data_json") or ev.get("data") or {}
-            voter = data.get("voter_id") if isinstance(data, dict) else None
-            if voter is not None:
-                try:
-                    if int(voter) == seat:
-                        out.append(ev)
-                        continue
-                except (TypeError, ValueError):
-                    pass
-                buffer.append(ev)
-                continue
-            buffer.append(ev)
+            voter = data.get("voter_id")
+            try:
+                if voter is not None and int(voter) == seat:
+                    out.append(ev)
+                    continue
+            except (TypeError, ValueError):
+                pass
+            vote_buf.append(ev)
             continue
-        if et in ("vote_resolved", "sheriff_elected"):
-            if buffer:
-                out.extend(buffer)
-                buffer = []
-            out.append(ev)
+
+        if et == "sheriff_declare":
+            pid = data.get("player_id")
+            try:
+                if pid is not None and int(pid) == seat:
+                    out.append(ev)
+                    continue
+            except (TypeError, ValueError):
+                pass
+            declare_buf.append(ev)
             continue
+
+        # Resolution markers — flush buffers ahead of the resolution event.
+        if et in flush_declare and declare_buf:
+            out.extend(declare_buf)
+            declare_buf = []
+        if et in flush_vote and vote_buf:
+            out.extend(vote_buf)
+            vote_buf = []
         out.append(ev)
-    # Discard any buffered casts that never resolved — they'd leak in-progress
-    # information if shown alone.
+    # Drop any unresolved buffered items — they'd leak partial info.
     return out
 
 # Fields on `state_snapshots.state_json` that may leak private info to non-self
