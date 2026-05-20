@@ -4,8 +4,12 @@ __pycache__
 data/
 *.pyc
 .venv/
-.claude/.cache/
+.claude/
 .cache/
+docs/
 desktop/screenshots/
 desktop/node_modules/
 node_modules/
+desktop/public/backup.zip
+desktop/vite-*.log
+desktop/vite-*.err.log
