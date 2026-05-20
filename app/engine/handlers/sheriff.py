@@ -51,6 +51,9 @@ async def handle_sheriff_election(state: GameState, services: SessionServices) -
     if not candidates:
         emit_event(services, state, events, EventType.SHERIFF_ELECTED,
                    {"player_id": None, "votes": {}, "reason": "no candidates"})
+        emit_event(services, state, events, EventType.NARRATION,
+                   {"text": "无人参选 · 警徽流落", "kind": "info",
+                    "round": state["round"], "phase": state["phase"].value})
         return PhaseResult(actions=actions, events=events, persisted_event_count=len(events))
 
     if len(candidates) == 1:
@@ -58,6 +61,9 @@ async def handle_sheriff_election(state: GameState, services: SessionServices) -
         players_patch = {sheriff_id: {"is_sheriff": True}}
         emit_event(services, state, events, EventType.SHERIFF_ELECTED,
                    {"player_id": sheriff_id, "votes": {}, "unopposed": True})
+        emit_event(services, state, events, EventType.NARRATION,
+                   {"text": f"{sheriff_id} 号自动当选警长", "kind": "gold",
+                    "round": state["round"], "phase": state["phase"].value})
         direction = await _sheriff_pick_direction(state, services, sheriff_id)
         emit_event(services, state, events, EventType.SHERIFF_DIRECTION,
                    {"player_id": sheriff_id, "clockwise": direction})
@@ -130,11 +136,17 @@ async def handle_sheriff_election(state: GameState, services: SessionServices) -
     if sheriff_id is None:
         emit_event(services, state, events, EventType.SHERIFF_ELECTED,
                    {"player_id": None, "votes": votes, "tie": True})
+        emit_event(services, state, events, EventType.NARRATION,
+                   {"text": "警长竞选平票 · 警徽撕毁", "kind": "info",
+                    "round": state["round"], "phase": state["phase"].value})
         return PhaseResult(actions=actions, events=events, persisted_event_count=len(events))
 
     players_patch = {sheriff_id: {"is_sheriff": True}}
     emit_event(services, state, events, EventType.SHERIFF_ELECTED,
                {"player_id": sheriff_id, "votes": votes})
+    emit_event(services, state, events, EventType.NARRATION,
+               {"text": f"{sheriff_id} 号当选警长", "kind": "gold",
+                "round": state["round"], "phase": state["phase"].value})
 
     direction = await _sheriff_pick_direction(state, services, sheriff_id)
     emit_event(services, state, events, EventType.SHERIFF_DIRECTION,

@@ -23,22 +23,17 @@ interface Props {
   winner: string | null
 }
 
-const PHASE_FLASH_MS = 2200
+const PHASE_FLASH_MS = 2400
 const EVENT_FLASH_MS = 2400
 
-const PHASE_FLASH: Record<string, { glyph: string; title: string }> = {
-  night_start:       { glyph: '🌙', title: '夜幕降临' },
-  night_wolf:        { glyph: '🐺', title: '狼人请睁眼' },
-  night_seer:        { glyph: '👁',  title: '预言家请睁眼' },
-  night_witch:       { glyph: '🧪', title: '女巫请睁眼' },
-  night_guard:       { glyph: '🛡', title: '守卫请守护' },
-  night_resolve:     { glyph: '🌅', title: '天将亮起' },
-  day_announce:      { glyph: '☀',  title: '天亮了' },
-  sheriff_election:  { glyph: '★',  title: '警长竞选' },
-  day_speech:        { glyph: '🗣',  title: '发言阶段' },
-  day_vote:          { glyph: '⚖',  title: '投票阶段' },
-  day_resolve:       { glyph: '⚖',  title: '投票结算' },
-  pending_skills:    { glyph: '✨', title: '技能结算' },
+// Backend ``kind`` → frontend glyph default. The engine can override by
+// emitting `data.glyph` explicitly.
+const KIND_GLYPH: Record<string, string> = {
+  info:    '🌙',
+  good:    '🌟',
+  gold:    '★',
+  wolf:    '🐺',
+  neutral: 'ℹ',
 }
 
 interface FlashItem {
@@ -49,42 +44,51 @@ interface FlashItem {
 }
 
 export default function GameProgress({ phase, round, events, humanSeat, winner }: Props) {
-  // ---- Phase flash ----
+  // ---- Phase flash (driven by backend narration events with style=intro) ----
   const [phaseFlash, setPhaseFlash] = useState<{ glyph: string; title: string; sub: string } | null>(null)
-  const prevPhase = useRef<string | null>(null)
-  useEffect(() => {
-    if (!phase) return
-    if (phase === prevPhase.current) return
-    const next = PHASE_FLASH[phase]
-    prevPhase.current = phase
-    if (!next) {
-      setPhaseFlash(null)
-      return
-    }
-    const isNight = phase.startsWith('night')
-    const sub = `第 ${round || 1} ${isNight ? '夜' : '天'}`
-    setPhaseFlash({ glyph: next.glyph, title: next.title, sub })
-    const t = window.setTimeout(() => setPhaseFlash(null), PHASE_FLASH_MS)
-    return () => window.clearTimeout(t)
-  }, [phase, round])
 
   // ---- Event flash queue ----
   const [queue, setQueue] = useState<FlashItem[]>([])
   const lastSeenSeq = useRef<number>(-1)
+  const phaseTimer = useRef<number | null>(null)
   useEffect(() => {
     if (!events.length) return
     // Pull only newly-arrived events; assume the events array is append-only
-    // ordered by seq when present, otherwise by index.
+    // ordered by seq when present, otherwise by index. Narration events
+    // styled "intro" go to the big PhaseFlash banner; everything else
+    // (in-phase narrations + resolution events) joins the small ticker.
     const newItems: FlashItem[] = []
     for (const ev of events) {
       const seq = typeof ev.seq === 'number' ? ev.seq : -1
       if (seq <= lastSeenSeq.current) continue
+      if (seq > lastSeenSeq.current) lastSeenSeq.current = seq
+
+      if (ev.event_type === 'narration' && ev.data?.style === 'intro') {
+        const text = String(ev.data?.text || '')
+        if (!text) continue
+        const kind = String(ev.data?.kind || 'info')
+        const glyph = typeof ev.data?.glyph === 'string' && ev.data.glyph
+          ? ev.data.glyph
+          : (KIND_GLYPH[kind] || KIND_GLYPH.info)
+        // Big banner — show immediately, replacing any current intro.
+        const isNight = String(ev.data?.phase || '').startsWith('night')
+        const sub = `第 ${ev.data?.round || round || 1} ${isNight ? '夜' : '天'}`
+        setPhaseFlash({ glyph, title: text, sub })
+        if (phaseTimer.current) window.clearTimeout(phaseTimer.current)
+        phaseTimer.current = window.setTimeout(() => setPhaseFlash(null), PHASE_FLASH_MS)
+        continue
+      }
+
       const item = eventToFlash(ev, humanSeat)
       if (item) newItems.push(item)
-      if (seq > lastSeenSeq.current) lastSeenSeq.current = seq
     }
     if (newItems.length) setQueue((q) => [...q, ...newItems])
-  }, [events, humanSeat])
+  }, [events, humanSeat, round])
+
+  // Clean up phase timer on unmount
+  useEffect(() => () => {
+    if (phaseTimer.current) window.clearTimeout(phaseTimer.current)
+  }, [])
 
   // Pop one flash at a time from the queue
   const [active, setActive] = useState<FlashItem | null>(null)
@@ -129,6 +133,19 @@ function nextFlashId(): number {
 
 function eventToFlash(ev: GameEvent, humanSeat: number | null): FlashItem | null {
   const d = ev.data || {}
+  // Backend-authored narration takes precedence — these carry their own
+  // localized text and tone, so we just render verbatim.
+  if (ev.event_type === 'narration') {
+    const text = typeof d.text === 'string' ? d.text : ''
+    if (!text) return null
+    const tone = (d.kind === 'wolf' || d.kind === 'good' || d.kind === 'gold' || d.kind === 'neutral')
+      ? d.kind as FlashItem['tone']
+      : 'neutral'
+    const glyph = typeof d.glyph === 'string' && d.glyph.length > 0
+      ? d.glyph
+      : (tone === 'wolf' ? '🐺' : tone === 'good' ? '🌙' : tone === 'gold' ? '★' : 'ℹ')
+    return { id: nextFlashId(), glyph, text, tone }
+  }
   switch (ev.event_type) {
     case 'sheriff_elected': {
       const pid = d.player_id ?? d.target_id

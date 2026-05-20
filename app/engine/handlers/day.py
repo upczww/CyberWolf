@@ -26,11 +26,18 @@ TZ_CN = timezone(timedelta(hours=8))
 
 def handle_day_announce(state: GameState, services: SessionServices) -> PhaseResult:
     deaths = state["night_result"].get("deaths", [])
-    return PhaseResult(
-        events=[
-            make_event(state, EventType.PHASE_STARTED, {"deaths": deaths}, content="event.day_announce")
-        ]
-    )
+    events: list[GameEvent] = []
+    # Player-facing narration for the human seat
+    if not deaths:
+        emit_event(services, state, events, EventType.NARRATION,
+                   {"text": f"第 {state['round']} 天 · 昨晚是平安夜，无人出局",
+                    "kind": "good", "round": state["round"], "phase": state["phase"].value})
+    else:
+        emit_event(services, state, events, EventType.NARRATION,
+                   {"text": f"第 {state['round']} 天 · 昨晚 {len(deaths)} 名玩家出局："
+                            f"{ '、'.join(f'{pid}号' for pid in deaths) }",
+                    "kind": "wolf", "round": state["round"], "phase": state["phase"].value})
+    return PhaseResult(events=events, persisted_event_count=len(events))
 
 
 async def handle_day_speech(state: GameState, services: SessionServices) -> PhaseResult:
@@ -174,6 +181,11 @@ async def handle_day_vote(state: GameState, services: SessionServices) -> PhaseR
             chosen = services.rng.choice(tied)
     emit_event(services, state, events, EventType.VOTE_RESOLVED,
                {"votes": votes, "chosen": chosen})
+    # Player-facing narration of the result
+    narration_text = "投票平票，未放逐任何玩家" if chosen is None else f"投票结束 · {chosen} 号被放逐"
+    emit_event(services, state, events, EventType.NARRATION,
+               {"text": narration_text, "kind": "wolf" if chosen is not None else "info",
+                "round": state["round"], "phase": state["phase"].value})
     return PhaseResult(
         state_patch={"vote_records": votes, "vote_candidates": [chosen] if chosen is not None else []},
         actions=actions, events=events, persisted_event_count=len(events),

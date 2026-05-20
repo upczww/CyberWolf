@@ -190,8 +190,24 @@ def _handle_noop(state: GameState, services: SessionServices) -> PhaseResult:
 # ---------------------------------------------------------------------------
 
 
+_PHASE_NARRATION: dict[str, tuple[str, str]] = {
+    # phase.value -> (kind, text). {round} placeholder gets replaced.
+    "night_start":      ("info", "第 {round} 夜 · 天黑请闭眼"),
+    "night_wolf":       ("wolf", "狼人请睁眼，选择今夜的目标"),
+    "night_seer":       ("good", "预言家请睁眼，选择一名玩家查验"),
+    "night_witch":      ("good", "女巫请睁眼，是否使用解药与毒药"),
+    "night_guard":      ("good", "守卫请守护一名玩家"),
+    "night_resolve":    ("info", "天将亮起 · 裁判结算夜晚行动"),
+    "sheriff_election": ("gold", "第 {round} 天 · 警长竞选阶段开始"),
+    "day_speech":       ("info", "第 {round} 天 · 进入发言阶段"),
+    "day_vote":         ("info", "进入放逐投票，请投出你的一票"),
+    "day_resolve":      ("info", "裁判结算投票"),
+    "pending_skills":   ("info", "出局玩家依次结算死亡技能"),
+}
+
+
 def _ensure_phase_started(services: SessionServices, state: GameState, conn: sqlite3.Connection, phase: Phase, round_no: int) -> None:
-    """Emit phase_started if not already emitted for this phase."""
+    """Emit phase_started (and a player-facing narration) when entering a phase."""
     if services._phase_started_emitted:
         return
     services._phase_started_emitted = True
@@ -201,7 +217,20 @@ def _ensure_phase_started(services: SessionServices, state: GameState, conn: sql
         snapshot_type="phase_start", state_json=snapshot_state(state),
     )
     start_event = _phase_event(state, EventType.PHASE_STARTED)
-    services.event_seq = _publish_and_persist(services, state, [start_event], round_no=round_no)
+    events_to_send = [start_event]
+    narration = _PHASE_NARRATION.get(phase.value)
+    if narration is not None:
+        kind, text_template = narration
+        text = text_template.format(round=round_no)
+        events_to_send.append(GameEvent(
+            game_id=state["game_id"], phase=phase,
+            scope=EventScope.SYSTEM, target_players=set(),
+            event_type=EventType.NARRATION,
+            content=f"event.{EventType.NARRATION.value}",
+            data={"text": text, "kind": kind, "style": "intro",
+                  "round": round_no, "phase": phase.value},
+        ))
+    services.event_seq = _publish_and_persist(services, state, events_to_send, round_no=round_no)
 
 
 def _publish_and_persist(services: SessionServices, state: GameState, events: list[GameEvent], *, round_no: int) -> int:

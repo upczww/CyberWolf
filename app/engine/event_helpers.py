@@ -47,6 +47,36 @@ def emit_event(
     services.event_seq = _publish_and_persist(services, state, [event], round_no=state["round"])
 
 
+def emit_narration(
+    services,
+    state: GameState,
+    events: list[GameEvent],
+    text: str,
+    *,
+    kind: str = "info",
+    glyph: str | None = None,
+) -> None:
+    """Emit a player-facing narration line.
+
+    The frontend renders these as transient flash banners so the human can
+    follow the game without having to interpret raw engine events. Keep the
+    text concise (single sentence) and Chinese-natural.
+
+    Args:
+      text:  the narration sentence, e.g. "天亮了，昨晚是平安夜。"
+      kind:  "info" / "good" / "wolf" / "gold" — drives the flash tone.
+      glyph: optional emoji prefix (frontend may default one by kind).
+    """
+    payload: dict = {"text": text, "kind": kind, "round": state["round"]}
+    if glyph is not None:
+        payload["glyph"] = glyph
+    emit_event(
+        services, state, events,
+        EventType.NARRATION,
+        payload,
+    )
+
+
 def emit_speaking_started(
     services,
     state: GameState,

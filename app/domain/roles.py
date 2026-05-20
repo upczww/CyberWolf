@@ -69,6 +69,7 @@ class EventType(StrEnum):
     ERROR_RAISED = "error_raised"
     AWAITING_HUMAN = "awaiting_human"
     HUMAN_SUBMITTED = "human_submitted"
+    NARRATION = "narration"  # backend-authored player-facing narration text
 
 
 class WinRule(StrEnum):
