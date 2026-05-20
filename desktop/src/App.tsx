@@ -662,7 +662,7 @@ function LandingScreen({
           text="掌控全局，洞悉所有秘密与真相"
           bullets={['上帝视角观战所有信息', '查看所有身份与技能', '复盘分析，掌控全局']}
           onClick={() => onModeChange('god')}
-          onStart={() => onStart(false)}
+          onStart={() => onStart(true)}
           loading={loading && mode === 'god'}
         />
       </section>
