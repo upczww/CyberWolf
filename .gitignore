@@ -6,6 +6,7 @@ data/
 .venv/
 .claude/
 .cache/
+docs/
 desktop/screenshots/
 desktop/node_modules/
 node_modules/
