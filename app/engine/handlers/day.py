@@ -159,8 +159,9 @@ async def handle_day_vote(state: GameState, services: SessionServices) -> PhaseR
         actions.append(action)
         target = action["args"]["target_id"]
         votes[voter] = target
-        emit_event(services, state, events, EventType.VOTE_CAST,
-                   {"voter_id": voter, "target_id": target})
+        # No per-voter VOTE_CAST emit: the aggregated VOTE_RESOLVED below
+        # carries the full {voter: target} dict so the frontend can derive
+        # the tally without exposing individual votes as they trickle in.
 
     tally: dict[int, float] = {}
     sheriff_id = state.get("sheriff_id")

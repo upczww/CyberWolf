@@ -37,6 +37,10 @@ async def handle_sheriff_election(state: GameState, services: SessionServices) -
     living_wolves_list = [pid for pid in alive if state["players"][pid]["faction"] == Faction.WOLF]
     designated_wolf = services.rng.choice(living_wolves_list) if living_wolves_list else None
 
+    # Phase 1 — collect candidacy decisions silently. No per-declarer
+    # SHERIFF_DECLARE event; the aggregated SHERIFF_ELECTED below carries
+    # the full candidates list so the frontend learns who ran for sheriff
+    # only once the candidacy window has closed.
     candidates: list[int] = []
     for player_id in alive:
         if state["players"][player_id]["faction"] == Faction.WOLF:
@@ -45,12 +49,10 @@ async def handle_sheriff_election(state: GameState, services: SessionServices) -
             wants_to_run = await _decide_candidacy(state, services, player_id)
         if wants_to_run:
             candidates.append(player_id)
-            emit_event(services, state, events, EventType.SHERIFF_DECLARE,
-                       {"player_id": player_id})
 
     if not candidates:
         emit_event(services, state, events, EventType.SHERIFF_ELECTED,
-                   {"player_id": None, "votes": {}, "reason": "no candidates"})
+                   {"player_id": None, "candidates": [], "votes": {}, "reason": "no candidates"})
         emit_event(services, state, events, EventType.NARRATION,
                    {"text": "无人参选 · 警徽流落", "kind": "info",
                     "round": state["round"], "phase": state["phase"].value})
@@ -60,7 +62,8 @@ async def handle_sheriff_election(state: GameState, services: SessionServices) -
         sheriff_id = candidates[0]
         players_patch = {sheriff_id: {"is_sheriff": True}}
         emit_event(services, state, events, EventType.SHERIFF_ELECTED,
-                   {"player_id": sheriff_id, "votes": {}, "unopposed": True})
+                   {"player_id": sheriff_id, "candidates": list(candidates),
+                    "votes": {}, "unopposed": True})
         emit_event(services, state, events, EventType.NARRATION,
                    {"text": f"{sheriff_id} 号自动当选警长", "kind": "gold",
                     "round": state["round"], "phase": state["phase"].value})
@@ -135,7 +138,8 @@ async def handle_sheriff_election(state: GameState, services: SessionServices) -
         return votes
     if sheriff_id is None:
         emit_event(services, state, events, EventType.SHERIFF_ELECTED,
-                   {"player_id": None, "votes": votes, "tie": True})
+                   {"player_id": None, "candidates": list(candidates),
+                    "votes": votes, "tie": True})
         emit_event(services, state, events, EventType.NARRATION,
                    {"text": "警长竞选平票 · 警徽撕毁", "kind": "info",
                     "round": state["round"], "phase": state["phase"].value})
@@ -143,7 +147,7 @@ async def handle_sheriff_election(state: GameState, services: SessionServices) -
 
     players_patch = {sheriff_id: {"is_sheriff": True}}
     emit_event(services, state, events, EventType.SHERIFF_ELECTED,
-               {"player_id": sheriff_id, "votes": votes})
+               {"player_id": sheriff_id, "candidates": list(candidates), "votes": votes})
     emit_event(services, state, events, EventType.NARRATION,
                {"text": f"{sheriff_id} 号当选警长", "kind": "gold",
                 "round": state["round"], "phase": state["phase"].value})

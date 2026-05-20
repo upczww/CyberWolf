@@ -906,25 +906,27 @@ function VotePanel({
   players: Player[]
   events: GameEvent[]
 }) {
-  // Display-only tally — voting itself happens via HumanActionPanel.
-  // Each seat's button shows the number of votes it has received in the
-  // *current round*, derived from vote_cast events the backend has sent.
+  // Display-only tally. Backend only emits vote_resolved at the END of a
+  // vote round (anti-leak: no per-vote events during the round). So during
+  // the round we show an empty grid; once vote_resolved arrives, we render
+  // the full tally from its `votes` dict.
   const round = events.reduce((acc, ev) => Math.max(acc, ev.round || 0), 0)
+  const resolved = [...events].reverse().find(
+    (ev) => ev.event_type === 'vote_resolved' && (ev.round || 0) === round,
+  )
+  const votesMap: Record<number, number | null> = (resolved?.data?.votes as any) || {}
   const tally: Record<number, number> = {}
   let abstain = 0
-  for (const ev of events) {
-    if (ev.event_type !== 'vote_cast') continue
-    if ((ev.round || 0) !== round) continue
-    const target = ev.data?.target_id
+  for (const target of Object.values(votesMap)) {
     if (target == null) abstain += 1
     else tally[Number(target)] = (tally[Number(target)] || 0) + 1
   }
-  const totalVotes = Object.values(tally).reduce((a, b) => a + b, 0) + abstain
+  const totalVotes = Object.keys(votesMap).length
   return (
     <section className="vote-panel">
       <header>
         <b>放逐投票</b>
-        <span>{totalVotes > 0 ? `已记录 ${totalVotes} 票` : '等待玩家投票…'}</span>
+        <span>{totalVotes > 0 ? `共 ${totalVotes} 票 · 已结算` : '等待全部玩家投票…'}</span>
       </header>
       <div className="vote-grid">
         {players.filter((p) => p.survived).map((player) => {
@@ -957,23 +959,34 @@ function SheriffPanel({
   gameId: string | null
   events: GameEvent[]
 }) {
+  // Candidates and tally both come from the aggregated sheriff_elected
+  // event. While the candidacy window is open the panel shows "等待报名…";
+  // once candidacy closes we either have sheriff_campaign events (speech
+  // phase — candidates known from campaigns) or the final sheriff_elected
+  // event (post-resolution — full candidates + votes available).
   const candidates = useMemo(() => {
     const candidateSeats = new Set<number>()
-    for (const ev of events) {
-      if (ev.event_type === 'sheriff_declare' || ev.event_type === 'sheriff_campaign') {
-        const seat = Number(ev.data?.player_id ?? ev.data?.actor_id)
-        if (Number.isFinite(seat)) candidateSeats.add(seat)
+    // Prefer the aggregated event if available
+    const resolved = [...events].reverse().find((ev) => ev.event_type === 'sheriff_elected')
+    const fromResolved = (resolved?.data?.candidates as number[] | undefined) || []
+    fromResolved.forEach((s) => candidateSeats.add(Number(s)))
+    // Live feed: candidates also surface via campaign speech events before
+    // resolution lands.
+    if (candidateSeats.size === 0) {
+      for (const ev of events) {
+        if (ev.event_type === 'sheriff_campaign') {
+          const seat = Number(ev.data?.player_id ?? ev.data?.actor_id)
+          if (Number.isFinite(seat)) candidateSeats.add(seat)
+        }
       }
     }
     return players.filter((p) => candidateSeats.has(p.seat_index))
   }, [events, players])
-  const round = events.reduce((acc, ev) => Math.max(acc, ev.round || 0), 0)
+  const resolvedSheriff = [...events].reverse().find((ev) => ev.event_type === 'sheriff_elected')
+  const sheriffVotes: Record<number, number | null> = (resolvedSheriff?.data?.votes as any) || {}
   const tally: Record<number, number> = {}
   let abstain = 0
-  for (const ev of events) {
-    if (ev.event_type !== 'vote_cast') continue
-    if ((ev.round || 0) !== round) continue
-    const target = ev.data?.target_id
+  for (const target of Object.values(sheriffVotes)) {
     if (target == null) abstain += 1
     else tally[Number(target)] = (tally[Number(target)] || 0) + 1
   }
@@ -1108,42 +1121,44 @@ interface VoteGroup {
 }
 
 function buildVoteGroups(events: GameEvent[]): VoteGroup[] {
+  // Backend now publishes aggregated resolution events only:
+  //   * sheriff_elected.data = {player_id, candidates, votes, ...}
+  //   * vote_resolved.data   = {votes, chosen}
+  // The full {voter: target} map lives on the resolution event, so we no
+  // longer need to walk individual vote_cast events.
   const groups: VoteGroup[] = []
-  let current: VoteGroup | null = null
   for (const ev of events) {
-    if (ev.event_type === 'phase_started') {
-      const phase = ev.data?.phase as string
-      const round = typeof ev.round === 'number' ? ev.round : 1
-      if (phase === 'sheriff_election') {
-        current = { key: `s-${round}`, title: `第 ${round} 天 警长竞选`, result: '竞选中', focus: null, byVoter: {} }
-        groups.push(current)
-      } else if (phase === 'day_vote') {
-        current = { key: `d-${round}`, title: `第 ${round} 天 放逐投票`, result: '投票中', focus: null, byVoter: {} }
-        groups.push(current)
-      }
-    }
-    if (!current) continue
-    if (ev.event_type === 'vote_cast') {
-      const voter = Number(ev.data?.voter_id)
-      const target = ev.data?.target_id
-      if (Number.isFinite(voter)) current.byVoter[voter] = target == null ? null : Number(target)
-    }
+    const round = typeof ev.round === 'number' ? ev.round : 1
     if (ev.event_type === 'sheriff_elected') {
-      const sid = Number(ev.data?.player_id ?? ev.data?.target_id)
-      if (Number.isFinite(sid)) {
-        current.focus = sid
-        current.result = `${sid} 号当选警长`
+      const sid = ev.data?.player_id ?? null
+      const votes = (ev.data?.votes as Record<string, number | null> | undefined) || {}
+      const byVoter: Record<number, number | null> = {}
+      for (const [voter, target] of Object.entries(votes)) {
+        const v = Number(voter)
+        if (Number.isFinite(v)) byVoter[v] = target == null ? null : Number(target)
       }
-    }
-    if (ev.event_type === 'vote_resolved') {
+      groups.push({
+        key: `s-${round}-${ev.seq ?? groups.length}`,
+        title: `第 ${round} 天 警长竞选`,
+        result: sid != null ? `${sid} 号当选警长` : (ev.data?.reason === 'no candidates' ? '无人参选' : '平票，未当选'),
+        focus: sid == null ? null : Number(sid),
+        byVoter,
+      })
+    } else if (ev.event_type === 'vote_resolved') {
       const chosen = ev.data?.chosen
-      if (chosen == null) {
-        current.result = '平票，未放逐'
-        current.focus = null
-      } else {
-        current.focus = Number(chosen)
-        current.result = `${chosen} 号出局`
+      const votes = (ev.data?.votes as Record<string, number | null> | undefined) || {}
+      const byVoter: Record<number, number | null> = {}
+      for (const [voter, target] of Object.entries(votes)) {
+        const v = Number(voter)
+        if (Number.isFinite(v)) byVoter[v] = target == null ? null : Number(target)
       }
+      groups.push({
+        key: `d-${round}-${ev.seq ?? groups.length}`,
+        title: `第 ${round} 天 放逐投票`,
+        result: chosen == null ? '平票，未放逐' : `${chosen} 号出局`,
+        focus: chosen == null ? null : Number(chosen),
+        byVoter,
+      })
     }
   }
   return groups
@@ -1332,11 +1347,25 @@ function avatarForSeat(players: Player[], seat: number, gameId: string | null): 
 }
 
 function buildVoteCounts(events: GameEvent[]): Record<number, number> {
+  // Reads from the latest aggregated resolution event in the most-recent
+  // round only. Individual vote_cast events no longer exist.
   const counts: Record<number, number> = {}
+  let bestSeq = -Infinity
+  let bestVotes: Record<string, number | null> | null = null
   for (const ev of events) {
-    if (ev.event_type !== 'vote_cast') continue
-    const target = Number(ev.data?.target_id)
-    if (Number.isFinite(target)) counts[target] = (counts[target] || 0) + 1
+    if (ev.event_type !== 'vote_resolved' && ev.event_type !== 'sheriff_elected') continue
+    const seq = typeof ev.seq === 'number' ? ev.seq : 0
+    if (seq <= bestSeq) continue
+    const v = (ev.data?.votes as Record<string, number | null> | undefined) || {}
+    if (Object.keys(v).length === 0) continue
+    bestSeq = seq
+    bestVotes = v
+  }
+  if (bestVotes) {
+    for (const target of Object.values(bestVotes)) {
+      if (target == null) continue
+      counts[Number(target)] = (counts[Number(target)] || 0) + 1
+    }
   }
   return counts
 }
