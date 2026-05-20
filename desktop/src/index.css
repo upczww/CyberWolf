@@ -739,8 +739,8 @@ img {
 .mode-cards {
   position: absolute;
   left: 50%;
-  top: 290px;
-  bottom: 124px;
+  top: 240px;
+  bottom: 108px;
   display: grid;
   grid-template-columns: 410px 410px;
   gap: 34px;
@@ -753,7 +753,7 @@ img {
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  padding: 70px 38px 28px;
+  padding: 60px 38px 22px;
   border-radius: 8px;
   border: 1px solid rgba(131, 184, 239, .55);
   background: linear-gradient(180deg, rgba(56, 110, 168, .26) 0%, rgba(20, 48, 90, .42) 60%, rgba(12, 28, 56, .58) 100%);
@@ -763,6 +763,27 @@ img {
     inset 0 1px 0 rgba(255,255,255,.12),
     inset 0 0 32px rgba(86, 142, 200, .14),
     0 20px 50px rgba(0,0,0,.42);
+  cursor: pointer;
+  transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease;
+}
+
+.mode-card:hover {
+  transform: translateY(-3px);
+  border-color: rgba(170, 210, 250, .85);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.18),
+    inset 0 0 32px rgba(120, 175, 230, .26),
+    0 24px 56px rgba(0,0,0,.5),
+    0 0 32px rgba(120, 175, 230, .26);
+}
+
+.mode-card.mode-red:hover {
+  border-color: rgba(255, 130, 110, .9);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.18),
+    inset 0 0 32px rgba(232, 110, 90, .32),
+    0 24px 56px rgba(0,0,0,.5),
+    0 0 32px rgba(232, 110, 90, .32);
 }
 
 .mode-card.mode-red {
@@ -815,17 +836,17 @@ img {
 }
 
 .mode-card p {
-  margin: 14px 0 14px;
+  margin: 6px 0 8px;
   color: rgba(247, 242, 232, .86);
-  font-size: 18px;
+  font-size: 16px;
   text-align: center;
 }
 
 .mode-hero {
   flex: 1 1 0;
-  min-height: 0;
+  min-height: 240px;
   position: relative;
-  margin: 4px -38px 14px;
+  margin: 0 -38px 10px;
   display: grid;
   place-items: end center;
   overflow: hidden;
@@ -873,21 +894,29 @@ img {
   max-height: 100%;
   object-fit: contain;
   object-position: bottom center;
-  filter: drop-shadow(0 10px 24px rgba(0,0,0,.6));
+  filter:
+    brightness(1.18)
+    contrast(1.12)
+    drop-shadow(0 12px 28px rgba(0,0,0,.65))
+    drop-shadow(0 0 24px rgba(140, 180, 230, .35));
 }
 
 .mode-card.mode-red .mode-silhouette {
-  filter: drop-shadow(0 10px 24px rgba(180, 40, 30, .42));
+  filter:
+    brightness(1.18)
+    contrast(1.12)
+    drop-shadow(0 12px 28px rgba(0,0,0,.65))
+    drop-shadow(0 0 30px rgba(232, 110, 90, .55));
 }
 
 .mode-card ul {
   display: grid;
-  gap: 10px;
-  margin: 0 0 18px;
+  gap: 6px;
+  margin: 0 0 14px;
   padding: 0;
   list-style: none;
-  color: rgba(244,240,232,.86);
-  font-size: 15px;
+  color: rgba(244,240,232,.92);
+  font-size: 14px;
 }
 
 .mode-card li {

@@ -624,7 +624,23 @@ function ModeCard({
   onStart: () => void
 }) {
   return (
-    <article className={`mode-card mode-${tone} ${active ? 'active' : ''}`} onClick={onClick}>
+    <article
+      className={`mode-card mode-${tone} ${active ? 'active' : ''}`}
+      role="button"
+      tabIndex={0}
+      onMouseEnter={onClick}
+      onClick={() => {
+        onClick()
+        onStart()
+      }}
+      onKeyDown={(event) => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault()
+          onClick()
+          onStart()
+        }
+      }}
+    >
       <img className="mode-icon" src={icon} alt="" />
       <h2>{title}</h2>
       <p>{text}</p>
@@ -636,6 +652,7 @@ function ModeCard({
       </ul>
       <button onClick={(event) => {
         event.stopPropagation()
+        onClick()
         onStart()
       }}>{loading ? '启动中' : '开始游戏'}<span>›</span></button>
     </article>
