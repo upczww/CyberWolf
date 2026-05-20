@@ -37,64 +37,64 @@ interface VisiblePlayer {
 }
 
 const A = '/assets/ui'
-const UNKNOWN_CLOAK = `${A}/portraits/unknown/portrait_unknown_cloak_01.png`
-const UNKNOWN_AI = `${A}/portraits/unknown/portrait_unknown_ai_01.png`
+const UNKNOWN_CLOAK = `${A}/portraits/unknown/portrait_unknown_cloak_01_bust.png`
+const UNKNOWN_AI = `${A}/portraits/unknown/portrait_unknown_ai_01_bust.png`
 
 const ROLE_META: Record<string, RoleMeta> = {
   villager: {
     label: '平民',
     camp: '好人阵营',
     tone: 'good',
-    portrait: `${A}/portraits/roles/portrait_villager_male_01.png`,
+    portrait: `${A}/portraits/roles/portrait_villager_male_01_bust.png`,
     icon: `${A}/icons/roles/icon_role_villager.png`,
   },
   wolf: {
     label: '狼人',
     camp: '狼人阵营',
     tone: 'wolf',
-    portrait: `${A}/portraits/roles/portrait_werewolf_01.png`,
+    portrait: `${A}/portraits/roles/portrait_werewolf_01_bust.png`,
     icon: `${A}/icons/roles/icon_role_werewolf.png`,
   },
   werewolf: {
     label: '狼人',
     camp: '狼人阵营',
     tone: 'wolf',
-    portrait: `${A}/portraits/roles/portrait_werewolf_01.png`,
+    portrait: `${A}/portraits/roles/portrait_werewolf_01_bust.png`,
     icon: `${A}/icons/roles/icon_role_werewolf.png`,
   },
   seer: {
     label: '预言家',
     camp: '神职',
     tone: 'god',
-    portrait: `${A}/portraits/roles/portrait_seer_01.png`,
+    portrait: `${A}/portraits/roles/portrait_seer_01_bust.png`,
     icon: `${A}/icons/roles/icon_role_seer.png`,
   },
   witch: {
     label: '女巫',
     camp: '神职',
     tone: 'god',
-    portrait: `${A}/portraits/roles/portrait_witch_01.png`,
+    portrait: `${A}/portraits/roles/portrait_witch_01_bust.png`,
     icon: `${A}/icons/roles/icon_role_witch.png`,
   },
   hunter: {
     label: '猎人',
     camp: '神职',
     tone: 'god',
-    portrait: `${A}/portraits/roles/portrait_hunter_01.png`,
+    portrait: `${A}/portraits/roles/portrait_hunter_01_bust.png`,
     icon: `${A}/icons/roles/icon_role_hunter.png`,
   },
   idiot: {
     label: '白痴',
     camp: '神职',
     tone: 'god',
-    portrait: `${A}/portraits/roles/portrait_idiot_01.png`,
+    portrait: `${A}/portraits/roles/portrait_idiot_01_bust.png`,
     icon: `${A}/icons/roles/icon_role_idiot.png`,
   },
   guard: {
     label: '守卫',
     camp: '神职',
     tone: 'god',
-    portrait: `${A}/portraits/roles/portrait_guard_01.png`,
+    portrait: `${A}/portraits/roles/portrait_guard_01_bust.png`,
     icon: `${A}/icons/roles/icon_role_guard.png`,
   },
   unknown: {
@@ -107,12 +107,12 @@ const ROLE_META: Record<string, RoleMeta> = {
 }
 
 const EXTRA_PORTRAITS = [
-  `${A}/portraits/extra/portrait_elder_male_01.png`,
-  `${A}/portraits/extra/portrait_elder_female_01.png`,
-  `${A}/portraits/extra/portrait_boy_01.png`,
-  `${A}/portraits/extra/portrait_girl_01.png`,
-  `${A}/portraits/extra/portrait_villager_lantern_01.png`,
-  `${A}/portraits/roles/portrait_villager_female_01.png`,
+  `${A}/portraits/extra/portrait_elder_male_01_bust.png`,
+  `${A}/portraits/extra/portrait_elder_female_01_bust.png`,
+  `${A}/portraits/extra/portrait_boy_01_bust.png`,
+  `${A}/portraits/extra/portrait_girl_01_bust.png`,
+  `${A}/portraits/extra/portrait_villager_lantern_01_bust.png`,
+  `${A}/portraits/roles/portrait_villager_female_01_bust.png`,
 ]
 
 const PHASE_META: Record<string, PhaseMeta> = {
@@ -622,7 +622,7 @@ function LandingScreen({
       <div className="landing-bg" />
       <header className="landing-top">
         <div className="profile-chip">
-          <img src={`${A}/portraits/roles/portrait_villager_male_01.png`} alt="" />
+          <img src={`${A}/portraits/roles/portrait_villager_male_01_bust.png`} alt="" />
           <div>
             <b>玩家昵称七个字</b>
             <span>ID: 123456</span>
