@@ -465,8 +465,7 @@ export default function App() {
           so dialogs never visually overlap.
           1) IdentityReveal — must finish before anything else (开局必读)
           2) HumanActionPanel — your turn
-          3) SkillModal — demo-only middle panel
-          4) InfoDialog — passive notifications */}
+          3) InfoDialog — passive notifications */}
       {(() => {
         const needsIdentity =
           gameId && gameId !== 'demo'
@@ -477,14 +476,7 @@ export default function App() {
             return !!me && !!me.role && me.role !== 'unknown'
           })()
 
-        const needsHumanAction =
-          !!awaitingHuman && !!gameId
-          && viewMode === 'self' && humanSeat != null
-          && awaitingHuman.actor_id === humanSeat
-        if (needsHumanAction) {
-          return <HumanActionPanel request={awaitingHuman!} gameId={gameId!} players={players} />
-        }
-
+        // 1) IdentityReveal — must finish before anything else (开局必读)
         if (needsIdentity) {
           const me = players.find((p) => p.seat_index === humanSeat)!
           return (
@@ -496,6 +488,16 @@ export default function App() {
           )
         }
 
+        // 2) HumanActionPanel — your turn
+        const needsHumanAction =
+          !!awaitingHuman && !!gameId
+          && viewMode === 'self' && humanSeat != null
+          && awaitingHuman.actor_id === humanSeat
+        if (needsHumanAction) {
+          return <HumanActionPanel request={awaitingHuman!} gameId={gameId!} players={players} />
+        }
+
+        // 3) InfoDialog — passive notifications
         if (infoPanel) {
           return <InfoDialog title={infoPanel.title} body={infoPanel.body} onClose={() => setInfoPanel(null)} />
         }
@@ -568,7 +570,7 @@ function TopBar({
       </div>
       <div className="day-stack">
         <div className="day-pill">
-          <span>{meta.label.replace('第 1', `第 ${round}`)}</span>
+          <span>{formatPhaseLabel(meta.label, round)}</span>
           <img src={meta.tone === 'night' || meta.tone === 'skill' ? `${A}/icons/actions/icon_landing_ai_autoplay.png` : `${A}/icons/actions/icon_speed_config.png`} alt="" />
         </div>
         <div className="phase-mini">
@@ -1021,41 +1023,10 @@ function SheriffPanel({
   )
 }
 
-function SkillModal({
-  phase,
-  players,
-  onClose,
-  onProtect,
-}: {
-  phase: string
-  players: Player[]
-  onClose: () => void
-  onProtect: () => void
-}) {
-  const victim = players.find((p) => p.seat_index === 8)
-  const skill = skillForPhase(phase)
-  return (
-    <section className="skill-backdrop">
-      <div className="skill-card">
-        <button className="drawer-close floating" onClick={onClose}>×</button>
-        <img className="skill-orb" src={skill.icon} alt="" />
-        <h2>{skill.title}</h2>
-        <p>昨晚 <b>{victim?.seat_index || 8}</b> 号玩家被狼人击杀</p>
-        <div className="skill-actions">
-          <button className="heal" onClick={onProtect}><img src={`${A}/icons/skills/icon_skill_witch_heal.png`} alt="" />使用解药<br /><span>救8号</span></button>
-          <button className="poison" onClick={onProtect}><img src={`${A}/icons/skills/icon_skill_witch_poison.png`} alt="" />使用毒药</button>
-          <button className="skip" onClick={onClose}><img src={`${A}/icons/actions/icon_action_close.png`} alt="" />不使用</button>
-        </div>
-        <p className="skill-hint">每晚只能使用一种药剂，不能自救</p>
-        <div className="night-steps">
-          <span><img src={`${A}/icons/skills/icon_skill_wolf_kill.png`} alt="" />狼人行动<small>已结束</small></span>
-          <span className="active"><img src={`${A}/icons/skills/icon_skill_witch_heal.png`} alt="" />女巫行动<small>进行中</small></span>
-          <span><img src={`${A}/icons/skills/icon_skill_seer_check.png`} alt="" />预言家行动<small>即将开始</small></span>
-        </div>
-      </div>
-    </section>
-  )
-}
+// SkillModal removed — was a demo-only witch yes/no preview with hardcoded
+// "8 号" target. Real witch input now goes through HumanActionPanel
+// (witch_antidote / witch_poison tools), driven by the backend awaiting_human
+// event for the actual witch seat.
 
 function HistoryDrawer({
   tab,
@@ -1387,6 +1358,11 @@ function isSkillPhase(phase: string): boolean {
   return ['night_wolf', 'night_seer', 'night_witch', 'night_guard'].includes(phase)
 }
 
+/** Replace any "第 N" prefix in a static phase label with the live round. */
+function formatPhaseLabel(label: string, round: number): string {
+  return label.replace(/第\s*\d+/, `第 ${Math.max(round, 1)}`)
+}
+
 function selfWaitingHint(
   phase: string,
   currentSpeaker: number,
@@ -1434,15 +1410,6 @@ function selfWaitingHint(
   }
 }
 
-function skillForPhase(phase: string) {
-  if (phase === 'night_wolf') {
-    return { title: '狼队夜刀目标', icon: `${A}/icons/skills/icon_skill_wolf_kill.png` }
-  }
-  if (phase === 'night_seer') {
-    return { title: '预言家查验', icon: `${A}/icons/skills/icon_skill_seer_check.png` }
-  }
-  if (phase === 'night_guard') {
-    return { title: '守卫行动', icon: `${A}/icons/skills/icon_skill_guard_protect.png` }
-  }
-  return { title: '女巫请睁眼', icon: `${A}/icons/skills/icon_skill_witch_heal.png` }
-}
+// skillForPhase removed — was only used by the deleted SkillModal demo.
+// Real per-skill UI lives in HumanActionPanel which gets tool_name from the
+// backend awaiting_human event directly.

@@ -192,6 +192,7 @@ def _handle_noop(state: GameState, services: SessionServices) -> PhaseResult:
 
 _PHASE_NARRATION: dict[str, tuple[str, str]] = {
     # phase.value -> (kind, text). {round} placeholder gets replaced.
+    "setup_game":       ("info", "对局准备中…"),
     "night_start":      ("info", "第 {round} 夜 · 天黑请闭眼"),
     "night_wolf":       ("wolf", "狼人请睁眼，选择今夜的目标"),
     "night_seer":       ("good", "预言家请睁眼，选择一名玩家查验"),
@@ -203,6 +204,8 @@ _PHASE_NARRATION: dict[str, tuple[str, str]] = {
     "day_vote":         ("info", "进入放逐投票，请投出你的一票"),
     "day_resolve":      ("info", "裁判结算投票"),
     "pending_skills":   ("info", "出局玩家依次结算死亡技能"),
+    # check_win is a fast pass-through — no narration; game_over has its own
+    # GAME_ENDED event which the frontend already renders as victory banner.
 }
 
 
