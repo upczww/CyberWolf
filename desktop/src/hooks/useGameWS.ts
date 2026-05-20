@@ -1,10 +1,11 @@
 import { useEffect, useRef } from 'react'
-import { useGameStore, GameEvent } from '../stores/game'
+import { useGameStore } from '../stores/game'
+import { normalizeGameEvent } from '../lib/gameFlow'
 
 export function useGameWS(gameId: string | null, seat: number | null = null) {
   const wsRef = useRef<WebSocket | null>(null)
   const {
-    addEvent, setEvents, setConnected, setPhase, setRound, setStatus, setWinner,
+    addEvent, setConnected,
     setAwaitingHuman, clearAwaitingHuman,
   } = useGameStore()
 
@@ -24,7 +25,7 @@ export function useGameWS(gameId: string | null, seat: number | null = null) {
       setConnected(true)
       // Pull any in-flight awaiting_human state in case we connected after the event was emitted
       if (seat != null) {
-        fetch(`/api/games/${gameId}/human_pending`)
+        fetch(`/api/games/${gameId}/human_pending?seat=${seat}`)
           .then((r) => r.json())
           .then((data: {
             pending?: Array<{
@@ -38,9 +39,15 @@ export function useGameWS(gameId: string | null, seat: number | null = null) {
             }>
             seat?: number | null
           }) => {
-            if (!data?.pending || data.pending.length === 0) return
+            if (!data?.pending || data.pending.length === 0) {
+              clearAwaitingHuman()
+              return
+            }
             const own = data.pending.find((p) => p.actor_id === seat)
-            if (!own) return
+            if (!own) {
+              clearAwaitingHuman()
+              return
+            }
             setAwaitingHuman({
               actor_id: own.actor_id,
               tool_name: own.tool_name,
@@ -67,29 +74,6 @@ export function useGameWS(gameId: string | null, seat: number | null = null) {
       } else if (payload.type === 'live') {
         const ev = normalizeEvent(payload.event)
         addEvent(ev)
-
-        if (ev.event_type === 'phase_started' && ev.data?.phase) {
-          setPhase(ev.data.phase)
-          if (ev.data.round) setRound(ev.data.round)
-        }
-        if (ev.event_type === 'game_ended') {
-          setStatus('completed')
-          setWinner(ev.data?.winner || null)
-        }
-        if (ev.event_type === 'awaiting_human') {
-          setAwaitingHuman({
-            actor_id: Number(ev.data?.actor_id),
-            tool_name: String(ev.data?.tool_name ?? ''),
-            phase: String(ev.data?.phase ?? ''),
-            role: String(ev.data?.role ?? ''),
-            round: Number(ev.data?.round ?? 0),
-            timeout_seconds: Number(ev.data?.timeout_seconds ?? 60),
-            local_args: ev.data?.local_args || {},
-          })
-        }
-        if (ev.event_type === 'human_submitted') {
-          clearAwaitingHuman()
-        }
       }
     }
 
@@ -100,10 +84,6 @@ export function useGameWS(gameId: string | null, seat: number | null = null) {
   }, [gameId, seat])
 }
 
-function normalizeEvent(raw: any): GameEvent {
-  return {
-    ...raw,
-    data: raw?.data_json || raw?.data || {},
-    event_type: raw?.event_type,
-  } as GameEvent
+function normalizeEvent(raw: any) {
+  return normalizeGameEvent(raw)
 }

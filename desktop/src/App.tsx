@@ -155,60 +155,60 @@ const PHASE_META: Record<string, PhaseMeta> = {
     actionLabel: '守卫行动',
   },
   setup_game: {
-    label: 'Game setup',
-    shortLabel: 'Setup',
+    label: '准备开局',
+    shortLabel: '准备',
     tone: 'night',
     icon: `${A}/icons/actions/icon_landing_ai_autoplay.png`,
     background: `${A}/backgrounds/bg_global_moonlit_village_night.png`,
-    actionLabel: 'preparing',
+    actionLabel: '号玩家准备中',
   },
   night_start: {
-    label: 'Night',
-    shortLabel: 'Night starts',
+    label: '第 1 夜 · 夜晚',
+    shortLabel: '夜幕降临',
     tone: 'night',
     icon: `${A}/icons/actions/icon_landing_ai_autoplay.png`,
     background: `${A}/backgrounds/bg_phase_night_overview.png`,
-    actionLabel: 'night begins',
+    actionLabel: '号玩家闭眼',
   },
   night_resolve: {
-    label: 'Night',
-    shortLabel: 'Night resolve',
+    label: '第 1 夜 · 夜晚',
+    shortLabel: '夜晚结算',
     tone: 'night',
     icon: `${A}/icons/actions/icon_match_summary.png`,
     background: `${A}/backgrounds/bg_phase_night_overview.png`,
-    actionLabel: 'resolving',
+    actionLabel: '号玩家等待结算',
   },
   day_announce: {
-    label: 'Day',
-    shortLabel: 'Dawn report',
+    label: '第 1 天 · 白天',
+    shortLabel: '天亮公布',
     tone: 'day',
     icon: `${A}/icons/actions/icon_match_summary.png`,
     background: `${A}/backgrounds/bg_global_moonlit_village_day.png`,
-    actionLabel: 'announcing',
+    actionLabel: '号玩家等待公布',
   },
   day_resolve: {
-    label: 'Day',
-    shortLabel: 'Vote resolve',
+    label: '第 1 天 · 白天',
+    shortLabel: '投票结算',
     tone: 'vote',
     icon: `${A}/icons/actions/icon_match_summary.png`,
     background: `${A}/backgrounds/bg_phase_exile_result.png`,
-    actionLabel: 'resolving vote',
+    actionLabel: '号玩家等待裁决',
   },
   pending_skills: {
-    label: 'Skills',
-    shortLabel: 'Skill resolve',
+    label: '技能结算',
+    shortLabel: '技能结算',
     tone: 'skill',
     icon: `${A}/icons/actions/icon_match_summary.png`,
     background: `${A}/backgrounds/bg_phase_hunter_action.png`,
-    actionLabel: 'resolving skills',
+    actionLabel: '号玩家发动技能',
   },
   check_win: {
-    label: 'Resolve',
-    shortLabel: 'Win check',
+    label: '胜负检查',
+    shortLabel: '胜负检查',
     tone: 'result',
     icon: `${A}/icons/actions/icon_match_summary.png`,
     background: `${A}/backgrounds/bg_global_result_hall.png`,
-    actionLabel: 'checking result',
+    actionLabel: '号等待裁决',
   },
   game_over: {
     label: '游戏结束',
@@ -467,9 +467,23 @@ export default function App() {
           2) HumanActionPanel — your turn
           3) InfoDialog — passive notifications */}
       {(() => {
+        // Race guard: in self mode, once the game has started we must NOT
+        // show any other modal until either IdentityReveal has been
+        // dismissed or the player roster has loaded enough for us to know
+        // we don't need it. Otherwise an awaiting_human arriving on the
+        // WS before loadGameDetail completes could flash a HumanActionPanel
+        // before the identity card had a chance.
+        const inSelfRoom =
+          gameId && gameId !== 'demo' && viewMode === 'self' && humanSeat != null
+        const playerKnown = inSelfRoom
+          && players.some((p) => p.seat_index === humanSeat && p.role && p.role !== 'unknown')
+        if (inSelfRoom && !identityRevealed && !playerKnown) {
+          // Identity should fire but player data isn't ready yet → block.
+          return null
+        }
+
         const needsIdentity =
-          gameId && gameId !== 'demo'
-          && viewMode === 'self' && humanSeat != null
+          inSelfRoom
           && !identityRevealed
           && (() => {
             const me = players.find((p) => p.seat_index === humanSeat)

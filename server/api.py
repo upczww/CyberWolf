@@ -26,7 +26,6 @@ from app.infra.events import EventBus
 from app.infra.repositories.games import fetch_game, fetch_game_players, fetch_recent_games, fetch_game_count
 from app.infra.repositories.events import fetch_events
 from app.infra.repositories.snapshots import fetch_latest_snapshot
-from app.services.tts import tts_engine
 
 _log = logging.getLogger(__name__)
 
@@ -71,11 +70,6 @@ def _get_paths() -> AppPaths:
 async def lifespan(app: FastAPI):
     paths = _get_paths()
     initialize_database(paths.database, paths.schema)
-    # Start TTS playback worker so toggling tts on actually produces audio
-    try:
-        tts_engine.start_worker(asyncio.get_running_loop())
-    except Exception as exc:  # noqa: BLE001
-        _log.warning("TTS worker failed to start: %s", exc)
     yield
     # Cleanup active games
     for game_id, (bus, task) in _active_games.items():
@@ -319,7 +313,6 @@ async def start_game(req: StartGameRequest):
                 pass
 
     event_bus.subscribe(on_event)
-    event_bus.subscribe(tts_engine.on_event)
 
     async def run():
         try:
@@ -333,7 +326,6 @@ async def start_game(req: StartGameRequest):
                 human_awaiter=human_awaiter,
                 phase_delay_seconds=req.phase_delay_seconds,
             )
-            tts_engine.set_player_roles(boot.state["players"])
         except Exception as exc:
             _log.exception("Game failed: %s", exc)
         finally:
@@ -389,18 +381,6 @@ async def replay_game(game_id: str):
     return ReplayResponse(success=True, report=result)
 
 
-@app.post("/api/tts/toggle")
-async def toggle_tts():
-    """Toggle TTS on/off."""
-    new_state = tts_engine.toggle()
-    return {"enabled": new_state}
-
-
-@app.get("/api/tts/status")
-async def tts_status():
-    return {"enabled": tts_engine.enabled}
-
-
 @app.post("/api/games/{game_id}/human_action")
 async def submit_human_action(game_id: str, req: HumanActionRequest):
     """Inject a human player's action into the awaiting phase handler."""
@@ -415,12 +395,21 @@ async def submit_human_action(game_id: str, req: HumanActionRequest):
 
 
 @app.get("/api/games/{game_id}/human_pending")
-async def human_pending(game_id: str):
-    """Return any actions currently awaiting human input (for reconnect)."""
+async def human_pending(game_id: str, seat: int | None = None):
+    """Return actions currently awaiting human input (for reconnect).
+
+    If ``seat=N`` is provided we only surface the entries whose actor matches
+    that seat — anything else would leak the role of other seats via the
+    ``tool_name`` field (e.g. an outstanding ``witch_antidote`` tells you who
+    the witch is). Self-mode clients always call this with ``?seat=N``.
+    """
     awaiter = _human_awaiters.get(game_id)
     if awaiter is None:
-        return {"pending": [], "seat": None}
-    return {"pending": awaiter.pending_snapshot(), "seat": _human_seats.get(game_id)}
+        return {"pending": [], "seat": seat}
+    items = awaiter.pending_snapshot()
+    if seat is not None:
+        items = [p for p in items if p.get("actor_id") == seat]
+    return {"pending": items, "seat": seat if seat is not None else _human_seats.get(game_id)}
 
 
 # ---------------------------------------------------------------------------
@@ -583,6 +572,7 @@ _PRIVATE_STATE_FIELDS = (
     "private_history",       # mirror of role-private events
     "night_actions",         # wolf vote tally + witch antidote/poison targets
     "night_result",          # engine intermediate state
+    "seed",                  # rng seed — knowing it lets you replay AI decisions
 )
 
 
@@ -688,6 +678,19 @@ def _sanitize_detail_for_seat(detail: dict[str, Any], seat: int | None) -> dict[
             if my_role != "witch":
                 new_state.pop("witch_antidote_used", None)
                 new_state.pop("witch_poison_used", None)
+
+            # pending_skills can leak hidden roles (e.g. a queued
+            # hunter_shot trigger on a dying seat reveals that seat as
+            # a hunter). Keep only entries whose actor is the viewing
+            # seat — they'll be asked to act on their own pending skill
+            # via awaiting_human anyway.
+            ps = new_state.get("pending_skills")
+            if isinstance(ps, list):
+                new_state["pending_skills"] = [
+                    s for s in ps
+                    if isinstance(s, dict)
+                    and (s.get("actor_id") == seat or s.get("kind") == "sheriff_transfer")
+                ]
 
             snapshot["state_json"] = new_state
             detail["snapshot"] = snapshot
