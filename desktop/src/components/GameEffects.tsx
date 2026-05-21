@@ -144,7 +144,7 @@ function cueFromEvent(event: GameEvent): ActionCue | null {
       from: actor,
       to: target,
       result: target ? `${target} 成为夜刀目标` : '夜刀目标已记录',
-      duration: 1900,
+      duration: 2800,
     }
   }
 
@@ -160,7 +160,7 @@ function cueFromEvent(event: GameEvent): ActionCue | null {
       from: seatLabel(firstValue(d.player_id, d.actor_id)),
       to: target,
       result: target ? `${target} 的身份倾向：${result}` : `查验结果：${result}`,
-      duration: 2050,
+      duration: 3000,
     }
   }
 
@@ -175,7 +175,7 @@ function cueFromEvent(event: GameEvent): ActionCue | null {
       from: seatLabel(firstValue(d.player_id, d.actor_id)),
       to: target,
       result: target ? `${target} 被救下` : '解药已生效',
-      duration: 1900,
+      duration: 2800,
     }
   }
 
@@ -190,7 +190,7 @@ function cueFromEvent(event: GameEvent): ActionCue | null {
       from: seatLabel(firstValue(d.player_id, d.actor_id)),
       to: target,
       result: target ? `${target} 中毒出局` : '毒药已投放',
-      duration: 1950,
+      duration: 2800,
     }
   }
 
@@ -206,7 +206,7 @@ function cueFromEvent(event: GameEvent): ActionCue | null {
       from,
       to,
       result: from && to ? `${from} 投给 ${to}` : '投票已记录',
-      duration: 1350,
+      duration: 2000,
     }
   }
 
@@ -220,7 +220,7 @@ function cueFromEvent(event: GameEvent): ActionCue | null {
       // One-line death message — no subtitle/from/to chrome (per request).
       title: tied ? '平票 · 无人被放逐' : `${chosen} 被投票放逐`,
       subtitle: '',
-      duration: 1800,
+      duration: 2800,
     }
   }
 
@@ -235,7 +235,7 @@ function cueFromEvent(event: GameEvent): ActionCue | null {
       from: seatLabel(firstValue(d.player_id, d.actor_id)),
       to: target,
       result: target ? `猎人带走 ${target}` : '猎人开枪',
-      duration: 1800,
+      duration: 2800,
     }
   }
 
@@ -248,7 +248,7 @@ function cueFromEvent(event: GameEvent): ActionCue | null {
       subtitle: '发言中断，立即进入夜晚',
       from: seatLabel(firstValue(d.player_id, d.actor_id)),
       result: '自爆生效',
-      duration: 2200,
+      duration: 3200,
     }
   }
 
@@ -262,7 +262,7 @@ function cueFromEvent(event: GameEvent): ActionCue | null {
       icon: deathIcon(d.cause),
       title: target ? `${target}${causeText}` : '出局已结算',
       subtitle: '',
-      duration: 1500,
+      duration: 2800,
     }
   }
 

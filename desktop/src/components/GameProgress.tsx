@@ -28,7 +28,11 @@ interface Props {
 // at least that long so it doesn't disappear into a blank screen between
 // role calls.
 const PHASE_FLASH_MS = 5500
-const EVENT_FLASH_MS = 2400
+// EventFlash items pop one at a time from a queue. 2.4s per item felt
+// snappy in isolation but rushed when 3–4 items fire in a row (dawn
+// announcement + per-death-speech intros), so each ticker line now
+// gets a longer reading window.
+const EVENT_FLASH_MS = 3800
 
 // Backend ``kind`` → frontend glyph default. The engine can override by
 // emitting `data.glyph` explicitly.
