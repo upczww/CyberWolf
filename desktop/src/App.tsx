@@ -861,7 +861,8 @@ function CenterStage({
 
   return (
     <section className="center-stage">
-      <div className="village-window" />
+      {/* No miniature village panorama here — the full-screen .sample-app
+          background already shows the current phase scene. */}
       <section className="speaker-status">
         <h1>
           <span>{currentSpeaker || '-'}</span>
