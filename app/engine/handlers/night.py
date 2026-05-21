@@ -17,6 +17,7 @@ from app.domain.state import (
 )
 from app.engine.event_helpers import action_source, emit_event, emit_speaking_started
 from app.engine.llm_bridge import llm_death_speech, llm_decide
+from app.engine.registry import phase
 from app.services.decisions import resolve_action, validate_tool_call
 
 if TYPE_CHECKING:
@@ -41,6 +42,7 @@ async def _hold_night_phase(start_time: float) -> None:
         await _asyncio.sleep(NIGHT_PHASE_MIN_SECONDS - elapsed)
 
 
+@phase(Phase.NIGHT_START, narration=("info", "第 {round} 夜 · 天黑请闭眼"))
 def handle_night_start(state: GameState, services: SessionServices) -> PhaseResult:
     # Pacing (天黑请闭眼 holds for 5s before night_wolf) is enforced
     # generically by the session loop via MIN_PHASE_NARRATION_HOLD_SECONDS.
@@ -50,6 +52,11 @@ def handle_night_start(state: GameState, services: SessionServices) -> PhaseResu
     )
 
 
+@phase(
+    Phase.NIGHT_WOLF,
+    narration=("wolf", "狼人请睁眼 · 互相确认同伴，商议今晚的击杀目标"),
+    requires_role=Role.WOLF,
+)
 async def handle_night_wolf(state: GameState, services: SessionServices) -> PhaseResult:
     # Fire phase_started + "狼人请睁眼" narration BEFORE any LLM / awaiter
     # blocking, so the banner is visible to every player the moment this
@@ -137,6 +144,11 @@ async def handle_night_wolf(state: GameState, services: SessionServices) -> Phas
     )
 
 
+@phase(
+    Phase.NIGHT_SEER,
+    narration=("good", "预言家请睁眼 · 请选择查验目标"),
+    requires_role=Role.SEER,
+)
 async def handle_night_seer(state: GameState, services: SessionServices) -> PhaseResult:
     from app.engine.session import _ensure_phase_started
     _ensure_phase_started(services, state, services.conn, state["phase"], state["round"])
@@ -190,6 +202,11 @@ async def handle_night_seer(state: GameState, services: SessionServices) -> Phas
     )
 
 
+@phase(
+    Phase.NIGHT_WITCH,
+    narration=("good", "女巫请睁眼 · 是否使用解药救人或毒药杀人"),
+    requires_role=Role.WITCH,
+)
 async def handle_night_witch(state: GameState, services: SessionServices) -> PhaseResult:
     # Fire "女巫请睁眼" narration BEFORE any LLM / awaiter — the witch's
     # antidote/poison choices can each take seconds, and we want the
@@ -301,6 +318,11 @@ async def handle_night_witch(state: GameState, services: SessionServices) -> Pha
     return PhaseResult(state_patch=patch, actions=actions, events=witch_events, persisted_event_count=len(witch_events))
 
 
+@phase(
+    Phase.NIGHT_HUNTER,
+    narration=("good", "猎人请睁眼 · 确认你今晚的开枪状态"),
+    requires_role=Role.HUNTER,
+)
 async def handle_night_hunter(state: GameState, services: SessionServices) -> PhaseResult:
     """Hunter's nightly ceremony — confirms shoot state, no action.
 
@@ -347,6 +369,11 @@ async def handle_night_hunter(state: GameState, services: SessionServices) -> Ph
     return PhaseResult(events=events, persisted_event_count=len(events))
 
 
+@phase(
+    Phase.NIGHT_IDIOT_REVEAL,
+    narration=("good", "白痴请睁眼 · 确认你的身份"),
+    requires_role=Role.IDIOT,
+)
 async def handle_night_idiot_reveal(state: GameState, services: SessionServices) -> PhaseResult:
     """First-night idiot wake-up ceremony.
 
@@ -385,6 +412,7 @@ async def handle_night_idiot_reveal(state: GameState, services: SessionServices)
     return PhaseResult(events=events, persisted_event_count=len(events))
 
 
+@phase(Phase.NIGHT_RESOLVE, narration=("info", "天将亮起 · 裁判结算夜晚行动"))
 async def handle_night_resolve(state: GameState, services: SessionServices) -> PhaseResult:
     wolf_target = state["night_actions"].get("wolf_target")
     use_antidote = bool(state["night_actions"].get("witch_use_antidote"))

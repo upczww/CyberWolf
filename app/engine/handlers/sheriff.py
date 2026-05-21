@@ -14,6 +14,7 @@ from app.domain.state import (
 )
 from app.engine.event_helpers import emit_event, emit_speaking_started
 from app.engine.llm_bridge import llm_decide, llm_speech, _build_cache_friendly_system_and_user
+from app.engine.registry import phase
 from app.services.context_builder import build_prompt_context
 from app.services.decisions import resolve_action, validate_tool_call
 from app.services.llm import TOOL_REGISTRY, build_phase_messages
@@ -25,6 +26,11 @@ if TYPE_CHECKING:
 _log = logging.getLogger(__name__)
 
 
+@phase(
+    Phase.SHERIFF_ELECTION,
+    narration=("gold", "第 {round} 天 · 警长竞选阶段开始"),
+    requires_flag="sheriff_enabled",
+)
 async def handle_sheriff_election(state: GameState, services: SessionServices) -> PhaseResult:
     if state["round"] > 1 or state["sheriff_id"] is not None or not state["runtime"]["rule_flags"].get("sheriff_enabled", True):
         return PhaseResult(events=[], skip_phase=True)

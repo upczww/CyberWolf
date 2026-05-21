@@ -8,11 +8,11 @@ from uuid import uuid4
 
 from app.config import AppPaths, LLMSettings
 from app.domain.state import GameState, init_game_state
+from app.domain.config import RuntimeConfig
 from app.engine.config_loader import compile_runtime_config, load_game_config
-from app.engine.graph import CompiledGraph, build_game_graph
-from app.engine.graph_viz import export_graph_bundle
 from app.engine.human import HumanAwaiter
 from app.engine.session import run_game_session
+from app.engine.state_machine import compute_phase_graph, export_graph_bundle
 from app.infra.db import connect_database, initialize_database
 from app.infra.events import EventBus
 from app.infra.repositories.games import insert_game_bootstrap
@@ -21,7 +21,7 @@ from app.infra.repositories.games import insert_game_bootstrap
 @dataclass(slots=True)
 class BootstrappedGame:
     state: GameState
-    graph: CompiledGraph
+    runtime: RuntimeConfig
     graph_artifacts: dict[str, str | None]
     llm_enabled: bool
 
@@ -44,9 +44,8 @@ async def bootstrap_and_run_game(
     initialize_database(paths.database, paths.schema)
     config = load_game_config(paths.configs / f"{config_id}.yaml")
     runtime = compile_runtime_config(config)
-    graph = build_game_graph(runtime)
     game_id = str(uuid4())
-    artifacts = export_graph_bundle(graph, runtime, paths.graphs, stem=game_id)
+    artifacts = export_graph_bundle(runtime, paths.graphs, stem=game_id)
     artifact_strings = {key: str(value) if value else None for key, value in artifacts.items()}
 
     conn = connect_database(paths.database)
@@ -70,7 +69,7 @@ async def bootstrap_and_run_game(
 
     return BootstrappedGame(
         state=final_state,
-        graph=graph,
+        runtime=runtime,
         graph_artifacts=artifact_strings,
         llm_enabled=llm_settings is not None,
     )

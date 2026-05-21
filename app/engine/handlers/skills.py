@@ -14,6 +14,7 @@ from app.domain.state import (
 )
 from app.engine.event_helpers import emit_event, make_event
 from app.engine.llm_bridge import llm_decide
+from app.engine.registry import phase
 from app.engine.rules import check_win
 from app.services.decisions import resolve_action, validate_tool_call
 
@@ -23,6 +24,7 @@ if TYPE_CHECKING:
 _log = logging.getLogger(__name__)
 
 
+@phase(Phase.PENDING_SKILLS, narration=("info", "出局玩家依次结算死亡技能"))
 async def handle_pending_skills(state: GameState, services: SessionServices) -> PhaseResult:
     pending = list(state["pending_skills"])
     if not pending:
@@ -120,6 +122,7 @@ async def handle_pending_skills(state: GameState, services: SessionServices) -> 
     )
 
 
+@phase(Phase.CHECK_WIN)  # silent — no narration, just a transition probe
 def handle_check_win(state: GameState, services: SessionServices) -> PhaseResult:
     winner, reason = check_win(state, state["runtime"])
     if winner is not None:
@@ -133,6 +136,7 @@ def handle_check_win(state: GameState, services: SessionServices) -> PhaseResult
     return PhaseResult(events=[])
 
 
+@phase(Phase.GAME_OVER)  # silent — final phase, no narration
 def handle_game_over(state: GameState, services: SessionServices) -> PhaseResult:
     return PhaseResult(state_patch={"ended": True, "status": GameStatus.COMPLETED})
 

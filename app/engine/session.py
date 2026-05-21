@@ -1,7 +1,16 @@
-"""Game session loop — orchestrates phase handlers, persistence, and events.
+"""Game session — `transitions`-driven phase orchestrator.
 
-All business logic lives in app/engine/handlers/.
-All LLM interaction lives in app/engine/llm_bridge.py.
+The `GameSession` class IS the FSM model: each phase in the runtime's
+`phase_order` is a state, and a single generic `_on_enter_phase`
+callback is bound to every state. That callback dispatches the
+registered handler, persists events, updates `GameState`, and triggers
+the next transition via `await self.advance()` or
+`await self.to_<phase>()`. With `queued=True`, the chain propagates
+itself from initial state to terminal — no external `while` loop.
+
+All phase business logic lives in `app/engine/handlers/`, decorated
+with `@phase(...)` from `app.engine.registry`. All LLM interaction
+lives in `app/engine/llm_bridge.py`.
 """
 from __future__ import annotations
 
@@ -12,11 +21,9 @@ import logging
 import sqlite3
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
+from random import Random
 from time import monotonic
 from typing import Any
-
-TZ_CN = timezone(timedelta(hours=8))
-from random import Random
 
 from app.config import AppPaths, LLMSettings, get_paths
 from app.domain.events import GameEvent
@@ -25,11 +32,11 @@ from app.domain.state import (
     GameState,
     PhaseResult,
     apply_state_patch,
-    next_phase,
     snapshot_state,
 )
 from app.engine.handlers import PHASE_HANDLERS
 from app.engine.human import HumanAwaiter
+from app.engine.state_machine import build_phase_machine
 from app.infra.events import EventBus
 from app.infra.repositories.events import insert_events
 from app.infra.repositories.games import finalize_game, insert_game_players
@@ -38,7 +45,16 @@ from app.infra.repositories.snapshots import insert_snapshot
 from app.services.context_builder import build_prompt_context
 from app.services.llm import LLMClient
 
+TZ_CN = timezone(timedelta(hours=8))
 _log = logging.getLogger(__name__)
+
+
+# Every phase narration ("天黑请闭眼", "狼人请睁眼", "进入放逐投票"...)
+# must stay visible at least this long before the next phase's narration
+# is allowed to replace it. Phases that naturally take longer (LLM,
+# human awaiters) pay no cost — the wait only kicks in for transitions
+# that would otherwise flash by faster than a human can read.
+MIN_PHASE_NARRATION_HOLD_SECONDS = 5.0
 
 
 @dataclass(slots=True)
@@ -57,27 +73,198 @@ class SessionServices:
     human_awaiter: HumanAwaiter | None = None
     phase_delay_seconds: float = 0.0  # debug/demo aid: pause after each phase
     _phase_started_emitted: bool = False
-    # Monotonic timestamp of the last phase_started narration. Used to
-    # enforce a minimum on-screen lifetime for each phase prompt so it
-    # doesn't get instantly replaced by the next phase's narration.
     _last_narration_at: float | None = None
 
 
-# Every phase narration ("天黑请闭眼", "狼人请睁眼", "进入放逐投票"...)
-# must stay visible at least this long before the next phase's narration
-# is allowed to replace it. Phases that naturally take longer (LLM,
-# human awaiters) pay no cost — the wait only kicks in for transitions
-# that would otherwise flash by faster than a human can read.
-MIN_PHASE_NARRATION_HOLD_SECONDS = 5.0
+# ---------------------------------------------------------------------------
+# GameSession — FSM model + orchestrator
+# ---------------------------------------------------------------------------
 
 
-async def _wait_for_min_narration_hold(services: SessionServices) -> None:
-    if services._last_narration_at is None:
-        return
-    elapsed = monotonic() - services._last_narration_at
-    remaining = MIN_PHASE_NARRATION_HOLD_SECONDS - elapsed
-    if remaining > 0:
-        await asyncio.sleep(remaining)
+class GameSession:
+    """transitions-driven game runner.
+
+    The `AsyncMachine` sets `self.state` to the current phase id. The
+    generic `_on_enter_phase` callback runs the registered handler,
+    persists events, updates `game_state`, then triggers the next
+    transition. With `queued=True`, that trigger is queued and fires
+    when the current callback returns — driving the game forward
+    without an external loop.
+
+    The chain stops when:
+      * `game_state['ended']` is True (no further trigger fired), or
+      * `_step_count` exceeds `max_steps` (safety bound + error event), or
+      * a handler raises (error event + ended set).
+    """
+
+    def __init__(
+        self,
+        game_state: GameState,
+        services: SessionServices,
+        conn: sqlite3.Connection,
+        *,
+        max_steps: int = 200,
+    ) -> None:
+        self.game_state = game_state
+        self.services = services
+        self.conn = conn
+        self.max_steps = max_steps
+        self._step_count = 0
+
+        self.machine = build_phase_machine(
+            game_state["runtime"],
+            model=self,
+        )
+        # The GameState's initial phase usually matches the machine's
+        # `initial` (= phase_order[0]); resync silently if not.
+        initial = game_state["phase"].value
+        if self.state != initial:
+            self.state = initial
+
+    # ------------------------------------------------------------------
+    # Entry point
+    # ------------------------------------------------------------------
+
+    async def run(self) -> GameState:
+        """Drive the FSM until terminal. Returns the final GameState."""
+        # transitions doesn't fire on_enter for the initial state, so
+        # kick off manually. Every subsequent transition runs on_enter
+        # via the queued trigger chain inside `_on_enter_phase`.
+        await self._on_enter_phase()
+        return self.game_state
+
+    # ------------------------------------------------------------------
+    # Generic state-entry callback
+    # ------------------------------------------------------------------
+
+    async def _on_enter_phase(self, *_args: Any, **_kwargs: Any) -> None:
+        if self.game_state["ended"]:
+            return
+        self._step_count += 1
+        if self._step_count > self.max_steps:
+            await self._abort_max_steps()
+            return
+
+        phase = Phase(self.state)
+        round_no = self.game_state["round"]
+        self.services._phase_started_emitted = False
+
+        # Hold the previous phase's narration on screen long enough to
+        # be read before this phase emits its own.
+        await _wait_for_min_narration_hold(self.services)
+
+        try:
+            result = await _dispatch_handler(self, self.game_state, self.services)
+        except Exception as exc:
+            _log.exception("phase %s failed for game %s", phase.value, self.game_state["game_id"])
+            _ensure_phase_started(self.services, self.game_state, self.conn, phase, round_no)
+            self.game_state = apply_state_patch(
+                self.game_state,
+                {"status": GameStatus.FAILED, "ended": True, "winner": None},
+            )
+            error_event = GameEvent(
+                game_id=self.game_state["game_id"], phase=phase,
+                scope=EventScope.SYSTEM, target_players=set(),
+                event_type=EventType.ERROR_RAISED,
+                content=f"event.{EventType.ERROR_RAISED.value}",
+                data={"phase": phase.value, "round": round_no, "error": str(exc)},
+            )
+            self.services.event_seq = _publish_and_persist(
+                self.services, self.game_state, [error_event], round_no=round_no,
+            )
+            return  # terminal — chain stops
+
+        skip = bool(result.get("skip_phase"))
+
+        if not skip:
+            # Ensure phase_started + narration fire even if the handler
+            # emitted no events of its own.
+            _ensure_phase_started(self.services, self.game_state, self.conn, phase, round_no)
+
+            end_event = GameEvent(
+                game_id=self.game_state["game_id"], phase=phase,
+                scope=EventScope.SYSTEM, target_players=set(),
+                event_type=EventType.PHASE_ENDED,
+                content=f"event.{EventType.PHASE_ENDED.value}",
+                data={"phase": phase.value, "round": round_no},
+            )
+            events = result.get("events", [])
+            persisted_event_count = int(result.get("persisted_event_count", 0))
+            persisted_events = events[persisted_event_count:] + [end_event]
+            self.services.event_seq = _publish_and_persist(
+                self.services, self.game_state, persisted_events, round_no=round_no,
+            )
+
+        # Apply state patch + accumulate event histories. Phase changes
+        # are deferred to the FSM trigger below.
+        self.game_state = _apply_state_only(self.game_state, result)
+
+        if not skip:
+            insert_snapshot(
+                self.conn, game_id=self.game_state["game_id"],
+                seq=self.services.event_seq,
+                round_no=round_no, phase=phase.value,
+                snapshot_type="phase_end", state_json=snapshot_state(self.game_state),
+            )
+            _save_player_contexts(self.services, self.game_state)
+
+        override = result.get("next_phase_override")
+
+        if self.game_state["ended"]:
+            # Terminal — chain stops. If the handler also requested a
+            # phase override (e.g. check_win → game_over on a win),
+            # apply it to game_state for reporting, but skip the FSM
+            # trigger (game_over is a silent terminal state).
+            if override is not None:
+                new_index = _phase_index_for(self.game_state, override)
+                self.game_state = apply_state_patch(
+                    self.game_state, {"phase": override, "phase_index": new_index},
+                )
+            return
+
+        if self.services.phase_delay_seconds > 0:
+            await asyncio.sleep(self.services.phase_delay_seconds)
+
+        # Compute next phase + update GameState BEFORE triggering the
+        # transition, so the next on_enter callback sees a coherent
+        # (phase, phase_index) when it reads game_state.
+        if override is not None:
+            new_index = _phase_index_for(self.game_state, override)
+            self.game_state = apply_state_patch(
+                self.game_state, {"phase": override, "phase_index": new_index},
+            )
+            trigger = getattr(self, f"to_{override.value}")
+            await trigger()
+        else:
+            order = self.game_state["runtime"]["phase_order"]
+            new_index = min(self.game_state["phase_index"] + 1, len(order) - 1)
+            new_phase = order[new_index]
+            self.game_state = apply_state_patch(
+                self.game_state, {"phase": new_phase, "phase_index": new_index},
+            )
+            await self.advance()
+
+    async def _abort_max_steps(self) -> None:
+        self.game_state = apply_state_patch(
+            self.game_state,
+            {"status": GameStatus.FAILED, "ended": True, "winner": None},
+        )
+        error_event = GameEvent(
+            game_id=self.game_state["game_id"], phase=self.game_state["phase"],
+            scope=EventScope.SYSTEM, target_players=set(),
+            event_type=EventType.ERROR_RAISED,
+            content=f"event.{EventType.ERROR_RAISED.value}",
+            data={"max_steps": self.max_steps},
+        )
+        self.services.event_seq = _publish_and_persist(
+            self.services, self.game_state, [error_event],
+            round_no=self.game_state["round"],
+        )
+
+
+# ---------------------------------------------------------------------------
+# Public entry point
+# ---------------------------------------------------------------------------
 
 
 async def run_game_session(
@@ -106,101 +293,46 @@ async def run_game_session(
     )
     insert_game_players(conn, game_id=state["game_id"], state=state)
 
-    steps = 0
-    while not state["ended"] and steps < max_steps:
-        steps += 1
-        current_phase = state["phase"]
-        current_round = state["round"]
+    session = GameSession(state, services, conn, max_steps=max_steps)
+    final_state = await session.run()
 
-        # Mark that phase_started hasn't been emitted yet for this phase
-        services._phase_started_emitted = False
-
-        # Hold the previous phase's narration on screen long enough to be
-        # read before this phase emits its own. Phases that already took
-        # >= MIN_PHASE_NARRATION_HOLD_SECONDS pay nothing.
-        await _wait_for_min_narration_hold(services)
-
-        try:
-            result = await _handle_phase(state, services)
-        except Exception as exc:
-            _log.exception("phase %s failed for game %s", current_phase.value, state["game_id"])
-            _ensure_phase_started(services, state, conn, current_phase, current_round)
-            state = apply_state_patch(state, {"status": GameStatus.FAILED, "ended": True, "winner": None})
-            error_event = GameEvent(
-                game_id=state["game_id"], phase=current_phase,
-                scope=EventScope.SYSTEM, target_players=set(),
-                event_type=EventType.ERROR_RAISED,
-                content=f"event.{EventType.ERROR_RAISED.value}",
-                data={"phase": current_phase.value, "round": current_round, "error": str(exc)},
-            )
-            services.event_seq = _publish_and_persist(services, state, [error_event], round_no=current_round)
-            break
-
-        # Skip phase — no persistence
-        if result.get("skip_phase"):
-            state = _apply_phase_result(state, result)
-            continue
-
-        # Backup: ensure phase_started fires even if the handler emitted
-        # no events (so the narration banner always shows).
-        _ensure_phase_started(services, state, conn, current_phase, current_round)
-
-        # End event after handler actions
-        end_event = GameEvent(
-            game_id=state["game_id"], phase=current_phase,
-            scope=EventScope.SYSTEM, target_players=set(),
-            event_type=EventType.PHASE_ENDED,
-            content=f"event.{EventType.PHASE_ENDED.value}",
-            data={"phase": current_phase.value, "round": current_round},
-        )
-        events = result.get("events", [])
-        persisted_event_count = int(result.get("persisted_event_count", 0))
-        persisted_events = events[persisted_event_count:] + [end_event]
-        services.event_seq = _publish_and_persist(services, state, persisted_events, round_no=current_round)
-        state = _apply_phase_result(state, result)
-        insert_snapshot(
-            conn, game_id=state["game_id"], seq=services.event_seq,
-            round_no=current_round, phase=current_phase.value,
-            snapshot_type="phase_end", state_json=snapshot_state(state),
-        )
-        _save_player_contexts(services, state)
-
-        if state["ended"]:
-            break
-
-        if services.phase_delay_seconds > 0:
-            await asyncio.sleep(services.phase_delay_seconds)
-
-    if not state["ended"]:
-        state = apply_state_patch(state, {"status": GameStatus.FAILED, "ended": True, "winner": None})
-        error_event = GameEvent(
-            game_id=state["game_id"], phase=state["phase"],
-            scope=EventScope.SYSTEM, target_players=set(),
-            event_type=EventType.ERROR_RAISED,
-            content=f"event.{EventType.ERROR_RAISED.value}",
-            data={"max_steps": max_steps},
-        )
-        services.event_seq = _publish_and_persist(services, state, [error_event], round_no=state["round"])
-
-    finalize_game(conn, state=state, end_reason="completed" if state["status"] == GameStatus.COMPLETED else "failed")
+    finalize_game(
+        conn, state=final_state,
+        end_reason="completed" if final_state["status"] == GameStatus.COMPLETED else "failed",
+    )
     insert_game_metrics(
-        conn, game_id=state["game_id"],
+        conn, game_id=final_state["game_id"],
         total_events=max(services.event_seq - 1, 0),
         total_llm_calls=services.total_llm_calls,
         total_fallbacks=services.total_fallbacks,
         duration_ms=int((monotonic() - started) * 1000),
         notes={"llm_enabled": services.llm_client is not None},
     )
-    return state
+    return final_state
 
 
 # ---------------------------------------------------------------------------
-# Phase dispatch
+# Helpers
 # ---------------------------------------------------------------------------
 
 
-async def _handle_phase(state: GameState, services: SessionServices) -> PhaseResult:
-    handler = PHASE_HANDLERS.get(state["phase"], _handle_noop)
+async def _wait_for_min_narration_hold(services: SessionServices) -> None:
+    if services._last_narration_at is None:
+        return
+    elapsed = monotonic() - services._last_narration_at
+    remaining = MIN_PHASE_NARRATION_HOLD_SECONDS - elapsed
+    if remaining > 0:
+        await asyncio.sleep(remaining)
+
+
+async def _dispatch_handler(
+    session: "GameSession", state: GameState, services: SessionServices,
+) -> PhaseResult:
+    """Resolve and run the handler attached to the current PhaseState."""
+    phase_state = session.machine.get_state(session.state)
+    handler = getattr(phase_state, "handler", None)
+    if handler is None:
+        handler = PHASE_HANDLERS.get(state["phase"], _handle_noop)
     result = handler(state, services)
     if inspect.isawaitable(result):
         return await result
@@ -212,36 +344,17 @@ def _handle_noop(state: GameState, services: SessionServices) -> PhaseResult:
     return PhaseResult(events=[], state_patch={})
 
 
-# ---------------------------------------------------------------------------
-# Event persistence (used by event_helpers.py and handlers)
-# ---------------------------------------------------------------------------
+def _ensure_phase_started(
+    services: SessionServices, state: GameState, conn: sqlite3.Connection,
+    phase: Phase, round_no: int,
+) -> None:
+    """Emit phase_started + narration when entering a phase.
 
-
-_PHASE_NARRATION: dict[str, tuple[str, str]] = {
-    # phase.value -> (kind, text). {round} placeholder gets replaced.
-    # Wording follows the standard 12-人 judge script (狼/女巫/预言家/
-    # 猎人) so the village reads each role-call in the familiar cadence.
-    "setup_game":       ("info", "对局准备中 · 请确认你的身份"),
-    "night_start":      ("info", "第 {round} 夜 · 天黑请闭眼"),
-    "night_wolf":       ("wolf", "狼人请睁眼 · 互相确认同伴，商议今晚的击杀目标"),
-    "night_witch":      ("good", "女巫请睁眼 · 是否使用解药救人或毒药杀人"),
-    "night_seer":       ("good", "预言家请睁眼 · 请选择查验目标"),
-    "night_guard":      ("good", "守卫请睁眼 · 选择今晚守护的玩家"),
-    "night_hunter":     ("good", "猎人请睁眼 · 确认你今晚的开枪状态"),
-    "night_idiot_reveal": ("good", "白痴请睁眼 · 确认你的身份"),
-    "night_resolve":    ("info", "天将亮起 · 裁判结算夜晚行动"),
-    "sheriff_election": ("gold", "第 {round} 天 · 警长竞选阶段开始"),
-    "day_speech":       ("info", "第 {round} 天 · 进入发言阶段"),
-    "day_vote":         ("info", "投票放逐 · 请投出你的一票"),
-    "day_resolve":      ("info", "裁判结算白天投票"),
-    "pending_skills":   ("info", "出局玩家依次结算死亡技能"),
-    # check_win is a fast pass-through — no narration; game_over has its own
-    # GAME_ENDED event which the frontend already renders as victory banner.
-}
-
-
-def _ensure_phase_started(services: SessionServices, state: GameState, conn: sqlite3.Connection, phase: Phase, round_no: int) -> None:
-    """Emit phase_started (and a player-facing narration) when entering a phase."""
+    Narration is read from the PhaseState (transitions.State subclass)
+    stored in PHASE_REGISTRY — the same object the FSM uses, so this
+    works regardless of caller (session orchestration or in-handler
+    re-entry from llm_bridge / event_helpers).
+    """
     if services._phase_started_emitted:
         return
     services._phase_started_emitted = True
@@ -252,7 +365,9 @@ def _ensure_phase_started(services: SessionServices, state: GameState, conn: sql
     )
     start_event = _phase_event(state, EventType.PHASE_STARTED)
     events_to_send = [start_event]
-    narration = _PHASE_NARRATION.get(phase.value)
+    from app.engine.registry import get_spec
+    phase_state = get_spec(phase.value)
+    narration = getattr(phase_state, "narration", None) if phase_state else None
     if narration is not None:
         kind, text_template = narration
         text = text_template.format(round=round_no)
@@ -268,7 +383,10 @@ def _ensure_phase_started(services: SessionServices, state: GameState, conn: sql
     services.event_seq = _publish_and_persist(services, state, events_to_send, round_no=round_no)
 
 
-def _publish_and_persist(services: SessionServices, state: GameState, events: list[GameEvent], *, round_no: int) -> int:
+def _publish_and_persist(
+    services: SessionServices, state: GameState,
+    events: list[GameEvent], *, round_no: int,
+) -> int:
     next_seq = insert_events(
         services.conn, game_id=state["game_id"],
         round_no=round_no, start_seq=services.event_seq, events=events,
@@ -288,12 +406,12 @@ def _phase_event(state: GameState, event_type: EventType) -> GameEvent:
     )
 
 
-# ---------------------------------------------------------------------------
-# State transition
-# ---------------------------------------------------------------------------
+def _apply_state_only(state: GameState, result: PhaseResult) -> GameState:
+    """Apply event-history additions + state_patch from a PhaseResult.
 
-
-def _apply_phase_result(state: GameState, result: PhaseResult) -> GameState:
+    Phase transitions are driven by the FSM trigger (`advance` or
+    `to_<phase>()`) in `_on_enter_phase`, not by this helper.
+    """
     events = result.get("events", [])
     patch = dict(result.get("state_patch", {}))
     if events:
@@ -313,22 +431,7 @@ def _apply_phase_result(state: GameState, result: PhaseResult) -> GameState:
                 private_history.append(entry)
         patch["public_history"] = public_history
         patch["private_history"] = private_history
-
-    updated = apply_state_patch(state, patch)
-    override = result.get("next_phase_override")
-
-    if updated["ended"] and override is not None:
-        phase_index = _phase_index_for(updated, override)
-        return apply_state_patch(updated, {"phase": override, "phase_index": phase_index})
-    if updated["ended"]:
-        return updated
-    if override is not None:
-        phase_index = _phase_index_for(updated, override)
-        return apply_state_patch(updated, {"phase": override, "phase_index": phase_index})
-
-    phase = next_phase(updated)
-    phase_index = min(updated["phase_index"] + 1, len(updated["runtime"]["phase_order"]) - 1)
-    return apply_state_patch(updated, {"phase": phase, "phase_index": phase_index})
+    return apply_state_patch(state, patch)
 
 
 def _phase_index_for(state: GameState, phase: Phase) -> int:
@@ -341,11 +444,6 @@ def _phase_index_for(state: GameState, phase: Phase) -> int:
         if item == phase:
             return idx
     return current
-
-
-# ---------------------------------------------------------------------------
-# Context saving (for replay/analysis)
-# ---------------------------------------------------------------------------
 
 
 _CONTEXT_PHASES = frozenset({

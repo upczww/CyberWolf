@@ -16,7 +16,10 @@ from app.domain.state import (
 )
 from app.engine.event_helpers import action_source as _action_source, emit_event, emit_narration, emit_speaking_started, make_event
 from app.engine.llm_bridge import llm_decide, llm_speech
+from app.engine.registry import phase
 from app.services.decisions import resolve_action, validate_tool_call
+
+from app.domain.roles import Phase as _PhaseEnum
 
 if TYPE_CHECKING:
     from app.engine.session import SessionServices
@@ -25,6 +28,10 @@ _log = logging.getLogger(__name__)
 TZ_CN = timezone(timedelta(hours=8))
 
 
+@phase(_PhaseEnum.DAY_ANNOUNCE)
+# day_announce intentionally has no static narration in PhaseSpec — the
+# handler emits a dynamic intro narration ("天亮了 · 第N天, ...") with
+# actual dawn content via emit_narration(intro=True).
 async def handle_day_announce(state: GameState, services: SessionServices) -> PhaseResult:
     deaths = state["night_result"].get("deaths", [])
     events: list[GameEvent] = []
@@ -64,6 +71,7 @@ async def handle_day_announce(state: GameState, services: SessionServices) -> Ph
     return PhaseResult(events=events, persisted_event_count=len(events))
 
 
+@phase(_PhaseEnum.DAY_SPEECH, narration=("info", "第 {round} 天 · 进入发言阶段"))
 async def handle_day_speech(state: GameState, services: SessionServices) -> PhaseResult:
     speeches = list(state["speech_log"])
     events: list[GameEvent] = []
@@ -174,6 +182,7 @@ async def handle_day_speech(state: GameState, services: SessionServices) -> Phas
     )
 
 
+@phase(_PhaseEnum.DAY_VOTE, narration=("info", "投票放逐 · 请投出你的一票"))
 async def handle_day_vote(state: GameState, services: SessionServices) -> PhaseResult:
     """Day vote with tie-break PK per standard 12-人 ruleset.
 
@@ -358,6 +367,7 @@ def _resolve_winner(tally: dict[int, float]) -> tuple[int | None, list[int]]:
     return None, tied
 
 
+@phase(_PhaseEnum.DAY_RESOLVE, narration=("info", "裁判结算白天投票"))
 async def handle_day_resolve(state: GameState, services: SessionServices) -> PhaseResult:
     if not state["vote_candidates"]:
         return PhaseResult(state_patch={"round": state["round"] + 1, "day_index": state["day_index"] + 1}, events=[])

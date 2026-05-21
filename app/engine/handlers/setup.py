@@ -4,13 +4,15 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from app.domain.events import GameEvent
-from app.domain.roles import EventScope, EventType
+from app.domain.roles import EventScope, EventType, Phase
 from app.domain.state import GameState, PhaseResult
+from app.engine.registry import phase
 
 if TYPE_CHECKING:
     from app.engine.session import SessionServices
 
 
+@phase(Phase.SETUP_GAME, narration=("info", "对局准备中 · 请确认你的身份"))
 async def handle_setup_game(state: GameState, services: SessionServices) -> PhaseResult:
     """Initial setup. Every human player (personal OR multi-human lobby)
     sees a confirm_identity prompt with 30s timeout. Prompts fire in

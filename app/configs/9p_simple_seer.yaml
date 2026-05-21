@@ -1,0 +1,80 @@
+config_id: 9p_simple_seer
+name: 9 人简版（仅预言家）
+player_count: 9
+
+# Smaller board: 3 wolves vs 6 good (1 seer + 5 villagers). Demonstrates
+# that the engine drops night_witch / night_hunter / night_idiot_reveal
+# automatically — each phase's @phase(requires_role=...) decorator
+# self-prunes when its role isn't in this config. No engine code edits
+# needed.
+
+roles:
+  - role: wolf
+    count: 3
+    enabled: true
+  - role: seer
+    count: 1
+    enabled: true
+  - role: villager
+    count: 5
+    enabled: true
+
+rule_flags:
+  sheriff_enabled: true
+  # Other flags don't apply on this board — left at defaults.
+
+# Reuse the full standard phase_order. config_loader.build_phase_order
+# will trim night_witch / night_hunter / night_idiot_reveal because
+# witch/hunter/idiot aren't in roles. sheriff_election survives because
+# sheriff_enabled is true.
+phase_order:
+  - setup_game
+  - night_start
+  - night_wolf
+  - night_witch         # auto-dropped (no witch)
+  - night_seer
+  - night_hunter        # auto-dropped (no hunter)
+  - night_idiot_reveal  # auto-dropped (no idiot)
+  - night_resolve
+  - pending_skills
+  - check_win
+  - day_announce
+  - sheriff_election
+  - day_speech
+  - day_vote
+  - day_resolve
+  - pending_skills
+  - check_win
+  - game_over
+
+win_rule: slaughter_side
+
+prompt_profile:
+  prompt_set: default
+  max_public_speech_chars: 1200
+  include_internal_thought: true
+  templates:
+    night_wolf: wolf_night.j2
+    night_seer: seer_night.j2
+    day_speech: default_public_speech.j2
+    day_speech:wolf: day_speech_wolf.j2
+    day_speech:seer: day_speech_seer.j2
+    day_speech:villager: day_speech_villager.j2
+    day_vote: vote.j2
+    day_vote:wolf: vote_wolf.j2
+    sheriff_election: sheriff_campaign.j2
+    sheriff_election:wolf: sheriff_campaign.j2
+  output_modes:
+    night_wolf: tool_call
+    night_seer: tool_call
+    day_speech: json
+
+tool_profile:
+  enabled_tools:
+    - wolf_kill_proposal
+    - seer_check
+    - public_speech
+    - vote_target
+    - sheriff_transfer
+    - sheriff_pick_direction
+    - wolf_self_destruct

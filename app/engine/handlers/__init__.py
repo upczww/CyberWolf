@@ -1,35 +1,38 @@
-"""Phase handlers registry.
+"""Phase handlers — registered via @phase decorator at import time.
 
-Each handler takes (state, services) -> PhaseResult.
+Each handler module decorates its handlers with `@phase(...)` from
+`app.engine.registry`, populating `PHASE_REGISTRY` as a side effect.
+
+Importing this package guarantees every built-in handler is on the
+registry. External plugins can import `app.engine.registry` and use
+the same decorator to add their own phases without touching this
+package.
 """
 from __future__ import annotations
 
+# Importing each handler module runs the @phase decorators, populating
+# PHASE_REGISTRY. Order doesn't matter — registration is by id.
+from . import day, night, setup, sheriff, skills  # noqa: F401
+
+# Legacy export: build PHASE_HANDLERS from the registry for any
+# callers that still expect a {Phase: handler} dict. Engine itself
+# now reads from PHASE_REGISTRY directly.
 from app.domain.roles import Phase
-from app.domain.state import PhaseResult
+from app.engine.registry import PHASE_REGISTRY
 
-from .day import handle_day_announce, handle_day_resolve, handle_day_speech, handle_day_vote
-from .night import handle_night_hunter, handle_night_idiot_reveal, handle_night_resolve, handle_night_seer, handle_night_start, handle_night_witch, handle_night_wolf
-from .setup import handle_setup_game
-from .sheriff import handle_sheriff_election
-from .skills import handle_check_win, handle_game_over, handle_pending_skills
 
-PHASE_HANDLERS = {
-    Phase.SETUP_GAME: handle_setup_game,
-    Phase.NIGHT_START: handle_night_start,
-    Phase.NIGHT_WOLF: handle_night_wolf,
-    Phase.NIGHT_SEER: handle_night_seer,
-    Phase.NIGHT_WITCH: handle_night_witch,
-    Phase.NIGHT_HUNTER: handle_night_hunter,
-    Phase.NIGHT_IDIOT_REVEAL: handle_night_idiot_reveal,
-    Phase.NIGHT_RESOLVE: handle_night_resolve,
-    Phase.DAY_ANNOUNCE: handle_day_announce,
-    Phase.SHERIFF_ELECTION: handle_sheriff_election,
-    Phase.DAY_SPEECH: handle_day_speech,
-    Phase.DAY_VOTE: handle_day_vote,
-    Phase.DAY_RESOLVE: handle_day_resolve,
-    Phase.PENDING_SKILLS: handle_pending_skills,
-    Phase.CHECK_WIN: handle_check_win,
-    Phase.GAME_OVER: handle_game_over,
-}
+def _build_legacy_handlers() -> dict:
+    out = {}
+    for phase_id, spec in PHASE_REGISTRY.items():
+        try:
+            out[Phase(phase_id)] = spec.handler
+        except ValueError:
+            # Plugin phase id not in the Phase enum — engine still
+            # finds it via PHASE_REGISTRY directly.
+            pass
+    return out
 
-__all__ = ["PHASE_HANDLERS"]
+
+PHASE_HANDLERS = _build_legacy_handlers()
+
+__all__ = ["PHASE_HANDLERS", "PHASE_REGISTRY"]

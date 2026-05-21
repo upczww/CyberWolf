@@ -69,7 +69,7 @@ async def async_main(config_id: str, *, use_llm: bool) -> None:
         "round": final_state["round"],
         "llm_enabled": boot.llm_enabled,
         "graph_files": boot.graph_artifacts,
-        "node_count": len(boot.graph.nodes),
+        "node_count": len(set(p.value for p in boot.runtime["phase_order"])),
     }
     print(json.dumps(payload, ensure_ascii=True, indent=2))
 

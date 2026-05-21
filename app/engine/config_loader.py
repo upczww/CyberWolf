@@ -67,19 +67,20 @@ def validate_game_config(config: GameConfig) -> None:
 
 
 def build_phase_order(config: GameConfig) -> list[Phase]:
+    """Phase order driven by the registry, not hardcoded if-chains.
+
+    Each handler declares its own role/flag requirement at
+    `@phase(requires_role=..., requires_flag=...)`. registry.prune_phases
+    consults the live registry, so adding a new conditional phase
+    becomes a one-line decorator edit (no config_loader change).
+    """
+    from app.engine.handlers import PHASE_HANDLERS  # noqa: F401 — ensures registry is populated
+    from app.engine.registry import prune_phases
+
     phases = list(config["phase_order"])
     roles = {spec["role"] for spec in config["roles"] if spec["enabled"]}
     flags = config["rule_flags"]
-
-    if Role.GUARD not in roles:
-        phases = [phase for phase in phases if phase != Phase.NIGHT_GUARD]
-    if Role.HUNTER not in roles:
-        phases = [phase for phase in phases if phase != Phase.NIGHT_HUNTER]
-    if Role.IDIOT not in roles:
-        phases = [phase for phase in phases if phase != Phase.NIGHT_IDIOT_REVEAL]
-    if not flags.get("sheriff_enabled", True):
-        phases = [phase for phase in phases if phase != Phase.SHERIFF_ELECTION]
-    return phases
+    return prune_phases(phases, enabled_roles=roles, rule_flags=flags)
 
 
 def compile_runtime_config(config: GameConfig) -> RuntimeConfig:
