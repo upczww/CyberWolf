@@ -57,11 +57,27 @@ const ICONS = {
   wolfVictory: '/assets/ui/icons/status/icon_wolf_win.png',
 }
 
+// Events that supersede an in-flight cue and should dismiss it immediately,
+// even if its duration timer hasn't elapsed. Without this, a long cue (e.g.
+// 1900ms "狼刀锁定") visually overlaps the next phase's UI when the engine
+// transitions faster than the animation — e.g. seer starts checking while
+// the wolf-kill overlay is still on screen.
+const SUPERSEDING_EVENT_TYPES = new Set([
+  'phase_started',
+  'awaiting_human',
+  'game_ended',
+])
+
 export default function GameEffects({ latestEvent }: Props) {
   const [active, setActive] = useState<ActiveCue | null>(null)
 
   useEffect(() => {
-    const cue = latestEvent ? cueFromEvent(latestEvent) : null
+    if (!latestEvent) return
+    if (SUPERSEDING_EVENT_TYPES.has(latestEvent.event_type)) {
+      setActive(null)
+      return
+    }
+    const cue = cueFromEvent(latestEvent)
     if (!cue) return
 
     const id = Date.now()
