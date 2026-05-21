@@ -518,15 +518,24 @@ async def _collect_death_speeches(
         return events
 
     for player_id in dead_player_ids:
+        # Give the previous intro banner (dawn "天亮了 · X 号死亡" on
+        # DAY_ANNOUNCE, or the exile "X 号被放逐" on DAY_RESOLVE) time
+        # to be read before this 遗言 banner replaces it. Without this,
+        # the dawn banner is overwritten within milliseconds.
+        from app.engine.session import _wait_for_min_narration_hold
+        await _wait_for_min_narration_hold(services)
+
         role = state["players"][player_id]["role"]
         cause = (death_causes or {}).get(player_id) or state["players"][player_id].get("death_cause")
-        # Phase-style narration so the frontend banners clearly mark this
-        # as a dedicated "遗言" beat with title + countdown driven by the
-        # public_speech awaiter (90s cap).
+        # Phase-style intro narration so the frontend pins this as the
+        # big PhaseFlash banner during the 遗言 window — without
+        # intro=True the "X 号玩家发表遗言" line is rendered only as a
+        # small ticker, easily missed under the death-overlay (so the
+        # village sees the speech start with no announcement).
         emit_narration(
             services, state, events,
             f"{player_id} 号玩家发表遗言",
-            kind="info", glyph="🪦",
+            kind="info", glyph="🪦", intro=True,
         )
         emit_speaking_started(services, state, events, player_id=player_id)
         proposed_args = await llm_death_speech(

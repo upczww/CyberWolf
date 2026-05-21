@@ -431,20 +431,32 @@ export default function App() {
     // fire DURING night_wolf / night_witch (before player_died which
     // fires in night_resolve). A single-pass walk would have map[N]
     // empty when the private event arrived and skip the enrichment.
-    for (const ev of events) {
-      const target = Number(ev.data?.target_id)
-      if (!Number.isFinite(target) || !map[target]) continue
-      if (map[target].cause !== 'unknown') continue
-      if (ev.event_type === 'wolf_target_selected') {
-        map[target] = { cause: 'wolf', round: map[target].round }
-      } else if (ev.event_type === 'witch_used_poison') {
-        map[target] = { cause: 'poison', round: map[target].round }
-      } else if (ev.event_type === 'skill_triggered' && ev.content === 'event.hunter_shot') {
-        map[target] = { cause: 'hunter_shot', round: map[target].round }
+    //
+    // In PERSONAL play (the viewer holds a seat), this enrichment is
+    // skipped — even if the viewer is a wolf/witch/hunter who'd
+    // privately know the cause, the seat-card badge stays cause-less
+    // so night deaths read uniformly as "X 号死亡". Day hunter-shot
+    // (public skill_triggered) still flows through pass 1 because
+    // skills.py sets `data.cause = 'hunter_shot'` on the public
+    // PLAYER_DIED for day triggers. Exile + self_destruct are also
+    // publicly caused and pass through pass 1 untouched.
+    const isPersonalView = viewMode === 'self' && humanSeat != null
+    if (!isPersonalView) {
+      for (const ev of events) {
+        const target = Number(ev.data?.target_id)
+        if (!Number.isFinite(target) || !map[target]) continue
+        if (map[target].cause !== 'unknown') continue
+        if (ev.event_type === 'wolf_target_selected') {
+          map[target] = { cause: 'wolf', round: map[target].round }
+        } else if (ev.event_type === 'witch_used_poison') {
+          map[target] = { cause: 'poison', round: map[target].round }
+        } else if (ev.event_type === 'skill_triggered' && ev.content === 'event.hunter_shot') {
+          map[target] = { cause: 'hunter_shot', round: map[target].round }
+        }
       }
     }
     return map
-  }, [events])
+  }, [events, viewMode, humanSeat])
 
   const playersWithSheriff = useMemo<Player[]>(() => {
     if (sheriffSeat == null && Object.keys(deathsBySeat).length === 0) return players
