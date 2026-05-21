@@ -329,15 +329,34 @@ async def _collect_death_speeches(
     *,
     death_causes: dict[int, str] | None = None,
 ) -> list[GameEvent]:
-    """Collect death speeches (遗言) for newly dead players."""
+    """Collect death speeches (遗言) for newly dead players.
+
+    Standard 12-人 ruleset (用户约定):
+      * First-night NIGHT_RESOLVE deaths → 完整遗言
+      * Any DAY_RESOLVE (放逐) death     → 完整遗言
+      * NIGHT_RESOLVE deaths after night 1 → 不发表遗言（保持闭眼节奏）
+    """
+    from app.engine.event_helpers import emit_narration
+
     events: list[GameEvent] = []
+    if state["phase"] not in (Phase.NIGHT_RESOLVE, Phase.DAY_RESOLVE):
+        return events
+    is_night = state["phase"] == Phase.NIGHT_RESOLVE
+    # Later-night deaths don't get a death speech.
+    if is_night and state["round"] >= 2:
+        return events
 
     for player_id in dead_player_ids:
-        # Death speeches: night deaths (all rounds) and exiled players
-        if state["phase"] not in (Phase.NIGHT_RESOLVE, Phase.DAY_RESOLVE):
-            continue
         role = state["players"][player_id]["role"]
         cause = (death_causes or {}).get(player_id) or state["players"][player_id].get("death_cause")
+        # Phase-style narration so the frontend banners clearly mark this
+        # as a dedicated "遗言" beat with title + countdown driven by the
+        # public_speech awaiter (90s cap).
+        emit_narration(
+            services, state, events,
+            f"{player_id} 号玩家发表遗言",
+            kind="info", glyph="🪦",
+        )
         emit_speaking_started(services, state, events, player_id=player_id)
         proposed_args = await llm_death_speech(
             state, services,

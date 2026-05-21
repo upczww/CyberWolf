@@ -186,11 +186,10 @@ function cueFromEvent(event: GameEvent): ActionCue | null {
       kind: 'vote_resolved',
       tone: tied ? 'vote' : 'exile',
       icon: tied ? ICONS.vote : ICONS.exile,
-      title: tied ? '投票平局' : '放逐结算',
-      subtitle: tied ? '票数未能形成放逐结果' : '白天投票已经结算',
-      to: chosen,
-      result: tied ? '无人被放逐' : `${chosen} 被放逐出局`,
-      duration: 2100,
+      // One-line death message — no subtitle/from/to chrome (per request).
+      title: tied ? '平票 · 无人被放逐' : `${chosen} 被投票放逐`,
+      subtitle: '',
+      duration: 1800,
     }
   }
 
@@ -224,14 +223,14 @@ function cueFromEvent(event: GameEvent): ActionCue | null {
 
   if (type === 'player_died') {
     const target = seatLabel(d.player_id || d.target_id)
+    // Single-line "X 号 + cause" message, no extra chrome.
+    const causeText = deathCauseText(d.cause)
     return {
       kind: 'death',
       tone: 'death',
       icon: deathIcon(d.cause),
-      title: '玩家出局',
-      subtitle: deathCauseText(d.cause),
-      to: target,
-      result: target ? `${target} 离场` : '出局已结算',
+      title: target ? `${target}${causeText}` : '出局已结算',
+      subtitle: '',
       duration: 1500,
     }
   }
@@ -277,7 +276,7 @@ function ActionCueOverlay({ cue }: { cue: ActionCue }) {
               <h2>{cue.title}</h2>
             </div>
           </div>
-          <p>{cue.subtitle}</p>
+          {cue.subtitle && <p>{cue.subtitle}</p>}
           {(cue.from || cue.to) && (
             <div className="effect-route">
               {cue.from ? <SeatPill label="发起" value={cue.from} /> : <span className="effect-seat-placeholder" />}
@@ -452,12 +451,13 @@ function seerResultText(result: unknown) {
 }
 
 function deathCauseText(cause: unknown) {
-  if (cause === 'wolf') return '被狼队袭击'
-  if (cause === 'poison') return '被女巫毒药带走'
-  if (cause === 'hunter_shot') return '被猎人技能带走'
-  if (cause === 'exile') return '被白天投票放逐'
-  if (cause === 'self_destruct') return '狼人自爆离场'
-  return '死亡结算完成'
+  // Reads naturally appended after a seat label: "8 号被狼人击杀".
+  if (cause === 'wolf' || cause === 'wolf_kill') return ' 被狼人击杀'
+  if (cause === 'poison') return ' 被女巫毒杀'
+  if (cause === 'hunter' || cause === 'hunter_shot') return ' 被猎人开枪带走'
+  if (cause === 'exile') return ' 被投票放逐'
+  if (cause === 'self_destruct') return ' 狼人自爆离场'
+  return ' 已出局'
 }
 
 function deathIcon(cause: unknown) {
