@@ -47,10 +47,21 @@ export default function HumanActionPanel({ request, gameId, players }: Props) {
     () => players.filter((p) => p.survived).sort((a, b) => a.seat_index - b.seat_index),
     [players],
   )
-  const candidates = useMemo(
-    () => alivePlayers.filter((p) => p.seat_index !== request.actor_id),
-    [alivePlayers, request.actor_id],
-  )
+  // Sheriff-election vote: backend ships the allowed candidate seats in
+  // local_args.candidates. Filter the target grid to those only so the
+  // human can't pick a non-candidate.
+  const allowedSeats = useMemo<Set<number> | null>(() => {
+    const raw = request.local_args?.candidates
+    if (!Array.isArray(raw) || raw.length === 0) return null
+    return new Set(raw.map((s: unknown) => Number(s)).filter((n) => Number.isFinite(n)))
+  }, [request.local_args])
+  const candidates = useMemo(() => {
+    const base = alivePlayers.filter((p) => p.seat_index !== request.actor_id)
+    if (allowedSeats && request.phase === 'sheriff_election' && request.tool_name === 'vote_target') {
+      return base.filter((p) => allowedSeats.has(p.seat_index))
+    }
+    return base
+  }, [alivePlayers, request.actor_id, allowedSeats, request.phase, request.tool_name])
 
   const submit = async (args: Record<string, unknown>) => {
     if (submitting) return

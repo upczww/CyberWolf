@@ -103,7 +103,12 @@ async def handle_sheriff_election(state: GameState, services: SessionServices) -
             state, services,
             actor_id=voter, role=state["players"][voter]["role"],
             phase=state["phase"], tool_name="vote_target",
-            local_args={"target_id": services.rng.choice(voter_candidates)},
+            # Carry the candidate list into the awaiter so the human's
+            # frontend can constrain the vote UI to candidates only.
+            local_args={
+                "target_id": services.rng.choice(voter_candidates),
+                "candidates": list(voter_candidates),
+            },
             prompt_key_override="sheriff_vote.j2",
             decision_note=(
                 "现在是警长竞选投票，不是竞选发言。"
@@ -215,7 +220,10 @@ async def _resolve_sheriff_election(
             state, services,
             actor_id=voter, role=state["players"][voter]["role"],
             phase=state["phase"], tool_name="vote_target",
-            local_args={"target_id": services.rng.choice(voter_candidates)},
+            local_args={
+                "target_id": services.rng.choice(voter_candidates),
+                "candidates": list(voter_candidates),
+            },
             prompt_key_override="sheriff_vote.j2",
             decision_note=(
                 "现在是警长平票后的再次投票，不是补充发言。"

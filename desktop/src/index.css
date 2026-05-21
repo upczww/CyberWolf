@@ -1546,6 +1546,22 @@ img {
   font-size: 30px;
 }
 
+/* day_speech progress states — current speaker highlighted, finished
+   speakers dimmed. */
+.speech-order span.current {
+  color: #ffe2a0;
+}
+.speech-order span.current b {
+  box-shadow: 0 0 0 2px rgba(255, 226, 160, .55), 0 0 18px rgba(232, 172, 61, .45);
+}
+.speech-order span.done {
+  opacity: 0.42;
+}
+.speech-order span.done b {
+  background: linear-gradient(180deg, #6e6557, #4a4438);
+  color: rgba(255,255,255,.6);
+}
+
 .round-vote-row {
   display: grid;
   grid-template-columns: repeat(13, 1fr);

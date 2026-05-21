@@ -304,6 +304,32 @@ export default function App() {
   const currentSpeaker = latestSpeaker(events) || awaitingHuman?.actor_id || humanSeat || 0
   const roomId = gameId ? gameId.slice(0, 6) : '------'
 
+  // Derive current sheriff seat from events. loadGameDetail only runs
+  // once at game start, so the player snapshot's is_sheriff flag is
+  // stale by the time sheriff_elected fires via WS — overlay it from
+  // events so the badge shows up live (and follows transfers).
+  const sheriffSeat = useMemo<number | null>(() => {
+    let current: number | null = null
+    for (const ev of events) {
+      if (ev.event_type === 'sheriff_elected') {
+        const pid = ev.data?.player_id
+        current = pid == null ? null : Number(pid)
+      } else if (ev.event_type === 'sheriff_transferred') {
+        const pid = ev.data?.target_id ?? ev.data?.player_id
+        current = pid == null ? null : Number(pid)
+      }
+    }
+    return current
+  }, [events])
+
+  const playersWithSheriff = useMemo<Player[]>(() => {
+    if (sheriffSeat == null) return players
+    return players.map((p) => ({
+      ...p,
+      is_sheriff: p.seat_index === sheriffSeat ? 1 : 0,
+    }))
+  }, [players, sheriffSeat])
+
   const loadGameDetail = async (gid: string) => {
     try {
       const seatParam = viewMode === 'self' && humanSeat != null ? `?seat=${humanSeat}` : ''
@@ -420,7 +446,7 @@ export default function App() {
 
       <main className="game-board">
         <PlayerColumn
-          players={players.slice(0, 6)}
+          players={playersWithSheriff.slice(0, 6)}
           gameId={gameId}
           viewMode={viewMode}
           humanSeat={humanSeat}
@@ -431,7 +457,7 @@ export default function App() {
         <CenterStage
           phase={visiblePhase}
           meta={meta}
-          players={players}
+          players={playersWithSheriff}
           gameId={gameId}
           events={events}
           currentSpeaker={currentSpeaker}
@@ -440,7 +466,7 @@ export default function App() {
         />
 
         <PlayerColumn
-          players={players.slice(6, 12)}
+          players={playersWithSheriff.slice(6, 12)}
           gameId={gameId}
           viewMode={viewMode}
           humanSeat={humanSeat}
@@ -470,7 +496,7 @@ export default function App() {
         <HistoryDrawer
           tab={historyTab}
           events={events}
-          players={players}
+          players={playersWithSheriff}
           gameId={gameId}
           onTab={setHistoryTab}
           onClose={() => setHistoryOpen(false)}
@@ -525,7 +551,7 @@ export default function App() {
           && viewMode === 'self' && humanSeat != null
           && awaitingHuman.actor_id === humanSeat
         if (needsHumanAction) {
-          return <HumanActionPanel request={awaitingHuman!} gameId={gameId!} players={players} />
+          return <HumanActionPanel request={awaitingHuman!} gameId={gameId!} players={playersWithSheriff} />
         }
 
         // 3) InfoDialog — passive notifications
@@ -890,6 +916,10 @@ function CenterStage({
         ))}
       </nav>
 
+      {phase === 'day_speech' && (
+        <SpeechOrderPanel events={events} currentSpeaker={currentSpeaker} />
+      )}
+
       {phase === 'day_vote'
         ? <VotePanel players={players} events={events} />
         : <NoticePanel latest={latest} connected={connected} />}
@@ -897,8 +927,80 @@ function CenterStage({
   )
 }
 
+function SpeechOrderPanel({
+  events,
+  currentSpeaker,
+}: {
+  events: GameEvent[]
+  currentSpeaker: number
+}) {
+  // Backend emits a speech_order_announced event at the start of
+  // day_speech with the full speaking order; latest one wins (handles
+  // multi-round games).
+  const order = useMemo<number[]>(() => {
+    for (let i = events.length - 1; i >= 0; i -= 1) {
+      const ev = events[i]
+      if (ev.event_type !== 'speech_order_announced') continue
+      const raw = ev.data?.order
+      if (!Array.isArray(raw)) continue
+      return raw.map((s: unknown) => Number(s)).filter((n) => Number.isFinite(n))
+    }
+    return []
+  }, [events])
+
+  // Which seats have already finished speaking this round? Inferred from
+  // public_speech_made events since the last speech_order_announced.
+  const spoken = useMemo<Set<number>>(() => {
+    const set = new Set<number>()
+    let cursor = events.length - 1
+    while (cursor >= 0 && events[cursor].event_type !== 'speech_order_announced') cursor -= 1
+    for (let i = cursor + 1; i < events.length; i += 1) {
+      const ev = events[i]
+      if (ev.event_type === 'public_speech_made') {
+        const seat = Number(ev.data?.player_id)
+        if (Number.isFinite(seat)) set.add(seat)
+      }
+    }
+    return set
+  }, [events])
+
+  if (order.length === 0) return null
+
+  return (
+    <section className="speech-order">
+      <h3>发言顺序 <span>（依次发言）</span></h3>
+      <div>
+        {order.map((seat, index) => {
+          const isCurrent = seat === currentSpeaker && !spoken.has(seat)
+          const isDone = spoken.has(seat)
+          const className = isCurrent ? 'current' : isDone ? 'done' : ''
+          return (
+            <span key={`${seat}-${index}`} className={className}>
+              <b>{seat}</b> 号
+              {index < order.length - 1 ? <i>→</i> : null}
+            </span>
+          )
+        })}
+      </div>
+    </section>
+  )
+}
+
+// Internal lifecycle events that shouldn't surface in the notice panel
+// — they're plumbing for the engine/UI, not narration for the player.
+const SUPPRESSED_NOTICE_EVENT_TYPES = new Set([
+  'speaking_started',
+  'phase_started',
+  'phase_ended',
+  'awaiting_human',
+  'human_submitted',
+  'speech_order_announced',
+])
+
 function NoticePanel({ latest, connected }: { latest?: GameEvent; connected: boolean }) {
-  const latestText = latest ? eventSummary(latest) : null
+  const latestText = latest && !SUPPRESSED_NOTICE_EVENT_TYPES.has(latest.event_type)
+    ? eventSummary(latest)
+    : null
   return (
     <section className="notice-panel">
       <p><i />{connected ? '实时连接已建立。' : '正在等待后端连接。'}</p>
@@ -908,17 +1010,12 @@ function NoticePanel({ latest, connected }: { latest?: GameEvent; connected: boo
 }
 
 function eventSummary(event: GameEvent): string {
-  const data = event.data || {}
-  if (event.event_type === 'phase_started') {
-    return `阶段推进：${data.phase || event.phase}`
-  }
-  if (event.event_type === 'awaiting_human') {
-    return `等待 ${data.actor_id ?? '?'} 号玩家行动：${data.tool_name ?? event.phase}`
-  }
-  if (event.event_type === 'human_submitted') {
-    return `${data.actor_id ?? '?'} 号玩家已提交行动`
-  }
-  return event.content || event.event_type
+  // Only narration-style or human-readable events reach here (system
+  // lifecycle events are filtered upstream). Fall back to content/type
+  // for unknown shapes but never expose raw "event.speaking_started".
+  const raw = event.content || event.event_type || ''
+  if (raw.startsWith('event.')) return ''
+  return raw
 }
 
 function VotePanel({
@@ -981,27 +1078,15 @@ function SheriffPanel({
   gameId: string | null
   events: GameEvent[]
 }) {
-  // Candidates and tally both come from the aggregated sheriff_elected
-  // event. While the candidacy window is open the panel shows "等待报名…";
-  // once candidacy closes we either have sheriff_campaign events (speech
-  // phase — candidates known from campaigns) or the final sheriff_elected
-  // event (post-resolution — full candidates + votes available).
+  // Candidates list comes ONLY from the aggregated sheriff_elected event.
+  // While the candidacy + speech window is open the panel shows "等待报名…"
+  // so we don't leak the candidate set incrementally as each campaign
+  // speech arrives. Same principle as vote_resolved — backend ships one
+  // complete result, frontend renders it once.
   const candidates = useMemo(() => {
-    const candidateSeats = new Set<number>()
-    // Prefer the aggregated event if available
     const resolved = [...events].reverse().find((ev) => ev.event_type === 'sheriff_elected')
     const fromResolved = (resolved?.data?.candidates as number[] | undefined) || []
-    fromResolved.forEach((s) => candidateSeats.add(Number(s)))
-    // Live feed: candidates also surface via campaign speech events before
-    // resolution lands.
-    if (candidateSeats.size === 0) {
-      for (const ev of events) {
-        if (ev.event_type === 'sheriff_campaign') {
-          const seat = Number(ev.data?.player_id ?? ev.data?.actor_id)
-          if (Number.isFinite(seat)) candidateSeats.add(seat)
-        }
-      }
-    }
+    const candidateSeats = new Set(fromResolved.map((s) => Number(s)))
     return players.filter((p) => candidateSeats.has(p.seat_index))
   }, [events, players])
   const resolvedSheriff = [...events].reverse().find((ev) => ev.event_type === 'sheriff_elected')
