@@ -97,6 +97,13 @@ export default function HumanActionPanel({ request, gameId, players }: Props) {
   // vote_target overloads two phases: day-vote (放逐) and sheriff
   // election. Use a phase-aware title so sheriff voting doesn't mislead
   // the human into thinking they're voting to exile someone.
+  // confirm_identity is handled by the IdentityReveal modal in the
+  // App-level identity gate — never render the generic action panel
+  // for this tool. This is a safety belt: if the gate ever lets this
+  // request through, we still don't want the raw "confirm_identity"
+  // chrome to flash.
+  if (request.tool_name === 'confirm_identity') return null
+
   const title = request.tool_name === 'vote_target' && request.phase === 'sheriff_election'
     ? '警长投票'
     : (TOOL_TITLES[request.tool_name] || request.tool_name)

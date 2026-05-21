@@ -682,10 +682,13 @@ export default function App() {
     ? players.find((p) => p.seat_index === humanSeat) || null
     : null
   const myRoleKnown = !!meSeat && !!meSeat.role && meSeat.role !== 'unknown'
-  // Gate fires when we should be showing the identity card OR we know
-  // we need to but the player data hasn't arrived yet (avoid flashing
-  // the game UI in the gap between gameId set and loadGameDetail).
-  const identityGateActive = inSelfRoom && !identityRevealed && (!myRoleKnown || !meSeat)
+  // Gate fires whenever we're in self mode and haven't yet confirmed
+  // identity — REGARDLESS of whether player data has loaded. The inner
+  // branch decides what to render (the IdentityReveal card if we have
+  // the role, a loading placeholder otherwise). This prevents the game
+  // board / HumanActionPanel from briefly rendering with the raw
+  // confirm_identity prompt while we wait for the human to click.
+  const identityGateActive = inSelfRoom && !identityRevealed
 
   if (identityGateActive) {
     // IdentityReveal already mounts its own full-screen .identity-overlay
