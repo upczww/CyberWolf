@@ -652,19 +652,24 @@ export default function App() {
   const identityGateActive = inSelfRoom && !identityRevealed && (!myRoleKnown || !meSeat)
 
   if (identityGateActive) {
+    // IdentityReveal already mounts its own full-screen .identity-overlay
+    // (position: fixed; inset: 0 with backdrop + blur). No outer
+    // .sample-app wrapper — that was layering an extra dark scene + a
+    // grid container around the overlay, which subtly broke the panel's
+    // centering/animation. We just render the modal directly. While
+    // player data is still loading, show a matching placeholder overlay.
+    if (myRoleKnown && meSeat) {
+      return (
+        <IdentityReveal
+          gameId={gameId!}
+          player={meSeat}
+          onClose={() => setIdentityRevealed(true)}
+        />
+      )
+    }
     return (
-      <div className="sample-app phase-night identity-gate">
-        {myRoleKnown && meSeat ? (
-          <IdentityReveal
-            gameId={gameId!}
-            player={meSeat}
-            onClose={() => setIdentityRevealed(true)}
-          />
-        ) : (
-          // Player roster still loading from REST — show a quiet
-          // placeholder so the screen isn't blank.
-          <div className="identity-gate-loading">对局准备中…</div>
-        )}
+      <div className="identity-overlay" role="dialog" aria-modal="true">
+        <div className="identity-gate-loading">对局准备中…</div>
       </div>
     )
   }

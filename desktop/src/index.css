@@ -2025,18 +2025,6 @@ img {
 /* ---------------------------------------------------------------
    Identity reveal — full-screen gate before the game UI mounts.
    --------------------------------------------------------------- */
-.sample-app.identity-gate {
-  /* Full-screen dark scene while the identity card is up. The game
-     board is intentionally NOT rendered yet — we don't want the seats
-     / center stage flashing in the background. */
-  min-height: 100vh;
-  display: grid;
-  place-items: center;
-  background:
-    linear-gradient(180deg, rgba(4, 11, 20, .18), rgba(4, 11, 20, .92)),
-    url("/assets/ui/backgrounds/bg_global_moonlit_village_night.png") center / cover no-repeat;
-}
-
 .identity-gate-loading {
   color: var(--gold-soft);
   font-size: 22px;
@@ -2111,10 +2099,13 @@ img {
 }
 
 .identity-head {
+  position: relative;
+  width: 100%;
   display: flex;
   align-items: center;
   gap: 14px;
   margin-bottom: 4px;
+  padding-right: 64px; /* breathing room for the absolute timer */
 }
 
 .identity-head-text {
@@ -2818,19 +2809,15 @@ img {
 }
 
 /* ---------------------------------------------------------------
-   IdentityReveal — 30s confirmation countdown
-   Timer + progress strip pinned to top of the panel, OUT of the
-   content flow so the seat/name/portrait/abilities have full width.
+   IdentityReveal — 30s confirmation countdown.
+   Timer pinned to the head's top-right; thin progress strip pinned
+   to the panel's top edge. Both out of the content flow so the
+   seat/name/portrait/abilities have full width below them.
    --------------------------------------------------------------- */
-.identity-head {
-  position: relative;
-  width: 100%;
-}
-
 .identity-timer {
   position: absolute;
-  top: 10px;
-  right: 12px;
+  top: 0;
+  right: 0;
   z-index: 2;
   padding: 4px 10px;
   border-radius: 12px;
@@ -2859,7 +2846,6 @@ img {
   border-radius: 14px 14px 0 0;
   background: rgba(255, 255, 255, .06);
   overflow: hidden;
-  margin: 4px 0 8px;
 }
 
 .identity-countdown > span {
