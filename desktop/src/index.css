@@ -407,28 +407,54 @@ img {
   height: 100%;
   min-height: 82px;
   display: grid;
-  /* Left info | centered portrait | right status. No outer border /
-     background / box-shadow — the portrait img IS the rounded rectangle
-     (the previous design wrapped the portrait in a 10px-rounded panel
-     while the portrait itself was 8px-rounded, which read as two
-     mismatched corners stacked on top of each other). */
+  /* Left info | centered portrait | right status. The card is the
+     ONLY rounded rectangle now — the portrait img has no border-radius
+     of its own, so the two rounded shapes can't conflict like they did
+     in the original design (panel 10px wrapping portrait 8px). */
   grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
   align-items: center;
   gap: 8px;
-  padding: 4px 8px;
+  padding: 4px 10px;
+  border: 1px solid rgba(224, 206, 176, .42);
+  border-radius: 10px;
+  background:
+    linear-gradient(90deg, rgba(42, 43, 43, .86), rgba(32, 35, 39, .68)),
+    url("/assets/ui/panels/panel_player_slot.png") center / 100% 100% no-repeat;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.08), 0 12px 26px rgba(0,0,0,.16);
 }
 
-.player-card.active .player-portrait {
+.player-card.active {
+  border-color: rgba(255, 204, 85, .98);
   box-shadow:
-    0 0 0 2px rgba(255, 204, 85, .65),
-    0 0 22px rgba(232, 172, 61, .42);
+    inset 0 0 0 1px rgba(255, 204, 85, .32),
+    0 0 0 2px rgba(255, 204, 85, .12),
+    0 0 30px rgba(232, 172, 61, .22);
+}
+
+.player-card.tone-wolf {
+  border-color: rgba(224, 91, 76, .62);
+  background:
+    linear-gradient(90deg, rgba(66, 31, 28, .86), rgba(39, 29, 31, .7)),
+    url("/assets/ui/panels/panel_player_slot.png") center / 100% 100% no-repeat;
+}
+.player-card.tone-god {
+  border-color: rgba(107, 170, 229, .5);
+  background:
+    linear-gradient(90deg, rgba(28, 44, 62, .86), rgba(24, 34, 48, .68)),
+    url("/assets/ui/panels/panel_player_slot.png") center / 100% 100% no-repeat;
+}
+.player-card.tone-unknown {
+  border-color: rgba(222, 106, 94, .38);
+  background:
+    linear-gradient(90deg, rgba(48, 26, 31, .76), rgba(20, 25, 34, .72)),
+    url("/assets/ui/panels/panel_player_slot.png") center / 100% 100% no-repeat;
 }
 
 .player-card.tone-wolf .player-copy strong { color: #ff8c78; }
 .player-card.tone-god .player-copy strong { color: #83c4fa; }
 .player-card.tone-unknown .player-copy strong { color: #d0746b; }
 
-.player-card.dead .player-portrait {
+.player-card.dead {
   filter: grayscale(.85) brightness(.55);
 }
 
@@ -489,7 +515,9 @@ img {
   text-overflow: ellipsis;
 }
 
-/* Portrait — single rounded rect, horizontally centered. */
+/* Portrait sits centered inside the card chrome. No border-radius of
+   its own — only the .player-card carries the rounded shape so there
+   are no nested mismatched rounded rectangles. */
 .player-portrait {
   height: 100%;
   max-height: 80px;
@@ -497,10 +525,8 @@ img {
   max-width: 100%;
   object-fit: contain;
   object-position: center;
-  border-radius: 10px;
   justify-self: center;
   pointer-events: none;
-  transition: box-shadow .2s ease;
 }
 
 .player-card.reverse .player-portrait {
@@ -831,7 +857,10 @@ img {
 
 .mode-card {
   position: relative;
-  overflow: hidden;
+  /* No overflow:hidden — the .mode-icon sits at top:-30px outside the
+     card boundary and was getting half-clipped. .mode-hero has its own
+     overflow:hidden for the silhouette, so card-level clipping isn't
+     needed. */
   z-index: 1;
   display: flex;
   flex-direction: column;
