@@ -234,7 +234,8 @@ def _human_timeout_seconds(tool_name: str, phase: Phase) -> float:
     if tool_name == "confirm_identity":
         return 30.0  # short — just enough to read the identity card
     if tool_name in {"public_speech", "death_speech"}:
-        return 180.0
+        # Hard 90s cap on every player's speech (per-player house rule).
+        return 90.0
     if tool_name == "vote_target":
         return 120.0
     if tool_name == "wolf_kill_proposal":
@@ -244,7 +245,7 @@ def _human_timeout_seconds(tool_name: str, phase: Phase) -> float:
     if tool_name == "sheriff_candidacy":
         return 75.0
     if phase in {Phase.DAY_SPEECH, Phase.SHERIFF_ELECTION}:
-        return 150.0
+        return 90.0  # speech-phase fallback also capped at 90s
     return 90.0
 
 
