@@ -103,7 +103,7 @@ const PHASE_META: Record<string, PhaseMeta> = {
     shortLabel: '发言阶段',
     tone: 'day',
     icon: `${A}/icons/actions/icon_action_chat.png`,
-    background: `${A}/backgrounds/bg_global_moonlit_village_night.png`,
+    background: `${A}/backgrounds/bg_global_moonlit_village_day.png`,
     actionLabel: '号玩家发言中',
   },
   day_vote: {
@@ -160,7 +160,7 @@ const PHASE_META: Record<string, PhaseMeta> = {
     tone: 'night',
     icon: `${A}/icons/actions/icon_landing_ai_autoplay.png`,
     background: `${A}/backgrounds/bg_global_moonlit_village_night.png`,
-    actionLabel: '号玩家准备中',
+    actionLabel: '对局准备中…',
   },
   night_start: {
     label: '第 1 夜 · 夜晚',
@@ -168,7 +168,7 @@ const PHASE_META: Record<string, PhaseMeta> = {
     tone: 'night',
     icon: `${A}/icons/actions/icon_landing_ai_autoplay.png`,
     background: `${A}/backgrounds/bg_phase_night_overview.png`,
-    actionLabel: '号玩家闭眼',
+    actionLabel: '天黑请闭眼',
   },
   night_resolve: {
     label: '第 1 夜 · 夜晚',
@@ -176,7 +176,7 @@ const PHASE_META: Record<string, PhaseMeta> = {
     tone: 'night',
     icon: `${A}/icons/actions/icon_match_summary.png`,
     background: `${A}/backgrounds/bg_phase_night_overview.png`,
-    actionLabel: '号玩家等待结算',
+    actionLabel: '裁判结算夜晚行动',
   },
   day_announce: {
     label: '第 1 天 · 白天',
@@ -184,7 +184,7 @@ const PHASE_META: Record<string, PhaseMeta> = {
     tone: 'day',
     icon: `${A}/icons/actions/icon_match_summary.png`,
     background: `${A}/backgrounds/bg_global_moonlit_village_day.png`,
-    actionLabel: '号玩家等待公布',
+    actionLabel: '裁判正在公布昨夜结果',
   },
   day_resolve: {
     label: '第 1 天 · 白天',
@@ -192,7 +192,7 @@ const PHASE_META: Record<string, PhaseMeta> = {
     tone: 'vote',
     icon: `${A}/icons/actions/icon_match_summary.png`,
     background: `${A}/backgrounds/bg_phase_exile_result.png`,
-    actionLabel: '号玩家等待裁决',
+    actionLabel: '裁判结算投票',
   },
   pending_skills: {
     label: '技能结算',
@@ -208,7 +208,7 @@ const PHASE_META: Record<string, PhaseMeta> = {
     tone: 'result',
     icon: `${A}/icons/actions/icon_match_summary.png`,
     background: `${A}/backgrounds/bg_global_result_hall.png`,
-    actionLabel: '号等待裁决',
+    actionLabel: '裁判判定胜负',
   },
   game_over: {
     label: '游戏结束',
@@ -864,13 +864,15 @@ function CenterStage({
       {/* No miniature village panorama here — the full-screen .sample-app
           background already shows the current phase scene. */}
       <section className="speaker-status">
+        {/* Speaker-relative labels start with "号" (e.g. "号玩家发言中").
+            Anything else is system narration ("裁判结算投票", "天黑请闭眼")
+            and must NOT be prefixed by a seat number / badge. */}
         <h1>
-          <span>{currentSpeaker || '-'}</span>
           {winner
-            ? `${winner === 'wolf' ? '狼人' : '好人'}阵营胜利`
-            : (currentSpeaker
-                ? `${currentSpeaker}${meta.actionLabel}`
-                : meta.shortLabel)}
+            ? <>{`${winner === 'wolf' ? '狼人' : '好人'}阵营胜利`}</>
+            : meta.actionLabel.startsWith('号') && currentSpeaker
+              ? <><span>{currentSpeaker}</span>{`${currentSpeaker}${meta.actionLabel}`}</>
+              : <>{meta.actionLabel || meta.shortLabel}</>}
         </h1>
         <div className="timer-row">
           <img src={`${A}/icons/actions/icon_speed_config.png`} alt="" />
