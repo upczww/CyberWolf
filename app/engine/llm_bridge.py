@@ -176,6 +176,15 @@ async def _await_human_action(
         return local_args
     timeout_seconds = _human_timeout_seconds(tool_name, phase)
 
+    # Phase narration ("女巫请睁眼", "预言家请睁眼"...) must fire BEFORE we
+    # publish awaiting_human and block on the awaiter — otherwise the
+    # human only sees their action panel modal while the previous
+    # phase's banner is still on screen, with no indication that a new
+    # phase has started. _ensure_phase_started is a no-op if it has
+    # already fired for this phase.
+    from app.engine.session import _ensure_phase_started
+    _ensure_phase_started(services, state, services.conn, phase, state["round"])
+
     # Emit awaiting_human (private to the actor) so the frontend can render the action panel
     payload = {
         "actor_id": actor_id,
