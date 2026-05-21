@@ -38,16 +38,36 @@ async def handle_night_wolf(state: GameState, services: SessionServices) -> Phas
     if not wolves or not targets:
         return PhaseResult(state_patch={"night_actions": {"wolf_votes": {}, "wolf_target": None}}, events=[])
 
-    lead_wolf = wolves[0]
+    # If any wolf is human-controlled, they pick the target by default
+    # (rather than letting a seat-order accident hand it to an AI wolf).
+    # The human's panel offers a "让 AI 决定" delegation button — if they
+    # use it, the awaiter returns __delegate_to_ai__ and we re-decide
+    # below as if the lead wolf were AI.
+    human_seats = state.get("human_seats") or set()
+    human_wolves = [w for w in wolves if w in human_seats]
+    lead_wolf = human_wolves[0] if human_wolves else wolves[0]
     events: list[GameEvent] = []
+    fallback_target = services.rng.choice(targets)
     proposed_target = await llm_decide(
         state, services,
         actor_id=lead_wolf,
         role=Role.WOLF,
         phase=state["phase"],
         tool_name="wolf_kill_proposal",
-        local_args={"target_id": services.rng.choice(targets)},
+        local_args={"target_id": fallback_target},
     )
+    # Human delegated to AI — re-run the decision with bypass_human so
+    # llm_decide skips the awaiter and uses the LLM (or local random).
+    if isinstance(proposed_target, dict) and proposed_target.get("__delegate_to_ai__"):
+        proposed_target = await llm_decide(
+            state, services,
+            actor_id=lead_wolf,
+            role=Role.WOLF,
+            phase=state["phase"],
+            tool_name="wolf_kill_proposal",
+            local_args={"target_id": fallback_target},
+            bypass_human=True,
+        )
     proposed = {
         "actor_id": lead_wolf,
         "phase": state["phase"],

@@ -2322,6 +2322,16 @@ img {
   box-shadow: 0 0 0 2px rgba(213, 175, 99, .2);
 }
 
+/* Wolf-kill panel — target grid + a "delegate to AI" button stacked. */
+.wolf-kill-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.wolf-kill-stack .action-buttons {
+  justify-content: center;
+}
+
 .action-buttons {
   display: flex;
   gap: 10px;

@@ -135,13 +135,25 @@ export default function HumanActionPanel({ request, gameId, players }: Props) {
         )}
 
         {request.tool_name === 'wolf_kill_proposal' && (
-          <TargetGrid
-            candidates={alivePlayers.filter((p) => p.faction !== 'wolf')}
-            onPick={(target) => submit({ target_id: target })}
-            submitting={submitting}
-            events={events}
-            toolName={request.tool_name}
-          />
+          <div className="wolf-kill-stack">
+            <TargetGrid
+              candidates={alivePlayers.filter((p) => p.faction !== 'wolf')}
+              onPick={(target) => submit({ target_id: target })}
+              submitting={submitting}
+              events={events}
+              toolName={request.tool_name}
+            />
+            <div className="action-buttons">
+              <button
+                className="ghost"
+                onClick={() => submit({ __delegate_to_ai__: true })}
+                disabled={submitting}
+                title="放弃决定，让 AI 替你选择今晚的击杀目标"
+              >
+                🤖 让 AI 决定
+              </button>
+            </div>
+          </div>
         )}
 
         {request.tool_name === 'seer_check' && (

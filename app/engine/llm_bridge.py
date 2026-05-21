@@ -48,13 +48,18 @@ async def llm_decide(
     local_args: dict,
     prompt_key_override: str | None = None,
     decision_note: str | None = None,
+    bypass_human: bool = False,
 ) -> dict:
     """Unified LLM tool call with retry and wolf self-destruct support.
 
     Returns normal args dict, or {"_wolf_self_destruct": True} if wolf chose to self-destruct.
     Falls back to local_args on failure.
+
+    ``bypass_human=True`` skips the human-awaiter routing even when the
+    actor IS the human. Used by handlers that need to re-decide after a
+    human explicitly delegated to AI (e.g. wolf-kill panel "让 AI 决定").
     """
-    if _is_human_actor(state, actor_id) and services.human_awaiter is not None:
+    if not bypass_human and _is_human_actor(state, actor_id) and services.human_awaiter is not None:
         return await _await_human_action(
             state, services,
             actor_id=actor_id, role=role, phase=phase,
