@@ -584,16 +584,6 @@ img {
   text-shadow: 0 4px 14px rgba(0,0,0,.72);
 }
 
-.speaker-status h1 span {
-  display: inline-grid;
-  place-items: center;
-  width: 56px;
-  height: 56px;
-  margin-right: 10px;
-  border: 3px solid #f7f2e9;
-  border-radius: 50%;
-}
-
 .timer-row {
   display: grid;
   grid-template-columns: 34px 1fr 58px;
@@ -2062,18 +2052,21 @@ img {
 .self-status-banner {
   position: fixed;
   z-index: 40;
-  top: 110px;
+  /* Tucked right under the topbar's day-pill (which spans ~16–70px) so
+     the banner doesn't drop into the first seat row (which starts at
+     ~112px). Was top:110px and was clipping the top of seat 1. */
+  top: 76px;
   left: 50%;
   transform: translateX(-50%);
   display: inline-flex;
   align-items: center;
   gap: 10px;
-  padding: 8px 18px;
+  padding: 6px 16px;
   border-radius: 18px;
   background: rgba(16, 26, 39, .88);
   border: 1px solid rgba(255, 255, 255, .12);
   color: rgba(244, 231, 196, .9);
-  font-size: 13.5px;
+  font-size: 13px;
   letter-spacing: 0.06em;
   box-shadow: 0 8px 22px rgba(0,0,0,.55), inset 0 1px rgba(255,255,255,.06);
   backdrop-filter: blur(4px);

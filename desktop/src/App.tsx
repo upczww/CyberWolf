@@ -866,13 +866,13 @@ function CenterStage({
       <section className="speaker-status">
         {/* Speaker-relative labels start with "号" (e.g. "号玩家发言中").
             Anything else is system narration ("裁判结算投票", "天黑请闭眼")
-            and must NOT be prefixed by a seat number / badge. */}
+            and must NOT be prefixed by a seat number. */}
         <h1>
           {winner
-            ? <>{`${winner === 'wolf' ? '狼人' : '好人'}阵营胜利`}</>
+            ? `${winner === 'wolf' ? '狼人' : '好人'}阵营胜利`
             : meta.actionLabel.startsWith('号') && currentSpeaker
-              ? <><span>{currentSpeaker}</span>{`${currentSpeaker}${meta.actionLabel}`}</>
-              : <>{meta.actionLabel || meta.shortLabel}</>}
+              ? `${currentSpeaker}${meta.actionLabel}`
+              : (meta.actionLabel || meta.shortLabel)}
         </h1>
         <div className="timer-row">
           <img src={`${A}/icons/actions/icon_speed_config.png`} alt="" />
