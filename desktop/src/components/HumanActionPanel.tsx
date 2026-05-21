@@ -192,13 +192,12 @@ export default function HumanActionPanel({ request, gameId, players }: Props) {
         )}
 
         {isWitchAntidote && (
-          <div className="witch-action">
-            <p>今晚的死亡目标是 <b>{String(request.local_args?.target_id ?? '?')}</b> 号,是否使用解药?</p>
-            <div className="action-buttons">
-              <button onClick={() => submit({ use_antidote: true })} disabled={submitting}>使用解药</button>
-              <button className="ghost" onClick={() => submit({ use_antidote: false })} disabled={submitting}>不使用</button>
-            </div>
-          </div>
+          <WitchAntidoteCard
+            targetId={Number(request.local_args?.target_id ?? NaN)}
+            onUse={() => submit({ use_antidote: true })}
+            onSkip={() => submit({ use_antidote: false })}
+            disabled={submitting}
+          />
         )}
 
         {isWitchPoison && (
@@ -269,6 +268,41 @@ export default function HumanActionPanel({ request, gameId, players }: Props) {
           onCancel={() => setSelfDestructAsk(false)}
         />
       )}
+    </div>
+  )
+}
+
+function WitchAntidoteCard({
+  targetId,
+  onUse,
+  onSkip,
+  disabled,
+}: {
+  targetId: number
+  onUse: () => void
+  onSkip: () => void
+  disabled: boolean
+}) {
+  const validTarget = Number.isFinite(targetId) && targetId >= 1 && targetId <= 12
+  return (
+    <div className="witch-action witch-antidote">
+      {validTarget ? (
+        <div className="witch-antidote-target">
+          <div className="witch-antidote-seat">{targetId}</div>
+          <div className="witch-antidote-msg">
+            <b>{targetId} 号玩家</b>
+            <span>今夜被狼队袭击 — 是否使用解药？</span>
+          </div>
+        </div>
+      ) : (
+        <p className="witch-antidote-msg-fallback">
+          今夜被袭击的玩家身份未送达（target_id 缺失），是否仍然使用解药？
+        </p>
+      )}
+      <div className="action-buttons">
+        <button onClick={onUse} disabled={disabled}>使用解药</button>
+        <button className="ghost" onClick={onSkip} disabled={disabled}>不使用</button>
+      </div>
     </div>
   )
 }
