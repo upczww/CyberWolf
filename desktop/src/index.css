@@ -1241,6 +1241,12 @@ img {
 }
 
 .vote-records {
+  /* Match .drawer-feed's scroll behavior — drawer header (~32px) + tabs
+     (50px) = 82px of fixed chrome above us. Without this the long list
+     of vote rounds + per-round vote grids overflowed the drawer with
+     no way to scroll. */
+  height: calc(100% - 82px);
+  overflow-y: auto;
   display: grid;
   gap: 18px;
   padding: 18px 0;
@@ -1318,6 +1324,9 @@ img {
 }
 
 .settle-records {
+  /* Same scroll treatment as .vote-records / .drawer-feed. */
+  height: calc(100% - 82px);
+  overflow-y: auto;
   display: grid;
   gap: 8px;
   padding: 18px 0;
