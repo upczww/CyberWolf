@@ -849,8 +849,10 @@ img {
   top: clamp(170px, 22vh, 240px);
   bottom: clamp(82px, 10vh, 108px);
   display: grid;
-  grid-template-columns: repeat(2, clamp(320px, 28vw, 410px));
-  gap: clamp(20px, 2.5vw, 34px);
+  /* Three modes now: personal / god / team-lobby. Cards are a bit
+     narrower to fit the third one without breaking smaller viewports. */
+  grid-template-columns: repeat(3, clamp(260px, 22vw, 340px));
+  gap: clamp(16px, 2vw, 28px);
   transform: translateX(-50%);
   align-items: stretch;
 }
@@ -904,6 +906,35 @@ img {
     inset 0 1px 0 rgba(255,255,255,.12),
     inset 0 0 32px rgba(220, 80, 64, .2),
     0 20px 50px rgba(0,0,0,.42);
+}
+
+.mode-card.mode-gold {
+  border-color: rgba(232, 172, 61, .65);
+  background: linear-gradient(180deg, rgba(176, 132, 48, .28) 0%, rgba(94, 64, 18, .46) 60%, rgba(42, 28, 8, .6) 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.12),
+    inset 0 0 32px rgba(232, 172, 61, .2),
+    0 20px 50px rgba(0,0,0,.42);
+}
+.mode-card.mode-gold:hover {
+  border-color: rgba(255, 215, 122, .92);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.18),
+    inset 0 0 32px rgba(232, 172, 61, .32),
+    0 24px 56px rgba(0,0,0,.5),
+    0 0 32px rgba(232, 172, 61, .32);
+}
+.mode-card.mode-gold .mode-hero::before {
+  background:
+    radial-gradient(ellipse 60% 65% at 50% 65%, rgba(255, 200, 100, .58) 0%, rgba(232, 172, 61, .28) 32%, transparent 72%),
+    radial-gradient(ellipse 40% 30% at 50% 100%, rgba(255, 210, 110, .42), transparent 75%);
+}
+.mode-card.mode-gold .mode-silhouette {
+  filter:
+    brightness(1.18)
+    contrast(1.12)
+    drop-shadow(0 12px 28px rgba(0,0,0,.65))
+    drop-shadow(0 0 28px rgba(232, 172, 61, .55));
 }
 
 .mode-card.active {
@@ -2581,4 +2612,204 @@ img {
 }
 .icon-button.danger span {
   color: rgba(255, 188, 168, .92);
+}
+
+/* ---------------------------------------------------------------
+   Multi-human lobby
+   --------------------------------------------------------------- */
+.lobby-page {
+  position: relative;
+  min-height: 100vh;
+  padding: 28px 36px 48px;
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+  color: #f4ead4;
+  background:
+    linear-gradient(180deg, rgba(8, 14, 26, .82), rgba(8, 14, 26, .92)),
+    url("/assets/ui/backgrounds/bg_global_moonlit_village_day.png") center / cover no-repeat;
+}
+
+.lobby-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  flex-wrap: wrap;
+}
+
+.lobby-title h1 {
+  margin: 0 0 4px;
+  font-size: clamp(28px, 4vh, 40px);
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  color: #ffe2a0;
+  text-shadow: 0 4px 18px rgba(0,0,0,.6);
+}
+.lobby-title span {
+  font-size: 14px;
+  color: rgba(244, 234, 212, .68);
+}
+
+.lobby-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.lobby-btn {
+  padding: 10px 18px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 215, 122, .35);
+  background: rgba(40, 32, 18, .78);
+  color: #ffe9b8;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform .15s ease, box-shadow .15s ease, background .15s ease;
+}
+.lobby-btn:hover:not(:disabled) {
+  background: rgba(58, 44, 22, .92);
+  transform: translateY(-1px);
+  box-shadow: 0 8px 22px rgba(0,0,0,.4);
+}
+.lobby-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+.lobby-btn.primary {
+  background: linear-gradient(180deg, #eeb34c, #d4912e);
+  border-color: rgba(255, 230, 160, .85);
+  color: #3a230d;
+}
+.lobby-btn.ghost {
+  background: rgba(20, 28, 42, .68);
+  border-color: rgba(255,255,255,.16);
+  color: #f4ead4;
+}
+.lobby-btn.danger {
+  background: rgba(80, 24, 18, .82);
+  border-color: rgba(247, 110, 80, .55);
+  color: #ffc8b8;
+}
+
+.lobby-error {
+  padding: 10px 16px;
+  border: 1px solid rgba(247, 110, 80, .55);
+  background: rgba(80, 16, 20, .62);
+  color: #ffd8d8;
+  border-radius: 8px;
+  font-size: 14px;
+}
+
+.lobby-seats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+}
+@media (max-width: 920px) {
+  .lobby-seats { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+@media (max-width: 680px) {
+  .lobby-seats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+.lobby-seat {
+  position: relative;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  border: 1px solid rgba(255, 215, 122, .22);
+  border-radius: 10px;
+  background: linear-gradient(180deg, rgba(28, 36, 52, .82), rgba(16, 22, 36, .9));
+  color: #f4ead4;
+  min-height: 84px;
+}
+.lobby-seat.tone-host {
+  border-color: rgba(255, 215, 122, .7);
+  background: linear-gradient(180deg, rgba(72, 56, 22, .82), rgba(40, 28, 8, .92));
+  box-shadow: inset 0 0 0 1px rgba(255, 215, 122, .25), 0 0 22px rgba(232, 172, 61, .18);
+}
+.lobby-seat.tone-human {
+  border-color: rgba(140, 200, 240, .42);
+  background: linear-gradient(180deg, rgba(28, 50, 78, .82), rgba(14, 24, 42, .92));
+}
+.lobby-seat.tone-ai {
+  border-color: rgba(255,255,255,.1);
+  background: linear-gradient(180deg, rgba(28, 32, 42, .68), rgba(14, 18, 26, .82));
+  opacity: 0.82;
+}
+.lobby-seat.is-me {
+  outline: 2px solid rgba(255, 226, 160, .85);
+  outline-offset: -2px;
+}
+
+.lobby-seat-num {
+  width: 38px;
+  height: 38px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: radial-gradient(circle at 34% 24%, #fff, #d7d7d9 46%, #a7aeb8);
+  color: #242930;
+  font-size: 19px;
+  font-weight: 900;
+  box-shadow: inset 0 -2px 7px rgba(0,0,0,.25);
+}
+.lobby-seat.tone-host .lobby-seat-num {
+  background: radial-gradient(circle at 34% 24%, #fff5d0, #f0c76a 46%, #ad7a26);
+}
+
+.lobby-seat-body {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+.lobby-seat-body b {
+  font-size: 16px;
+  color: #fff5e0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.lobby-seat-body span {
+  font-size: 12px;
+  color: rgba(244, 234, 212, .62);
+}
+.lobby-seat.tone-host .lobby-seat-body span {
+  color: rgba(255, 226, 160, .85);
+}
+
+.lobby-seat-kick {
+  position: absolute;
+  top: 6px;
+  right: 8px;
+  width: 22px;
+  height: 22px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 1px solid rgba(247, 110, 80, .55);
+  border-radius: 50%;
+  background: rgba(80, 24, 18, .82);
+  color: #ffc8b8;
+  font-size: 12px;
+  font-weight: 900;
+  line-height: 1;
+  cursor: pointer;
+  transition: background .15s ease, transform .15s ease;
+}
+.lobby-seat-kick:hover {
+  background: rgba(140, 38, 28, .92);
+  transform: scale(1.08);
+}
+
+.lobby-hint {
+  font-size: 13px;
+  color: rgba(244, 234, 212, .55);
+  text-align: center;
+  padding-top: 8px;
+  border-top: 1px solid rgba(255,255,255,.06);
 }

@@ -4,8 +4,14 @@ import GameEffects from './components/GameEffects'
 import GameProgress from './components/GameProgress'
 import HumanActionPanel from './components/HumanActionPanel'
 import IdentityReveal, { hasSeenIdentityReveal } from './components/IdentityReveal'
+import LobbyRoom from './components/LobbyRoom'
 import { apiDelete, apiGet, apiPost } from './hooks/useApi'
 import { useGameWS } from './hooks/useGameWS'
+import type { RoomLite } from './hooks/useRoomWS'
+import {
+  clearInviteFromUrl, defaultNicknameFor, getNickname, getOrCreateUserId,
+  readInviteFromUrl, setNickname as persistNickname,
+} from './lib/identity'
 import { UNKNOWN_CLOAK, portraitForPlayer, unknownPortraitForSeat } from './lib/portraits'
 import { useGameStore, type GameEvent, type Player } from './stores/game'
 
@@ -267,6 +273,13 @@ export default function App() {
   const [historyTab, setHistoryTab] = useState<DrawerTab>('vote')
   const [legendOpen, setLegendOpen] = useState(false)
   const [landingMode, setLandingMode] = useState<ViewMode>('self')
+  // Multi-human lobby state. `room` non-null means we're in the lobby
+  // pre-game screen; once the host starts, we transition to the normal
+  // game UI (gameId set, room cleared).
+  const [room, setRoom] = useState<RoomLite | null>(null)
+  const [lobbyError, setLobbyError] = useState<string | null>(null)
+  const userIdRef = useRef<string>('')
+  if (!userIdRef.current) userIdRef.current = getOrCreateUserId()
   const [loadingStart, setLoadingStart] = useState(false)
   const startingRef = useRef(false)
   const [startError, setStartError] = useState<string | null>(null)
@@ -403,7 +416,99 @@ export default function App() {
     reset()
     setHistoryOpen(false)
     setLegendOpen(false)
+    setRoom(null)
+    setLobbyError(null)
   }
+
+  /** Prompt for a nickname (uses saved one if available) and persist it. */
+  const ensureNickname = (): string | null => {
+    const saved = getNickname()
+    const prompt = window.prompt('请输入你的昵称（仅本地保存）', saved || defaultNicknameFor(userIdRef.current))
+    if (prompt == null) return null  // user cancelled
+    const clean = prompt.trim().slice(0, 24) || defaultNicknameFor(userIdRef.current)
+    persistNickname(clean)
+    return clean
+  }
+
+  /** Create a fresh lobby room (entry point from the "组队对战" mode card). */
+  const createLobby = useCallback(async (useLlm: boolean) => {
+    const nickname = ensureNickname()
+    if (nickname == null) return
+    setLobbyError(null)
+    try {
+      const res = await apiPost<{ room?: RoomLite; error?: string }>(
+        '/api/rooms',
+        { user_id: userIdRef.current, nickname, use_llm: useLlm },
+      )
+      if (res.error || !res.room) {
+        setLobbyError(res.error || '创建房间失败')
+        return
+      }
+      setRoom(res.room)
+    } catch (err) {
+      setLobbyError(err instanceof Error ? err.message : '网络错误')
+    }
+  }, [])
+
+  /** Auto-join: if the URL carried ?invite=<token> on first load, resolve
+   * the token to a room and claim a seat. Strips the param so a refresh
+   * doesn't loop. */
+  useEffect(() => {
+    const token = readInviteFromUrl()
+    if (!token) return
+    clearInviteFromUrl()
+    let cancelled = false
+    void (async () => {
+      try {
+        const resolved = await apiGet<{ room?: RoomLite; error?: string }>(
+          `/api/rooms/by-token/${encodeURIComponent(token)}`,
+        )
+        if (cancelled) return
+        if (resolved.error || !resolved.room) {
+          setLobbyError(resolved.error || '邀请链接无效')
+          return
+        }
+        if (resolved.room.status !== 'lobby') {
+          setLobbyError(`房间已${resolved.room.status === 'started' ? '开始游戏' : '关闭'}`)
+          return
+        }
+        // Need a nickname to join — use saved or prompt.
+        let nickname = getNickname()
+        if (!nickname) {
+          const picked = ensureNickname()
+          if (picked == null) return
+          nickname = picked
+        }
+        const join = await apiPost<{ your_seat?: number; room?: RoomLite; error?: string }>(
+          `/api/rooms/${resolved.room.id}/join`,
+          { user_id: userIdRef.current, nickname },
+        )
+        if (cancelled) return
+        if (join.error || !join.room) {
+          setLobbyError(join.error || '加入房间失败')
+          return
+        }
+        setRoom(join.room)
+      } catch (err) {
+        if (!cancelled) setLobbyError(err instanceof Error ? err.message : '网络错误')
+      }
+    })()
+    return () => { cancelled = true }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  /** Called by LobbyRoom when the host starts the game. The room's
+   * room_started WS broadcast carries seat ownership so this user knows
+   * which seat (if any) they're playing. */
+  const handleLobbyStarted = useCallback((startedGameId: string, mySeat: number | null) => {
+    setRoom(null)
+    setLobbyError(null)
+    // Multi-human game is rendered via the existing 'self' personal-mode
+    // pipeline — same modal stack, same per-seat awaiting filter.
+    setViewMode('self')
+    setHumanSeat(mySeat)
+    setGameId(startedGameId)
+  }, [setGameId, setHumanSeat, setViewMode])
 
   // Hard exit: tell the backend to cancel the engine task + drop the row,
   // then clear local state. Backend is authoritative — even if the DELETE
@@ -422,6 +527,21 @@ export default function App() {
     resetToLanding()
   }, [gameId])
 
+  if (room) {
+    return (
+      <LobbyRoom
+        initialRoom={room}
+        userId={userIdRef.current}
+        onStarted={handleLobbyStarted}
+        onLeave={resetToLanding}
+        onClosed={(reason) => {
+          setLobbyError(reason === 'host_left' ? '房主已解散房间' : '房间已关闭')
+          setRoom(null)
+        }}
+      />
+    )
+  }
+
   if (!gameId) {
     return (
       <LandingScreen
@@ -431,7 +551,8 @@ export default function App() {
         onModeChange={setLandingMode}
         onStart={(useLlm) => startGame(useLlm)}
         onToggleTts={toggleTts}
-        error={startError}
+        onCreateLobby={createLobby}
+        error={startError || lobbyError}
       />
     )
   }
@@ -665,6 +786,7 @@ function LandingScreen({
   onModeChange,
   onStart,
   onToggleTts,
+  onCreateLobby,
   error,
 }: {
   mode: ViewMode
@@ -673,6 +795,7 @@ function LandingScreen({
   onModeChange: (mode: ViewMode) => void
   onStart: (useLlm: boolean) => void
   onToggleTts: () => void
+  onCreateLobby: (useLlm: boolean) => void
   error?: string | null
 }) {
   const [panel, setPanel] = useState<{ title: string; body: string } | null>(null)
@@ -731,6 +854,18 @@ function LandingScreen({
           onStart={() => onStart(true)}
           loading={loading && mode === 'god'}
         />
+        <ModeCard
+          active={false}
+          tone="gold"
+          icon={`${A}/icons/actions/icon_landing_match_records.png`}
+          silhouette={`${A}/portraits/extra/landing_role_personal.png`}
+          title="组队对战"
+          text="邀请好友加入同一局，AI 补齐空位"
+          bullets={['创建房间生成邀请链接', '好友点击链接即可入座', '房主可踢人、随时开局']}
+          onClick={() => onCreateLobby(true)}
+          onStart={() => onCreateLobby(true)}
+          loading={false}
+        />
       </section>
 
       <span className="version-mark">版本：1.0.0</span>
@@ -752,7 +887,7 @@ function ModeCard({
   onStart,
 }: {
   active: boolean
-  tone: 'blue' | 'red'
+  tone: 'blue' | 'red' | 'gold'
   icon: string
   silhouette: string
   title: string

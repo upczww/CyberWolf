@@ -73,7 +73,14 @@ class GameState(TypedDict):
     llm_stats: dict
     seed: int
     graph_artifacts: dict[str, str | None]
+    # Primary human seat for legacy single-human modes (personal mode,
+    # confirm_identity flow). None in god/observer mode and in multi-
+    # human lobby games where there's no single "host" seat distinction.
     human_seat: int | None
+    # Full set of seats controlled by humans. Single-human modes set
+    # this to {human_seat}. Multi-human lobby games can have 2..12
+    # entries. Empty set = pure AI game (god/observer view).
+    human_seats: set[int]
 
 
 def alive_player_ids(state: GameState) -> list[int]:
@@ -118,6 +125,7 @@ def init_game_state(
     seed: int = 0,
     graph_artifacts: dict[str, str | None] | None = None,
     human_seat: int | None = None,
+    human_seats: set[int] | None = None,
 ) -> GameState:
     phase = runtime["phase_order"][0]
     return GameState(
@@ -153,6 +161,9 @@ def init_game_state(
         seed=seed,
         graph_artifacts=graph_artifacts or {},
         human_seat=human_seat,
+        human_seats=set(human_seats) if human_seats is not None else (
+            {human_seat} if human_seat is not None else set()
+        ),
     )
 
 

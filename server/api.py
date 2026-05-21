@@ -54,8 +54,32 @@ class WSSubscriber:
 _ws_subscribers: dict[str, set[WSSubscriber]] = {}
 # Per-game HumanAwaiter
 _human_awaiters: dict[str, HumanAwaiter] = {}
-# Per-game human seat (for WS event filtering)
-_human_seats: dict[str, int] = {}
+# Per-game set of human-controlled seats. Single-human mode uses a 1-elt
+# set; multi-human lobby games carry every seated player. submit_human_
+# action validates req.actor_id is in this set.
+_human_seats: dict[str, set[int]] = {}
+
+# ---------------------------------------------------------------------------
+# Lobby room state (in-process — DB is the source of truth, this caches
+# WS subscribers per room)
+# ---------------------------------------------------------------------------
+
+
+class RoomWSSubscriber:
+    """Per-WebSocket queue for a lobby room. We broadcast room state diffs
+    (seat joined/left/kicked, room started) to every connected client."""
+
+    __slots__ = ("queue", "user_id")
+
+    def __init__(self, queue: asyncio.Queue, user_id: str | None) -> None:
+        self.queue = queue
+        self.user_id = user_id
+
+    def __hash__(self) -> int:
+        return id(self)
+
+
+_room_ws_subscribers: dict[str, set[RoomWSSubscriber]] = {}
 
 
 def _get_paths() -> AppPaths:
@@ -102,6 +126,9 @@ class StartGameRequest(BaseModel):
     use_llm: bool = True
     human_join: bool = False
     human_seat: int | None = None  # if human_join is True and this is None, server picks at random
+    # Multi-human lobby games supply the full set of human-controlled seats
+    # directly (1..N). Overrides human_seat/human_join when provided.
+    human_seats: list[int] | None = None
     phase_delay_seconds: float = 0.0  # debug aid: hold each phase for visual/screenshot
 
 
@@ -232,29 +259,39 @@ async def get_game(game_id: str, event_limit: int = 300, seat: int | None = None
 
 @app.post("/api/games/start", response_model=StartGameResponse)
 async def start_game(req: StartGameRequest):
-    """Start a new game."""
+    """Start a new game.
+
+    Three modes:
+    * Multi-human (req.human_seats supplied) — every listed seat is a
+      human; remaining seats AI.
+    * Personal (req.human_join + req.human_seat) — exactly one human seat.
+    * God / observer (default) — pure AI game.
+    """
     paths = _get_paths()
     llm_settings = get_llm_settings() if req.use_llm else None
 
-    # Resolve human seat: if human_join is true and no seat specified, pick at random 1-12.
-    resolved_seat: int | None
-    if req.human_join:
+    # Resolve the full set of human seats.
+    resolved_seats: set[int] = set()
+    if req.human_seats:
+        resolved_seats = {int(s) for s in req.human_seats if 1 <= int(s) <= 12}
+    elif req.human_join:
         if req.human_seat is None:
             import secrets
-            resolved_seat = secrets.randbelow(12) + 1
+            resolved_seats = {secrets.randbelow(12) + 1}
         else:
-            resolved_seat = req.human_seat
-    else:
-        resolved_seat = None
+            resolved_seats = {int(req.human_seat)}
+    # Primary seat (used for the legacy `human_seat` field on the response
+    # + the singular state.human_seat alias) is the smallest seat number.
+    resolved_seat: int | None = min(resolved_seats) if resolved_seats else None
 
     event_bus = EventBus()
     game_id_holder: list[str] = []
-    human_awaiter = HumanAwaiter() if resolved_seat is not None else None
+    human_awaiter = HumanAwaiter() if resolved_seats else None
 
     def on_started(gid: str) -> None:
         game_id_holder.append(gid)
-        if resolved_seat is not None:
-            _human_seats[gid] = resolved_seat
+        if resolved_seats:
+            _human_seats[gid] = set(resolved_seats)
             if human_awaiter is not None:
                 _human_awaiters[gid] = human_awaiter
 
@@ -285,6 +322,7 @@ async def start_game(req: StartGameRequest):
                 event_bus=event_bus,
                 on_game_started=on_started,
                 human_seat=resolved_seat,
+                human_seats=resolved_seats or None,
                 human_awaiter=human_awaiter,
                 phase_delay_seconds=req.phase_delay_seconds,
             )
@@ -370,8 +408,8 @@ async def submit_human_action(game_id: str, req: HumanActionRequest):
     awaiter = _human_awaiters.get(game_id)
     if awaiter is None:
         return {"accepted": False, "reason": "no_human_in_game"}
-    expected_seat = _human_seats.get(game_id)
-    if expected_seat is not None and req.actor_id != expected_seat:
+    expected_seats = _human_seats.get(game_id) or set()
+    if expected_seats and req.actor_id not in expected_seats:
         return {"accepted": False, "reason": "actor_mismatch"}
     accepted = await awaiter.submit(actor_id=req.actor_id, tool_name=req.tool_name, args=req.args)
     return {"accepted": accepted, "pending": awaiter.pending_snapshot()}
@@ -393,6 +431,269 @@ async def human_pending(game_id: str, seat: int | None = None):
     if seat is not None:
         items = [p for p in items if p.get("actor_id") == seat]
     return {"pending": items, "seat": seat if seat is not None else _human_seats.get(game_id)}
+
+
+# ---------------------------------------------------------------------------
+# Lobby rooms (multi-human matchmaking)
+# ---------------------------------------------------------------------------
+
+
+class CreateRoomRequest(BaseModel):
+    user_id: str  # client-generated UUID stored in localStorage
+    nickname: str
+    config_id: str = "12p_pre_witch_hunter_idiot"
+    use_llm: bool = True
+
+
+class JoinRoomRequest(BaseModel):
+    user_id: str
+    nickname: str
+
+
+class KickRequest(BaseModel):
+    host_user_id: str
+    seat_index: int
+
+
+class LeaveRequest(BaseModel):
+    user_id: str
+
+
+class StartRoomRequest(BaseModel):
+    host_user_id: str
+
+
+def _broadcast_room(room_id: str, payload: dict) -> None:
+    subs = _room_ws_subscribers.get(room_id, set())
+    for sub in list(subs):
+        try:
+            sub.queue.put_nowait(payload)
+        except asyncio.QueueFull:
+            pass
+
+
+def _room_snapshot_payload(room: dict) -> dict:
+    return {"type": "room_state", "room": room}
+
+
+@app.post("/api/rooms")
+async def create_room(req: CreateRoomRequest):
+    """Create a fresh lobby room. The creator becomes the host on seat 1."""
+    from uuid import uuid4
+    from app.infra.repositories.rooms import create_room as repo_create_room
+    paths = _get_paths()
+    conn = connect_database(paths.database)
+    try:
+        room_id = str(uuid4())
+        room = repo_create_room(
+            conn,
+            room_id=room_id,
+            config_id=req.config_id,
+            host_user_id=req.user_id,
+            host_nickname=req.nickname.strip()[:24] or "玩家",
+            use_llm=req.use_llm,
+        )
+        return {"room": room, "your_seat": 1}
+    finally:
+        conn.close()
+
+
+@app.get("/api/rooms/{room_id}")
+async def get_room(room_id: str):
+    from app.infra.repositories.rooms import get_room as repo_get_room
+    paths = _get_paths()
+    conn = connect_database(paths.database)
+    try:
+        room = repo_get_room(conn, room_id=room_id)
+        if room is None:
+            return {"error": "room not found"}
+        return {"room": room}
+    finally:
+        conn.close()
+
+
+@app.get("/api/rooms/by-token/{invite_token}")
+async def get_room_by_token(invite_token: str):
+    """Resolve an invite token to a room — used when a recipient clicks
+    a share link. Returns the room so the frontend can render the lobby
+    (or display "room already started" / "room closed" states)."""
+    from app.infra.repositories.rooms import get_room_by_token as repo_get_by_token
+    paths = _get_paths()
+    conn = connect_database(paths.database)
+    try:
+        room = repo_get_by_token(conn, invite_token=invite_token)
+        if room is None:
+            return {"error": "invalid invite"}
+        return {"room": room}
+    finally:
+        conn.close()
+
+
+@app.post("/api/rooms/{room_id}/join")
+async def join_room(room_id: str, req: JoinRoomRequest):
+    """Claim a seat in the room. Idempotent — repeat calls from the same
+    user_id return the same seat (and refresh the nickname). Returns
+    {your_seat: int} or {error} if the room is full / closed."""
+    from app.infra.repositories.rooms import get_room as repo_get_room, claim_seat
+    paths = _get_paths()
+    conn = connect_database(paths.database)
+    try:
+        room = repo_get_room(conn, room_id=room_id)
+        if room is None:
+            return {"error": "room not found"}
+        if room["status"] != "lobby":
+            return {"error": "room already started or closed", "status": room["status"], "game_id": room.get("game_id")}
+        nickname = req.nickname.strip()[:24] or "玩家"
+        seat = claim_seat(conn, room_id=room_id, user_id=req.user_id, nickname=nickname)
+        if seat is None:
+            return {"error": "room is full"}
+        room = repo_get_room(conn, room_id=room_id)
+        _broadcast_room(room_id, _room_snapshot_payload(room))
+        return {"your_seat": seat["seat_index"], "room": room}
+    finally:
+        conn.close()
+
+
+@app.post("/api/rooms/{room_id}/kick")
+async def kick_seat(room_id: str, req: KickRequest):
+    """Host removes a player from a seat. Seat reverts to AI."""
+    from app.infra.repositories.rooms import get_room as repo_get_room, release_seat
+    paths = _get_paths()
+    conn = connect_database(paths.database)
+    try:
+        room = repo_get_room(conn, room_id=room_id)
+        if room is None:
+            return {"error": "room not found"}
+        if room["host_user_id"] != req.host_user_id:
+            return {"error": "only host can kick"}
+        if req.seat_index == 1:
+            return {"error": "host cannot be kicked"}
+        if room["status"] != "lobby":
+            return {"error": "room is not in lobby"}
+        released = release_seat(conn, room_id=room_id, seat_index=req.seat_index)
+        if not released:
+            return {"error": "seat already empty"}
+        room = repo_get_room(conn, room_id=room_id)
+        _broadcast_room(room_id, _room_snapshot_payload(room))
+        return {"kicked": req.seat_index, "room": room}
+    finally:
+        conn.close()
+
+
+@app.post("/api/rooms/{room_id}/leave")
+async def leave_room(room_id: str, req: LeaveRequest):
+    """A non-host player leaves the room voluntarily. If the host leaves,
+    the room is closed (and any connected clients are notified)."""
+    from app.infra.repositories.rooms import (
+        get_room as repo_get_room,
+        release_user,
+        close_room as repo_close_room,
+    )
+    paths = _get_paths()
+    conn = connect_database(paths.database)
+    try:
+        room = repo_get_room(conn, room_id=room_id)
+        if room is None:
+            return {"error": "room not found"}
+        if room["host_user_id"] == req.user_id:
+            repo_close_room(conn, room_id=room_id)
+            _broadcast_room(room_id, {"type": "room_closed", "reason": "host_left"})
+            return {"closed": True}
+        released = release_user(conn, room_id=room_id, user_id=req.user_id)
+        room = repo_get_room(conn, room_id=room_id)
+        if room is not None:
+            _broadcast_room(room_id, _room_snapshot_payload(room))
+        return {"left_seat": released}
+    finally:
+        conn.close()
+
+
+@app.post("/api/rooms/{room_id}/start")
+async def start_room(room_id: str, req: StartRoomRequest):
+    """Host starts the game. Resolves the human-controlled seats from the
+    room's seat assignments, spawns a game with those seats, marks the
+    room as started, and broadcasts a `room_started` message carrying the
+    game_id so every connected client can transition into the game view."""
+    from app.infra.repositories.rooms import (
+        get_room as repo_get_room,
+        mark_room_started,
+    )
+    paths = _get_paths()
+    conn = connect_database(paths.database)
+    try:
+        room = repo_get_room(conn, room_id=room_id)
+        if room is None:
+            return {"error": "room not found"}
+        if room["host_user_id"] != req.host_user_id:
+            return {"error": "only host can start"}
+        if room["status"] != "lobby":
+            return {"error": "room already started", "game_id": room.get("game_id")}
+        human_seats = [s["seat_index"] for s in room["seats"] if s["user_id"]]
+        if not human_seats:
+            return {"error": "no humans seated"}
+    finally:
+        conn.close()
+
+    # Spawn the game using the same plumbing as /api/games/start.
+    start_req = StartGameRequest(
+        config_id=room["config_id"],
+        use_llm=room["use_llm"],
+        human_seats=human_seats,
+    )
+    started = await start_game(start_req)
+    if isinstance(started, dict) and started.get("error"):
+        return started
+    game_id = started.game_id  # type: ignore[union-attr]
+
+    # Stamp the room and tell every connected lobby client to transition.
+    conn = connect_database(paths.database)
+    try:
+        mark_room_started(conn, room_id=room_id, game_id=game_id)
+    finally:
+        conn.close()
+
+    # Map seat_index -> user_id so each lobby client knows whether THEY
+    # are seated (and at which seat) once the game opens.
+    seat_owners = {s["seat_index"]: s["user_id"] for s in room["seats"] if s["user_id"]}
+    _broadcast_room(room_id, {
+        "type": "room_started",
+        "game_id": game_id,
+        "seat_owners": seat_owners,
+    })
+    return {"game_id": game_id, "human_seats": human_seats}
+
+
+@app.websocket("/ws/rooms/{room_id}")
+async def room_websocket(websocket: WebSocket, room_id: str):
+    """Live updates for the lobby — seat changes, kicks, host close, and
+    the room_started transition message."""
+    user_id = websocket.query_params.get("user_id")
+    await websocket.accept()
+    queue: asyncio.Queue = asyncio.Queue(maxsize=64)
+    subs = _room_ws_subscribers.setdefault(room_id, set())
+    subscriber = RoomWSSubscriber(queue, user_id)
+    subs.add(subscriber)
+    try:
+        # Send the current room snapshot first.
+        from app.infra.repositories.rooms import get_room as repo_get_room
+        paths = _get_paths()
+        conn = connect_database(paths.database)
+        try:
+            room = repo_get_room(conn, room_id=room_id)
+        finally:
+            conn.close()
+        if room is not None:
+            await websocket.send_json(_room_snapshot_payload(room))
+        # Then stream live updates.
+        while True:
+            payload = await queue.get()
+            await websocket.send_json(payload)
+    except WebSocketDisconnect:
+        pass
+    finally:
+        subs.discard(subscriber)
+        if not subs:
+            _room_ws_subscribers.pop(room_id, None)
 
 
 # ---------------------------------------------------------------------------

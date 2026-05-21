@@ -156,6 +156,10 @@ async def llm_speech(
 
 
 def _is_human_actor(state: GameState, actor_id: int) -> bool:
+    human_seats = state.get("human_seats")
+    if human_seats and actor_id in human_seats:
+        return True
+    # Legacy single-human fallback for state dicts that pre-date human_seats.
     return state.get("human_seat") == actor_id
 
 

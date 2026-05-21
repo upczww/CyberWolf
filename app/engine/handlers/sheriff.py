@@ -281,7 +281,9 @@ async def _decide_candidacy(state: GameState, services: "SessionServices", playe
     # Human seat gets to choose directly via the awaiter (separate tool name so
     # the frontend can show a dedicated yes/no UI without conflicting with the
     # later vote_target prompt).
-    if state.get("human_seat") == player_id and services.human_awaiter is not None:
+    human_seats = state.get("human_seats") or set()
+    is_human = player_id in human_seats or state.get("human_seat") == player_id
+    if is_human and services.human_awaiter is not None:
         from app.engine.llm_bridge import _await_human_action
         result = await _await_human_action(
             state, services,
@@ -358,7 +360,8 @@ def _validate_or_raise(state, services, *, actor_id, role, phase, tool_name, arg
     )
     if not validated["is_valid"]:
         errors = validated.get("validation_errors", [])
-        is_human = state.get("human_seat") == actor_id
+        human_seats = state.get("human_seats") or set()
+        is_human = actor_id in human_seats or state.get("human_seat") == actor_id
         if services.llm_client is not None or is_human:
             _log.warning("invalid %s args for player %s in %s: %s – using fallback",
                          tool_name, actor_id, phase.value, errors)

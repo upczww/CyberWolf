@@ -98,3 +98,35 @@ CREATE TABLE IF NOT EXISTS configs (
     enabled INTEGER NOT NULL DEFAULT 1,
     created_at TEXT NOT NULL
 );
+
+-- Multi-human lobby rooms. A room owns up to 12 seats; each seat is either
+-- AI (user_id IS NULL) or a human (user_id + nickname). The host is the
+-- user_id who created the room. When status = 'started', game_id points
+-- to the game spawned from this room.
+CREATE TABLE IF NOT EXISTS rooms (
+    id TEXT PRIMARY KEY,
+    config_id TEXT NOT NULL,
+    host_user_id TEXT NOT NULL,
+    invite_token TEXT NOT NULL UNIQUE,
+    status TEXT NOT NULL DEFAULT 'lobby',
+    game_id TEXT,
+    use_llm INTEGER NOT NULL DEFAULT 1,
+    created_at TEXT NOT NULL,
+    started_at TEXT,
+    closed_at TEXT
+);
+
+CREATE INDEX IF NOT EXISTS idx_rooms_status ON rooms(status);
+CREATE INDEX IF NOT EXISTS idx_rooms_token ON rooms(invite_token);
+
+CREATE TABLE IF NOT EXISTS room_seats (
+    room_id TEXT NOT NULL,
+    seat_index INTEGER NOT NULL,
+    user_id TEXT,
+    nickname TEXT,
+    joined_at TEXT,
+    PRIMARY KEY (room_id, seat_index),
+    FOREIGN KEY (room_id) REFERENCES rooms(id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_room_seats_user ON room_seats(user_id);

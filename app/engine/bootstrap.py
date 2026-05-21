@@ -36,6 +36,7 @@ async def bootstrap_and_run_game(
     llm_callback: object = None,
     on_game_started: Callable[[str], None] | None = None,
     human_seat: int | None = None,
+    human_seats: set[int] | None = None,
     human_awaiter: HumanAwaiter | None = None,
     phase_delay_seconds: float = 0.0,
 ) -> BootstrappedGame:
@@ -53,7 +54,8 @@ async def bootstrap_and_run_game(
         insert_game_bootstrap(conn, game_id=game_id, runtime=runtime, seed=seed, graph_artifacts=artifact_strings)
         state = init_game_state(
             runtime, game_id=game_id, seed=seed,
-            graph_artifacts=artifact_strings, human_seat=human_seat,
+            graph_artifacts=artifact_strings,
+            human_seat=human_seat, human_seats=human_seats,
         )
         if on_game_started is not None:
             on_game_started(game_id)
