@@ -55,6 +55,7 @@ def emit_narration(
     *,
     kind: str = "info",
     glyph: str | None = None,
+    intro: bool = False,
 ) -> None:
     """Emit a player-facing narration line.
 
@@ -66,8 +67,19 @@ def emit_narration(
       text:  the narration sentence, e.g. "天亮了，昨晚是平安夜。"
       kind:  "info" / "good" / "wolf" / "gold" — drives the flash tone.
       glyph: optional emoji prefix (frontend may default one by kind).
+      intro: when True, mark this as a phase-intro narration. The frontend
+             pins it as a big PhaseFlash banner instead of a small ticker
+             entry, and we stamp _last_narration_at so the engine's
+             min-hold pacing treats it as the phase's primary narration.
     """
-    payload: dict = {"text": text, "kind": kind, "round": state["round"]}
+    payload: dict = {
+        "text": text,
+        "kind": kind,
+        "round": state["round"],
+        "phase": state["phase"].value,
+    }
+    if intro:
+        payload["style"] = "intro"
     if glyph is not None:
         payload["glyph"] = glyph
     emit_event(
@@ -75,6 +87,9 @@ def emit_narration(
         EventType.NARRATION,
         payload,
     )
+    if intro:
+        from time import monotonic
+        services._last_narration_at = monotonic()
 
 
 def emit_speaking_started(

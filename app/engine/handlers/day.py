@@ -13,7 +13,7 @@ from app.domain.state import (
     PhaseResult,
     alive_player_ids,
 )
-from app.engine.event_helpers import action_source as _action_source, emit_event, emit_speaking_started, make_event
+from app.engine.event_helpers import action_source as _action_source, emit_event, emit_narration, emit_speaking_started, make_event
 from app.engine.llm_bridge import llm_decide, llm_speech
 from app.services.decisions import resolve_action, validate_tool_call
 
@@ -28,15 +28,22 @@ async def handle_day_announce(state: GameState, services: SessionServices) -> Ph
     deaths = state["night_result"].get("deaths", [])
     events: list[GameEvent] = []
     # Public dawn announcement — village learns WHO died, not how.
+    # Marked as `intro=True` so the frontend pins it as the big
+    # PhaseFlash banner for the day_announce phase ("天亮了，..."), not
+    # a small ticker line buried in the corner.
     if not deaths:
-        emit_event(services, state, events, EventType.NARRATION,
-                   {"text": f"第 {state['round']} 天 · 昨晚是平安夜，无人出局",
-                    "kind": "good", "round": state["round"], "phase": state["phase"].value})
+        emit_narration(
+            services, state, events,
+            f"天亮了 · 第 {state['round']} 天，昨晚是平安夜，无人出局",
+            kind="good", glyph="☀", intro=True,
+        )
     else:
-        emit_event(services, state, events, EventType.NARRATION,
-                   {"text": f"第 {state['round']} 天 · 昨晚 {len(deaths)} 名玩家出局："
-                            f"{ '、'.join(f'{pid}号' for pid in deaths) }",
-                    "kind": "wolf", "round": state["round"], "phase": state["phase"].value})
+        names = "、".join(f"{pid} 号" for pid in deaths)
+        emit_narration(
+            services, state, events,
+            f"天亮了 · 第 {state['round']} 天，{names} 死亡",
+            kind="wolf", glyph="☀", intro=True,
+        )
         # Then collect last words from each fallen seat (per-player
         # narration banner + 90s death_speech awaiter). Standard rule
         # gates these to round 1 — _collect_death_speeches enforces.
