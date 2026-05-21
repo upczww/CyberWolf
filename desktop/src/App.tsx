@@ -627,6 +627,40 @@ export default function App() {
     )
   }
 
+  // Decide identity-reveal gating BEFORE rendering the game board so
+  // the seat grid / center stage stay completely hidden until the
+  // human confirms their role (or times out). Without this gate, the
+  // game UI flashes behind the IdentityReveal modal — defeating the
+  // "see your role first, then enter the game" intent.
+  const inSelfRoom =
+    !!gameId && gameId !== 'demo' && viewMode === 'self' && humanSeat != null
+  const meSeat = inSelfRoom
+    ? players.find((p) => p.seat_index === humanSeat) || null
+    : null
+  const myRoleKnown = !!meSeat && !!meSeat.role && meSeat.role !== 'unknown'
+  // Gate fires when we should be showing the identity card OR we know
+  // we need to but the player data hasn't arrived yet (avoid flashing
+  // the game UI in the gap between gameId set and loadGameDetail).
+  const identityGateActive = inSelfRoom && !identityRevealed && (!myRoleKnown || !meSeat)
+
+  if (identityGateActive) {
+    return (
+      <div className="sample-app phase-night identity-gate">
+        {myRoleKnown && meSeat ? (
+          <IdentityReveal
+            gameId={gameId!}
+            player={meSeat}
+            onClose={() => setIdentityRevealed(true)}
+          />
+        ) : (
+          // Player roster still loading from REST — show a quiet
+          // placeholder so the screen isn't blank.
+          <div className="identity-gate-loading">对局准备中…</div>
+        )}
+      </div>
+    )
+  }
+
   return (
     <div className={`sample-app phase-${meta.tone}`} style={{ '--scene-bg': `url("${meta.background}")` } as React.CSSProperties}>
       <GameAudio phase={visiblePhase} latestEvent={latestEvent} winner={winner} ttsEnabled={ttsEnabled} />
@@ -707,48 +741,11 @@ export default function App() {
       )}
       {legendOpen && <StatusLegend onClose={() => setLegendOpen(false)} />}
 
-      {/* In-game modal stack — strict priority, only one is mounted at a time
-          so dialogs never visually overlap.
-          1) IdentityReveal — must finish before anything else (开局必读)
-          2) HumanActionPanel — your turn
-          3) InfoDialog — passive notifications */}
+      {/* In-game modal stack. IdentityReveal is owned by the gate
+          above this branch — by the time we render here the human has
+          already confirmed (or timed out), so the only remaining modal
+          is the per-turn HumanActionPanel. */}
       {(() => {
-        // Race guard: in self mode, once the game has started we must NOT
-        // show any other modal until either IdentityReveal has been
-        // dismissed or the player roster has loaded enough for us to know
-        // we don't need it. Otherwise an awaiting_human arriving on the
-        // WS before loadGameDetail completes could flash a HumanActionPanel
-        // before the identity card had a chance.
-        const inSelfRoom =
-          gameId && gameId !== 'demo' && viewMode === 'self' && humanSeat != null
-        const playerKnown = inSelfRoom
-          && players.some((p) => p.seat_index === humanSeat && p.role && p.role !== 'unknown')
-        if (inSelfRoom && !identityRevealed && !playerKnown) {
-          // Identity should fire but player data isn't ready yet → block.
-          return null
-        }
-
-        const needsIdentity =
-          inSelfRoom
-          && !identityRevealed
-          && (() => {
-            const me = players.find((p) => p.seat_index === humanSeat)
-            return !!me && !!me.role && me.role !== 'unknown'
-          })()
-
-        // 1) IdentityReveal — must finish before anything else (开局必读)
-        if (needsIdentity) {
-          const me = players.find((p) => p.seat_index === humanSeat)!
-          return (
-            <IdentityReveal
-              gameId={gameId!}
-              player={me}
-              onClose={() => setIdentityRevealed(true)}
-            />
-          )
-        }
-
-        // 2) HumanActionPanel — your turn
         const needsHumanAction =
           !!awaitingHuman && !!gameId
           && viewMode === 'self' && humanSeat != null
@@ -756,7 +753,6 @@ export default function App() {
         if (needsHumanAction) {
           return <HumanActionPanel request={awaitingHuman!} gameId={gameId!} players={playersWithSheriff} />
         }
-
         return null
       })()}
 

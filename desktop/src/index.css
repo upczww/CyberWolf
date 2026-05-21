@@ -1946,8 +1946,30 @@ img {
 }
 
 /* ---------------------------------------------------------------
-   Identity reveal modal (personal-mode game start)
+   Identity reveal — full-screen gate before the game UI mounts.
    --------------------------------------------------------------- */
+.sample-app.identity-gate {
+  /* Full-screen dark scene while the identity card is up. The game
+     board is intentionally NOT rendered yet — we don't want the seats
+     / center stage flashing in the background. */
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  background:
+    linear-gradient(180deg, rgba(4, 11, 20, .18), rgba(4, 11, 20, .92)),
+    url("/assets/ui/backgrounds/bg_global_moonlit_village_night.png") center / cover no-repeat;
+}
+
+.identity-gate-loading {
+  color: var(--gold-soft);
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-shadow: 0 4px 18px rgba(0, 0, 0, .6);
+  opacity: 0.85;
+  animation: panelTimerPulse 1.4s ease-in-out infinite;
+}
+
 .identity-overlay {
   position: fixed;
   inset: 0;
