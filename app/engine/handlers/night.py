@@ -278,8 +278,14 @@ async def handle_night_resolve(state: GameState, services: SessionServices) -> P
             "death_cause": cause, "is_sheriff": False,
         }
         dead_history.append({"player_id": player_id, "cause": cause, "round": state["round"]})
+        # Night deaths announce publicly WITHOUT the cause — the crowd
+        # learns "X 号死亡" at dawn but not who killed them. The actual
+        # cause is still known to the perpetrator's role via existing
+        # private events (wolf_target_selected → wolf team,
+        # witch_used_poison → witch). Frontend recovers cause from those
+        # for the right viewer.
         emit_event(services, state, events, EventType.PLAYER_DIED,
-                   {"player_id": player_id, "cause": cause})
+                   {"player_id": player_id})
         _queue_death_skills(state, pending, player_id, cause)
 
     patch["players"] = players_patch

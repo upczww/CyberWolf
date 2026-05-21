@@ -369,24 +369,60 @@ export default function App() {
     return current
   }, [events])
 
-  // Death state — also has to be derived from events for the same
-  // reason as sheriff: the REST snapshot's `survived` / `death_cause`
-  // fields are frozen at game start. Walk player_died events and the
-  // related wolf_self_destruct / hunter_shot signals to mark seats as
-  // out, so the death badge + grayscale state actually fire.
+  // Death state — derive from events because the REST snapshot's
+  // `survived` / `death_cause` are frozen at game start.
+  //
+  // Cause-disclosure rules (matching standard 12-人 ruleset):
+  //   * Night deaths announce publicly WITHOUT cause ("X 号死亡").
+  //   * Cause is recoverable only via PRIVATE events that the backend
+  //     scopes to the relevant role(s) — wolf_target_selected reaches
+  //     the wolf team, witch_used_poison reaches the witch, hunter's
+  //     night skill_triggered reaches the hunter.
+  //   * Day exile, day hunter-shot, self-destruct are publicly caused.
+  //
+  // We walk events twice: first take whatever the player_died event
+  // gives us (cause may be present for public-cause deaths or absent
+  // for night deaths), then enrich with any private cause events the
+  // viewer actually received.
   const deathsBySeat = useMemo<Record<number, { cause: string; round: number }>>(() => {
     const map: Record<number, { cause: string; round: number }> = {}
+    const setCause = (pid: number, cause: string, round: number) => {
+      const existing = map[pid]
+      if (!existing || existing.cause === 'unknown') {
+        map[pid] = { cause, round: round || existing?.round || 0 }
+      }
+    }
     for (const ev of events) {
+      const round = Number(ev.data?.round || ev.round || 0)
       if (ev.event_type === 'player_died') {
         const pid = Number(ev.data?.player_id)
         if (!Number.isFinite(pid)) continue
-        const cause = String(ev.data?.cause || 'unknown')
-        const round = Number(ev.data?.round || ev.round || 0)
-        map[pid] = { cause, round }
+        const cause = ev.data?.cause ? String(ev.data.cause) : 'unknown'
+        // First record always claims the seat (so .dead grayscale fires).
+        if (!map[pid]) map[pid] = { cause, round }
+        else if (cause !== 'unknown') setCause(pid, cause, round)
       } else if (ev.event_type === 'wolf_self_destruct') {
         const pid = Number(ev.data?.player_id)
-        if (Number.isFinite(pid) && !map[pid]) {
-          map[pid] = { cause: 'self_destruct', round: Number(ev.data?.round || ev.round || 0) }
+        if (Number.isFinite(pid)) setCause(pid, 'self_destruct', round)
+      } else if (ev.event_type === 'wolf_target_selected') {
+        // Private to wolf team — viewer sees this only if they're a
+        // wolf. The target may or may not have died (witch antidote);
+        // only mark cause if the death also landed.
+        const target = Number(ev.data?.target_id)
+        if (Number.isFinite(target) && map[target]) {
+          setCause(target, 'wolf', round)
+        }
+      } else if (ev.event_type === 'witch_used_poison') {
+        // Private to witch.
+        const target = Number(ev.data?.target_id)
+        if (Number.isFinite(target) && map[target]) {
+          setCause(target, 'poison', round)
+        }
+      } else if (ev.event_type === 'skill_triggered' && ev.content === 'event.hunter_shot') {
+        // Private to hunter when the trigger was a night death.
+        const target = Number(ev.data?.target_id)
+        if (Number.isFinite(target) && map[target]) {
+          setCause(target, 'hunter_shot', round)
         }
       }
     }
@@ -1094,7 +1130,11 @@ function deathBadgeIcon(cause?: string): { icon: string; label: string } | null 
     case 'self_destruct':
       return { icon: `${A}/icons/actions/icon_action_explode.png`, label: '自爆' }
     default:
-      return { icon: `${A}/icons/status/icon_status_exiled.png`, label: '已出局' }
+      // Unknown cause — public dawn announcement for a night death. We
+      // intentionally show NO specific badge (the card's grayscale +
+      // opacity already signal "out"); a generic exile icon here would
+      // mislead the viewer into thinking they were voted out.
+      return null
   }
 }
 

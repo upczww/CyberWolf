@@ -452,12 +452,16 @@ function seerResultText(result: unknown) {
 
 function deathCauseText(cause: unknown) {
   // Reads naturally appended after a seat label: "8 号被狼人击杀".
+  // Cause is undefined / 'unknown' for night deaths — backend hides
+  // how-they-died from the public announcement, so we just say
+  // "X 号死亡". Cause IS visible to the perpetrator's role via the
+  // private events (and surfaces on the seat's badge there).
   if (cause === 'wolf' || cause === 'wolf_kill') return ' 被狼人击杀'
   if (cause === 'poison') return ' 被女巫毒杀'
   if (cause === 'hunter' || cause === 'hunter_shot') return ' 被猎人开枪带走'
   if (cause === 'exile') return ' 被投票放逐'
   if (cause === 'self_destruct') return ' 狼人自爆离场'
-  return ' 已出局'
+  return ' 死亡'
 }
 
 function deathIcon(cause: unknown) {

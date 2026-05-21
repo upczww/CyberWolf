@@ -5,7 +5,7 @@ import logging
 from typing import TYPE_CHECKING
 
 from app.domain.events import GameEvent
-from app.domain.roles import EventType, GameStatus, Phase
+from app.domain.roles import EventScope, EventType, GameStatus, Phase
 from app.domain.state import (
     GameState,
     PhaseResult,
@@ -57,11 +57,28 @@ async def handle_pending_skills(state: GameState, services: SessionServices) -> 
                 continue  # Hunter chose not to shoot (shouldn't happen, but guard)
             players_patch[target] = {"alive": False, "death_round": state["round"], "death_cause": "hunter_shot"}
             dead_history.append({"player_id": target, "cause": "hunter_shot", "round": state["round"]})
-            emit_event(services, state, events, EventType.PLAYER_DIED,
-                       {"player_id": target, "cause": "hunter_shot"})
-            emit_event(services, state, events, EventType.SKILL_TRIGGERED,
-                       {"actor_id": actor_id, "target_id": target},
-                       content="event.hunter_shot")
+            # A hunter triggered by a NIGHT death (wolf_kill / poison) is a
+            # silent night-time shot — only the hunter knows. A hunter
+            # triggered by a DAY exile is fully public (everyone saw the
+            # vote, then the shot at dawn). triggered_cause is set when
+            # the skill was queued by _queue_death_skills.
+            trigger_cause = (skill.get("context") or {}).get("cause") or ""
+            night_trigger = trigger_cause in {"wolf", "wolf_kill", "poison"}
+            if night_trigger:
+                # Public learns the target died but not why; the shooter's
+                # role is hidden via per-role private skill_triggered event.
+                emit_event(services, state, events, EventType.PLAYER_DIED,
+                           {"player_id": target})
+                emit_event(services, state, events, EventType.SKILL_TRIGGERED,
+                           {"actor_id": actor_id, "target_id": target},
+                           content="event.hunter_shot",
+                           scope=EventScope.ROLE_PRIVATE, targets={actor_id})
+            else:
+                emit_event(services, state, events, EventType.PLAYER_DIED,
+                           {"player_id": target, "cause": "hunter_shot"})
+                emit_event(services, state, events, EventType.SKILL_TRIGGERED,
+                           {"actor_id": actor_id, "target_id": target},
+                           content="event.hunter_shot")
             # Queue death skills for the hunted target (e.g. sheriff transfer)
             from app.engine.handlers.night import _queue_death_skills
             _queue_death_skills(state, pending, target, "hunter_shot")
