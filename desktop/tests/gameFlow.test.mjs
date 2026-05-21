@@ -97,6 +97,47 @@ test('deriveBackendProgress clears pending human action on matching submission',
   assert.equal(progress.awaitingHuman, null)
 })
 
+test('deriveBackendProgress clears stale awaiting when phase advances without human_submitted', () => {
+  // Simulates the case where backend timed out or cancelled the awaiter
+  // without emitting human_submitted, then the next phase started. The
+  // previous phase's modal must not leak into the new phase.
+  const progress = flow.deriveBackendProgress([
+    ev(1, 'phase_started', 'night_wolf', { phase: 'night_wolf', round: 1 }),
+    ev(2, 'awaiting_human', 'night_wolf', {
+      actor_id: 8,
+      tool_name: 'wolf_kill_proposal',
+      phase: 'night_wolf',
+      role: 'wolf',
+      round: 1,
+      timeout_seconds: 120,
+      local_args: { target_id: 3 },
+    }),
+    ev(3, 'phase_started', 'night_seer', { phase: 'night_seer', round: 1 }),
+  ])
+
+  assert.equal(progress.phase, 'night_seer')
+  assert.equal(progress.awaitingHuman, null)
+})
+
+test('deriveBackendProgress keeps awaiting that matches the current phase', () => {
+  // A new awaiting_human within the same phase should remain pending.
+  const progress = flow.deriveBackendProgress([
+    ev(1, 'phase_started', 'night_witch', { phase: 'night_witch', round: 2 }),
+    ev(2, 'awaiting_human', 'night_witch', {
+      actor_id: 5,
+      tool_name: 'witch_antidote',
+      phase: 'night_witch',
+      role: 'witch',
+      round: 2,
+      timeout_seconds: 105,
+      local_args: { use_antidote: false },
+    }),
+  ])
+
+  assert.equal(progress.awaitingHuman?.tool_name, 'witch_antidote')
+  assert.equal(progress.awaitingHuman?.phase, 'night_witch')
+})
+
 test('portraitForPlayer picks stable per-game villager and werewolf variants', () => {
   const villager = { role: 'villager', seat_index: 3 }
   const wolf = { role: 'wolf', seat_index: 8 }

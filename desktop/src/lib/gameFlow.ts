@@ -43,8 +43,19 @@ export function deriveBackendProgress(events: GameEvent[], initial?: Partial<Bac
   for (const event of events) {
     const data = event.data || {}
     if (event.event_type === 'phase_started') {
-      progress.phase = String(data.phase || event.phase || progress.phase || '')
-      progress.round = toNumber(data.round, progress.round)
+      const nextPhase = String(data.phase || event.phase || progress.phase || '')
+      const nextRound = toNumber(data.round, progress.round)
+      // A new phase implicitly invalidates any awaiting_human from a prior
+      // phase/round — the backend won't ask for the same action again, so
+      // the previous modal must not leak into the new phase's UI.
+      if (progress.awaitingHuman) {
+        const stale =
+          progress.awaitingHuman.phase !== nextPhase ||
+          progress.awaitingHuman.round !== nextRound
+        if (stale) progress.awaitingHuman = null
+      }
+      progress.phase = nextPhase
+      progress.round = nextRound
     } else if (event.event_type === 'awaiting_human') {
       progress.awaitingHuman = {
         actor_id: Number(data.actor_id),
