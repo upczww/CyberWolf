@@ -455,7 +455,10 @@ img {
 .player-card.tone-unknown .player-copy strong { color: #d0746b; }
 
 .player-card.dead {
+  /* Dim the whole card — portrait + seat number + name + role + badges
+     all desaturate together so a dead player reads as fully "out". */
   filter: grayscale(.85) brightness(.55);
+  opacity: 0.78;
 }
 
 /* Left column: seat number + name/role copy stacked. */
