@@ -386,44 +386,38 @@ export default function App() {
   // viewer actually received.
   const deathsBySeat = useMemo<Record<number, { cause: string; round: number }>>(() => {
     const map: Record<number, { cause: string; round: number }> = {}
-    const setCause = (pid: number, cause: string, round: number) => {
-      const existing = map[pid]
-      if (!existing || existing.cause === 'unknown') {
-        map[pid] = { cause, round: round || existing?.round || 0 }
-      }
-    }
+    // Pass 1 — collect deaths from public death events. This is what
+    // marks the seat as "out" (grayscale + opacity in the card).
     for (const ev of events) {
       const round = Number(ev.data?.round || ev.round || 0)
       if (ev.event_type === 'player_died') {
         const pid = Number(ev.data?.player_id)
-        if (!Number.isFinite(pid)) continue
+        if (!Number.isFinite(pid) || map[pid]) continue
         const cause = ev.data?.cause ? String(ev.data.cause) : 'unknown'
-        // First record always claims the seat (so .dead grayscale fires).
-        if (!map[pid]) map[pid] = { cause, round }
-        else if (cause !== 'unknown') setCause(pid, cause, round)
+        map[pid] = { cause, round }
       } else if (ev.event_type === 'wolf_self_destruct') {
         const pid = Number(ev.data?.player_id)
-        if (Number.isFinite(pid)) setCause(pid, 'self_destruct', round)
-      } else if (ev.event_type === 'wolf_target_selected') {
-        // Private to wolf team — viewer sees this only if they're a
-        // wolf. The target may or may not have died (witch antidote);
-        // only mark cause if the death also landed.
-        const target = Number(ev.data?.target_id)
-        if (Number.isFinite(target) && map[target]) {
-          setCause(target, 'wolf', round)
+        if (Number.isFinite(pid) && !map[pid]) {
+          map[pid] = { cause: 'self_destruct', round }
         }
+      }
+    }
+    // Pass 2 — enrich the cause from PRIVATE events the viewer
+    // actually received (filtered by backend WS scope). Has to be a
+    // separate pass because wolf_target_selected / witch_used_poison
+    // fire DURING night_wolf / night_witch (before player_died which
+    // fires in night_resolve). A single-pass walk would have map[N]
+    // empty when the private event arrived and skip the enrichment.
+    for (const ev of events) {
+      const target = Number(ev.data?.target_id)
+      if (!Number.isFinite(target) || !map[target]) continue
+      if (map[target].cause !== 'unknown') continue
+      if (ev.event_type === 'wolf_target_selected') {
+        map[target] = { cause: 'wolf', round: map[target].round }
       } else if (ev.event_type === 'witch_used_poison') {
-        // Private to witch.
-        const target = Number(ev.data?.target_id)
-        if (Number.isFinite(target) && map[target]) {
-          setCause(target, 'poison', round)
-        }
+        map[target] = { cause: 'poison', round: map[target].round }
       } else if (ev.event_type === 'skill_triggered' && ev.content === 'event.hunter_shot') {
-        // Private to hunter when the trigger was a night death.
-        const target = Number(ev.data?.target_id)
-        if (Number.isFinite(target) && map[target]) {
-          setCause(target, 'hunter_shot', round)
-        }
+        map[target] = { cause: 'hunter_shot', round: map[target].round }
       }
     }
     return map

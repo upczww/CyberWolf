@@ -420,6 +420,9 @@ async def _collect_death_speeches(
         )
         speech = proposed_args.get("public_speech", "")
         if speech:
+            # `cause` intentionally NOT included in the public event data —
+            # night-death cause is hidden from the village; including it
+            # here would leak via the public death_speech event.
             emit_event(services, state, events, EventType.DEATH_SPEECH,
-                       {"player_id": player_id, "speech": speech, "cause": cause})
+                       {"player_id": player_id, "speech": speech})
     return events
