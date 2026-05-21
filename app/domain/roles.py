@@ -65,6 +65,7 @@ class EventType(StrEnum):
     DEATH_SPEECH = "death_speech"
     SHERIFF_CAMPAIGN = "sheriff_campaign"
     SHERIFF_DECLARE = "sheriff_declare"
+    SHERIFF_CANDIDATES_DECLARED = "sheriff_candidates_declared"
     SHERIFF_DIRECTION = "sheriff_direction"
     WOLF_SELF_DESTRUCT = "wolf_self_destruct"
     GAME_ENDED = "game_ended"

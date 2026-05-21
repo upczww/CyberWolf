@@ -44,9 +44,11 @@ async def handle_sheriff_election(state: GameState, services: SessionServices) -
     designated_wolf = services.rng.choice(living_wolves_list) if living_wolves_list else None
 
     # Phase 1 — collect candidacy decisions silently. No per-declarer
-    # SHERIFF_DECLARE event; the aggregated SHERIFF_ELECTED below carries
-    # the full candidates list so the frontend learns who ran for sheriff
-    # only once the candidacy window has closed.
+    # SHERIFF_DECLARE event during the registration loop (a real-time
+    # leak would let the rest of the table watch the seer/wolf decide
+    # whether to run). Once the window closes, publish the full list
+    # in one SHERIFF_CANDIDATES_DECLARED event so the frontend can
+    # render the registration result before speeches begin.
     candidates: list[int] = []
     for player_id in alive:
         if state["players"][player_id]["faction"] == Faction.WOLF:
@@ -55,12 +57,26 @@ async def handle_sheriff_election(state: GameState, services: SessionServices) -
             wants_to_run = await _decide_candidacy(state, services, player_id)
         if wants_to_run:
             candidates.append(player_id)
+    candidates.sort()
+
+    # Publish the registration result before any campaign speech.
+    emit_event(services, state, events, EventType.SHERIFF_CANDIDATES_DECLARED,
+               {"candidates": list(candidates)})
+    if candidates:
+        names = "、".join(f"{pid} 号" for pid in candidates)
+        emit_event(services, state, events, EventType.NARRATION,
+                   {"text": f"竞选报名结束 · 上警玩家：{names}",
+                    "kind": "gold", "round": state["round"], "phase": state["phase"].value})
+    else:
+        emit_event(services, state, events, EventType.NARRATION,
+                   {"text": "竞选报名结束 · 无人上警",
+                    "kind": "info", "round": state["round"], "phase": state["phase"].value})
 
     if not candidates:
         emit_event(services, state, events, EventType.SHERIFF_ELECTED,
                    {"player_id": None, "candidates": [], "votes": {}, "reason": "no candidates"})
         emit_event(services, state, events, EventType.NARRATION,
-                   {"text": "无人参选 · 警徽流落", "kind": "info",
+                   {"text": "警徽流落 · 本局无警长", "kind": "info",
                     "round": state["round"], "phase": state["phase"].value})
         return PhaseResult(actions=actions, events=events, persisted_event_count=len(events))
 
@@ -73,17 +89,16 @@ async def handle_sheriff_election(state: GameState, services: SessionServices) -
         emit_event(services, state, events, EventType.NARRATION,
                    {"text": f"{sheriff_id} 号自动当选警长", "kind": "gold",
                     "round": state["round"], "phase": state["phase"].value})
-        direction = await _sheriff_pick_direction(state, services, sheriff_id)
-        emit_event(services, state, events, EventType.SHERIFF_DIRECTION,
-                   {"player_id": sheriff_id, "clockwise": direction})
+        # Speech direction is decided at the start of each day_speech
+        # phase (where the sheriff is actually asked). Not picked here.
         return PhaseResult(
-            state_patch={"sheriff_id": sheriff_id, "players": players_patch, "sheriff_speech_clockwise": direction},
+            state_patch={"sheriff_id": sheriff_id, "players": players_patch},
             actions=actions, events=events, persisted_event_count=len(events),
         )
 
-    # Phase 2: Campaign speeches
-    speech_order = list(candidates)
-    services.rng.shuffle(speech_order)
+    # Phase 2: Campaign speeches — seat order (lowest seat first), the
+    # standard for werewolf judging. No RNG shuffle.
+    speech_order = sorted(candidates)
     for player_id in speech_order:
         role = state["players"][player_id]["role"]
         emit_speaking_started(services, state, events, player_id=player_id)
@@ -163,12 +178,11 @@ async def handle_sheriff_election(state: GameState, services: SessionServices) -
                {"text": f"{sheriff_id} 号当选警长", "kind": "gold",
                 "round": state["round"], "phase": state["phase"].value})
 
-    direction = await _sheriff_pick_direction(state, services, sheriff_id)
-    emit_event(services, state, events, EventType.SHERIFF_DIRECTION,
-               {"player_id": sheriff_id, "clockwise": direction})
+    # Speech direction is decided at the start of each day_speech phase
+    # (where the sheriff is actually consulted). Not picked here.
 
     return PhaseResult(
-        state_patch={"sheriff_id": sheriff_id, "players": players_patch, "sheriff_speech_clockwise": direction},
+        state_patch={"sheriff_id": sheriff_id, "players": players_patch},
         actions=actions, events=events, persisted_event_count=len(events),
     )
 
@@ -345,11 +359,6 @@ async def _decide_candidacy(state: GameState, services: "SessionServices", playe
         return False
     target_id = result.tool_args.get("target_id")
     return target_id is not None and int(target_id) == player_id
-
-
-async def _sheriff_pick_direction(state: GameState, services: "SessionServices", sheriff_id: int) -> bool:
-    """True=clockwise, False=counter-clockwise."""
-    return services.rng.random() < 0.5
 
 
 def _validate_or_raise(state, services, *, actor_id, role, phase, tool_name, args):

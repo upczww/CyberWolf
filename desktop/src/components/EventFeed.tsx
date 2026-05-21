@@ -52,6 +52,14 @@ function formatEvent(ev: GameEvent): { text: string; highlight?: boolean } {
     return { text: `🏆 ${w} 获胜！`, highlight: true }
   }
   if (etype === 'sheriff_declare') return { text: `✋ ${data.player_id}号参选警长` }
+  if (etype === 'sheriff_candidates_declared') {
+    const list = (data.candidates as number[] | undefined) || []
+    if (list.length === 0) return { text: '✋ 警长竞选报名结束：无人上警' }
+    return { text: `✋ 警长竞选报名结束：${list.map((s) => `${s}号`).join('、')}`, highlight: true }
+  }
+  if (etype === 'sheriff_direction') {
+    return { text: `🧭 警长指定发言方向：${data.clockwise ? '顺时针（警左起）' : '逆时针（警右起）'}` }
+  }
   if (etype === 'wolf_self_destruct') return { text: `💥 ${data.player_id}号狼人自爆！`, highlight: true }
   if (ev.content === 'event.hunter_shot') return { text: `🏹 ${data.actor_id}号猎人开枪带走 ${data.target_id}号！`, highlight: true }
   if (ev.content === 'event.idiot_revealed') return { text: `🎭 ${data.actor_id || data.player_id}号白痴翻牌` }

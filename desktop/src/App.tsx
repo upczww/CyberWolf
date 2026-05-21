@@ -1415,16 +1415,23 @@ function SheriffPanel({
   gameId: string | null
   events: GameEvent[]
 }) {
-  // Candidates list comes ONLY from the aggregated sheriff_elected event.
-  // While the candidacy + speech window is open the panel shows "等待报名…"
-  // so we don't leak the candidate set incrementally as each campaign
-  // speech arrives. Same principle as vote_resolved — backend ships one
-  // complete result, frontend renders it once.
+  // Candidates list comes from the aggregated `sheriff_candidates_declared`
+  // event (emitted right after the registration window closes, before
+  // campaign speeches begin). Falls back to `sheriff_elected.candidates`
+  // for older transcripts that didn't emit the explicit event. Either way
+  // it's a single complete result — no incremental leak from per-player
+  // declarations during the candidacy loop.
   const candidates = useMemo(() => {
+    const declared = [...events].reverse().find((ev) => ev.event_type === 'sheriff_candidates_declared')
+    const fromDeclared = (declared?.data?.candidates as number[] | undefined)
+    if (fromDeclared !== undefined) {
+      const seats = new Set(fromDeclared.map((s) => Number(s)))
+      return players.filter((p) => seats.has(p.seat_index))
+    }
     const resolved = [...events].reverse().find((ev) => ev.event_type === 'sheriff_elected')
     const fromResolved = (resolved?.data?.candidates as number[] | undefined) || []
-    const candidateSeats = new Set(fromResolved.map((s) => Number(s)))
-    return players.filter((p) => candidateSeats.has(p.seat_index))
+    const seats = new Set(fromResolved.map((s) => Number(s)))
+    return players.filter((p) => seats.has(p.seat_index))
   }, [events, players])
   const resolvedSheriff = [...events].reverse().find((ev) => ev.event_type === 'sheriff_elected')
   const sheriffVotes: Record<number, number | null> = (resolvedSheriff?.data?.votes as any) || {}

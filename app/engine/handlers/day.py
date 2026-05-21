@@ -104,6 +104,8 @@ async def handle_day_speech(state: GameState, services: SessionServices) -> Phas
             direction_clockwise = day_index % 2 == 1
         # Stash on state so _determine_speech_order picks it up.
         state = apply_state_patch(state, {"sheriff_speech_clockwise": direction_clockwise})
+        emit_event(services, state, events, EventType.SHERIFF_DIRECTION,
+                   {"player_id": sheriff_id, "clockwise": direction_clockwise})
         emit_event(services, state, events, EventType.NARRATION,
                    {"text": f"警长指定本日发言方向：{'顺时针（警左起）' if direction_clockwise else '逆时针（警右起）'}",
                     "kind": "gold",
