@@ -26,7 +26,11 @@ _log = logging.getLogger(__name__)
 async def handle_pending_skills(state: GameState, services: SessionServices) -> PhaseResult:
     pending = list(state["pending_skills"])
     if not pending:
-        return PhaseResult(next_phase_override=Phase.CHECK_WIN)
+        # Nothing to resolve — skip the phase entirely so the village
+        # doesn't see a misleading "结算死亡技能" banner pop up when
+        # no hunter / sheriff is queued. Skip means: no phase_started
+        # event, no narration, no phase_ended; the loop just moves on.
+        return PhaseResult(skip_phase=True, next_phase_override=Phase.CHECK_WIN)
 
     players_patch: dict[int, dict] = {}
     dead_history = list(state["dead_history"])
