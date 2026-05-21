@@ -1027,8 +1027,10 @@ function SheriffPanel({
           <h2>当前竞选者（{candidates.length}/12）</h2>
           <div className="candidate-row">
             {candidates.map((player) => (
+              // Candidate identity is hidden during sheriff election — only
+              // the seat number is public, never the role-specific portrait.
               <div key={player.seat_index} className="candidate-avatar">
-                <img src={portraitForPlayer(player, gameId)} alt="" />
+                <img src={unknownPortraitForSeat(player.seat_index)} alt="" />
                 <b>{player.seat_index}</b>
                 <span>玩家{player.seat_index}</span>
               </div>

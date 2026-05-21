@@ -32,6 +32,12 @@ const FIXED_ROLE_PORTRAITS: Record<string, string> = {
 }
 
 export function portraitForPlayer(player: Pick<Player, 'role' | 'seat_index'>, gameId?: string | null): string {
+  // Unknown / masked roles must never resolve to a real role portrait —
+  // that would leak identity in personal mode where the backend sends
+  // role='unknown' for other seats. Fall back to the cloak.
+  if (!player.role || player.role === 'unknown') {
+    return unknownPortraitForSeat(player.seat_index)
+  }
   const role = normalizeRole(player.role)
   if (role === 'villager') {
     return pickStable(VILLAGER_PORTRAITS, gameId, player.seat_index, role)
@@ -39,7 +45,7 @@ export function portraitForPlayer(player: Pick<Player, 'role' | 'seat_index'>, g
   if (role === 'werewolf') {
     return pickStable(WEREWOLF_PORTRAITS, gameId, player.seat_index, role)
   }
-  return FIXED_ROLE_PORTRAITS[role] || VILLAGER_PORTRAITS[0]
+  return FIXED_ROLE_PORTRAITS[role] || unknownPortraitForSeat(player.seat_index)
 }
 
 export function unknownPortraitForSeat(seatIndex: number): string {
@@ -48,7 +54,7 @@ export function unknownPortraitForSeat(seatIndex: number): string {
 
 function normalizeRole(role: string): string {
   if (role === 'wolf') return 'werewolf'
-  return role || 'villager'
+  return role
 }
 
 function pickStable(items: string[], gameId: string | null | undefined, seatIndex: number, role: string): string {

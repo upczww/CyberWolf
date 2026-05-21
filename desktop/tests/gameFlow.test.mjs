@@ -138,6 +138,20 @@ test('deriveBackendProgress keeps awaiting that matches the current phase', () =
   assert.equal(progress.awaitingHuman?.phase, 'night_witch')
 })
 
+test('portraitForPlayer hides identity for masked or empty roles', () => {
+  // Personal mode masks other players' roles as 'unknown'. The portrait
+  // resolver must NOT fall through to a real role portrait (information
+  // leak) — it has to return the cloak/AI placeholder.
+  const masked = portraits.portraitForPlayer({ role: 'unknown', seat_index: 4 }, 'game-x')
+  const empty = portraits.portraitForPlayer({ role: '', seat_index: 7 }, 'game-x')
+  const unknownExpected4 = portraits.unknownPortraitForSeat(4)
+  const unknownExpected7 = portraits.unknownPortraitForSeat(7)
+  assert.equal(masked, unknownExpected4)
+  assert.equal(empty, unknownExpected7)
+  assert.ok(!portraits.VILLAGER_PORTRAITS.includes(masked))
+  assert.ok(!portraits.WEREWOLF_PORTRAITS.includes(masked))
+})
+
 test('portraitForPlayer picks stable per-game villager and werewolf variants', () => {
   const villager = { role: 'villager', seat_index: 3 }
   const wolf = { role: 'wolf', seat_index: 8 }
