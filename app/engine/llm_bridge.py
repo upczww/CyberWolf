@@ -213,6 +213,8 @@ async def _await_human_action(
 
 def _human_timeout_seconds(tool_name: str, phase: Phase) -> float:
     """Longer thinking windows for the human-controlled local seat."""
+    if tool_name == "confirm_identity":
+        return 30.0  # short — just enough to read the identity card
     if tool_name in {"public_speech", "death_speech"}:
         return 180.0
     if tool_name == "vote_target":

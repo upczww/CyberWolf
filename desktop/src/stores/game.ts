@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { deriveBackendProgress, mergeGameEvents } from '../lib/gameFlow'
 
 export interface GameEvent {
   game_id: string
@@ -104,8 +105,16 @@ export const useGameStore = create<GameState>((set) => ({
 
   setGameId: (id) => set({ gameId: id }),
   setPlayers: (players) => set({ players }),
-  addEvent: (event) => set((s) => ({ events: [...s.events, event] })),
-  setEvents: (events) => set({ events }),
+  addEvent: (event) => set((s) => {
+    const events = mergeGameEvents(s.events, event)
+    const progress = deriveBackendProgress(events, s)
+    return { events, ...progress }
+  }),
+  setEvents: (incomingEvents) => set((s) => {
+    const events = mergeGameEvents([], incomingEvents)
+    const progress = deriveBackendProgress(events, s)
+    return { events, ...progress }
+  }),
   setStatus: (status) => set({ status }),
   setWinner: (winner) => set({ winner }),
   setPhase: (phase) => set({ phase }),

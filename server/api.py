@@ -318,13 +318,34 @@ async def start_game(req: StartGameRequest):
 
 @app.delete("/api/games/{game_id}")
 async def delete_game(game_id: str):
-    """Delete a game."""
+    """Stop a running game and delete its records.
+
+    1) Cancel the engine task if it's still running so handlers stop awaiting.
+    2) Cancel any outstanding human-awaiter futures so the frontend isn't
+       stuck on a tool it'll never submit.
+    3) Drop the SQLite rows.
+    """
     from app.infra.repositories.games import delete_game as db_delete_game
+    # 1) Cancel the engine task
+    active = _active_games.pop(game_id, None)
+    if active is not None:
+        _bus, task = active
+        if not task.done():
+            task.cancel()
+    # 2) Cancel any pending human awaiter futures
+    awaiter = _human_awaiters.pop(game_id, None)
+    if awaiter is not None:
+        try:
+            await awaiter.cancel_all()
+        except Exception:
+            pass
+    _human_seats.pop(game_id, None)
+    # 3) Delete DB rows
     paths = _get_paths()
     conn = connect_database(paths.database)
     try:
         db_delete_game(conn, game_id=game_id)
-        return {"deleted": game_id}
+        return {"deleted": game_id, "stopped": active is not None}
     finally:
         conn.close()
 

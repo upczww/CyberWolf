@@ -4,7 +4,7 @@ import GameEffects from './components/GameEffects'
 import GameProgress from './components/GameProgress'
 import HumanActionPanel from './components/HumanActionPanel'
 import IdentityReveal, { hasSeenIdentityReveal } from './components/IdentityReveal'
-import { apiGet, apiPost } from './hooks/useApi'
+import { apiDelete, apiGet, apiPost } from './hooks/useApi'
 import { useGameWS } from './hooks/useGameWS'
 import { UNKNOWN_CLOAK, portraitForPlayer, unknownPortraitForSeat } from './lib/portraits'
 import { useGameStore, type GameEvent, type Player } from './stores/game'
@@ -363,6 +363,23 @@ export default function App() {
     setLegendOpen(false)
   }
 
+  // Hard exit: tell the backend to cancel the engine task + drop the row,
+  // then clear local state. Backend is authoritative — even if the DELETE
+  // request fails (e.g. game already ended), we still reset the UI.
+  const exitGame = useCallback(async () => {
+    if (!gameId) {
+      resetToLanding()
+      return
+    }
+    if (!window.confirm('确定退出当前对局？后端引擎会立即停止并删除该局记录。')) return
+    try {
+      await apiDelete(`/api/games/${gameId}`)
+    } catch {
+      // ignore — frontend resets either way
+    }
+    resetToLanding()
+  }, [gameId])
+
   if (!gameId) {
     return (
       <LandingScreen
@@ -397,6 +414,7 @@ export default function App() {
           setHistoryTab('settle')
         }}
         onSettings={toggleTts}
+        onExit={exitGame}
         ttsEnabled={ttsEnabled}
       />
 
@@ -564,6 +582,7 @@ function TopBar({
   onHistory,
   onInspector,
   onSettings,
+  onExit,
 }: {
   roomId: string
   round: number
@@ -574,6 +593,7 @@ function TopBar({
   onHistory: () => void
   onInspector: () => void
   onSettings: () => void
+  onExit: () => void
 }) {
   return (
     <header className="game-topbar">
@@ -596,6 +616,7 @@ function TopBar({
         <IconButton icon={`${A}/icons/actions/icon_action_record.png`} label="记录" onClick={onHistory} />
         <IconButton icon={`${A}/icons/actions/icon_action_history.png`} label="历史" onClick={onInspector} />
         <IconButton icon={`${A}/icons/actions/icon_action_settings.png`} label="设置" onClick={onSettings} active={ttsEnabled} />
+        <IconButton icon={`${A}/icons/actions/icon_game_stop.png`} label="退出" onClick={onExit} danger />
       </div>
     </header>
   )
@@ -1293,15 +1314,17 @@ function IconButton({
   icon,
   label,
   active,
+  danger,
   onClick,
 }: {
   icon: string
   label: string
   active?: boolean
+  danger?: boolean
   onClick?: () => void
 }) {
   return (
-    <button className={`icon-button ${active ? 'active' : ''}`} onClick={onClick}>
+    <button className={`icon-button ${active ? 'active' : ''} ${danger ? 'danger' : ''}`} onClick={onClick}>
       <img src={icon} alt="" />
       <span>{label}</span>
     </button>
