@@ -13,7 +13,7 @@ import {
   readInviteFromUrl, setNickname as persistNickname,
 } from './lib/identity'
 import { UNKNOWN_CLOAK, portraitForPlayer, unknownPortraitForSeat } from './lib/portraits'
-import { useGameStore, type GameEvent, type Player } from './stores/game'
+import { useGameStore, type AwaitingHumanRequest, type GameEvent, type Player } from './stores/game'
 
 type ViewMode = 'god' | 'observer' | 'self'
 type PhaseTone = 'day' | 'night' | 'vote' | 'skill' | 'result'
@@ -331,6 +331,16 @@ export default function App() {
     ? awaitingHuman.actor_id
     : null
   const currentSpeaker = latestSpeaker(events) || awaitingForHighlight || humanSeat || 0
+  // CenterStage's timer only renders when SOMEONE ELSE is on the clock —
+  // when it's YOUR own turn, the HumanActionPanel modal already shows
+  // its own countdown, so duplicating it would just be noise. We also
+  // hide it for silent/private prompts (sheriff_candidacy, etc.) where
+  // showing a countdown would leak who's being asked.
+  const awaitingHumanForTimer = awaitingHuman
+    && awaitingHuman.actor_id !== humanSeat
+    && !silentAwaiterTools.has(awaitingHuman.tool_name)
+    ? awaitingHuman
+    : null
   const roomId = gameId ? gameId.slice(0, 6) : '------'
 
   // Derive current sheriff seat from events. loadGameDetail only runs
@@ -631,6 +641,7 @@ export default function App() {
           currentSpeaker={currentSpeaker}
           winner={winner}
           connected={connected}
+          awaitingHumanForTimer={awaitingHumanForTimer}
         />
 
         <PlayerColumn
@@ -1044,6 +1055,7 @@ function CenterStage({
   currentSpeaker,
   winner,
   connected,
+  awaitingHumanForTimer,
 }: {
   phase: string
   meta: PhaseMeta
@@ -1053,6 +1065,7 @@ function CenterStage({
   currentSpeaker: number
   winner: string | null
   connected: boolean
+  awaitingHumanForTimer: AwaitingHumanRequest | null
 }) {
   const latest = events[events.length - 1]
   if (phase === 'sheriff_election') {
@@ -1074,11 +1087,10 @@ function CenterStage({
               ? `${currentSpeaker}${meta.actionLabel}`
               : (meta.actionLabel || meta.shortLabel)}
         </h1>
-        <div className="timer-row">
-          <img src={`${A}/icons/actions/icon_speed_config.png`} alt="" />
-          <div className="timer-track"><span /></div>
-          <b>{phase === 'night_witch' ? '120s' : '60s'}</b>
-        </div>
+        {/* Real countdown — only renders when an awaitingHuman event is
+            live for a seat OTHER than yours (the modal already shows
+            your own countdown). Hidden when nobody is on the clock. */}
+        <PhaseTimer awaitingHuman={awaitingHumanForTimer} />
       </section>
 
       <nav className="phase-tabs">
@@ -1098,6 +1110,45 @@ function CenterStage({
         ? <VotePanel players={players} events={events} />
         : <NoticePanel latest={latest} connected={connected} />}
     </section>
+  )
+}
+
+/**
+ * Real countdown chip + progress bar for the seat currently on the
+ * clock. Snapshots the start time when awaitingHuman changes (or the
+ * actor/tool changes); ticks every 200ms so the bar animates smoothly.
+ * Renders nothing when there's no awaiter to track.
+ */
+function PhaseTimer({ awaitingHuman }: { awaitingHuman: AwaitingHumanRequest | null }) {
+  const total = awaitingHuman ? Math.max(1, Math.floor(awaitingHuman.timeout_seconds || 60)) : 0
+  const startRef = useRef<number>(0)
+  const [now, setNow] = useState<number>(() => Date.now())
+
+  // Reset the clock whenever a new awaiter fires (or any field changes
+  // such that "this is a different prompt"). Tick on a 200ms interval
+  // for smooth bar motion; only render when an awaiter is active.
+  useEffect(() => {
+    if (!awaitingHuman) return
+    startRef.current = Date.now()
+    setNow(Date.now())
+    const id = window.setInterval(() => setNow(Date.now()), 200)
+    return () => window.clearInterval(id)
+  }, [awaitingHuman?.actor_id, awaitingHuman?.tool_name, awaitingHuman?.phase, awaitingHuman?.round])
+
+  if (!awaitingHuman || total <= 0) return null
+  const elapsed = (now - startRef.current) / 1000
+  const remaining = Math.max(0, Math.ceil(total - elapsed))
+  const progress = Math.max(0, Math.min(1, 1 - elapsed / total))
+  const urgent = remaining <= 10
+
+  return (
+    <div className={`timer-row ${urgent ? 'urgent' : ''}`}>
+      <img src={`${A}/icons/actions/icon_speed_config.png`} alt="" />
+      <div className="timer-track">
+        <span style={{ transform: `scaleX(${progress})` }} />
+      </div>
+      <b>{remaining}s</b>
+    </div>
   )
 }
 
