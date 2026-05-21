@@ -118,6 +118,7 @@ async def handle_night_wolf(state: GameState, services: SessionServices) -> Phas
         emit_event(services, state, events, EventType.WOLF_TARGET_SELECTED,
                    {"votes": votes, "target_id": selected},
                    scope=EventScope.WOLF_TEAM, targets=set(wolves))
+        await _hold_night_phase(phase_start)
         return PhaseResult(
             state_patch={"night_actions": {"wolf_votes": votes, "wolf_target": selected}},
             events=events, persisted_event_count=len(events),
