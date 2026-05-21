@@ -280,6 +280,12 @@ export default function App() {
   const [lobbyError, setLobbyError] = useState<string | null>(null)
   const userIdRef = useRef<string>('')
   if (!userIdRef.current) userIdRef.current = getOrCreateUserId()
+  // Match-records dialog (landing page → 对局记录) + replay flag.
+  // replayMode=true means we entered the game UI by clicking a past
+  // game (not by starting a fresh one) — exit button just navigates
+  // back instead of DELETEing, IdentityReveal is skipped, etc.
+  const [matchRecordsOpen, setMatchRecordsOpen] = useState(false)
+  const [replayMode, setReplayMode] = useState(false)
   const [loadingStart, setLoadingStart] = useState(false)
   const startingRef = useRef(false)
   const [startError, setStartError] = useState<string | null>(null)
@@ -459,7 +465,19 @@ export default function App() {
     setLegendOpen(false)
     setRoom(null)
     setLobbyError(null)
+    setReplayMode(false)
+    setMatchRecordsOpen(false)
   }
+
+  /** Open a finished game in replay mode — god view, no awaiter, no
+   * IdentityReveal, exit just navigates back. */
+  const openReplay = useCallback((gid: string) => {
+    setMatchRecordsOpen(false)
+    setReplayMode(true)
+    setViewMode('god')
+    setHumanSeat(null)
+    setGameId(gid)
+  }, [setGameId, setHumanSeat, setViewMode])
 
   /** Prompt for a nickname (uses saved one if available) and persist it. */
   const ensureNickname = (): string | null => {
@@ -554,8 +572,10 @@ export default function App() {
   // Hard exit: tell the backend to cancel the engine task + drop the row,
   // then clear local state. Backend is authoritative — even if the DELETE
   // request fails (e.g. game already ended), we still reset the UI.
+  // In replay mode we just navigate back — never delete a finished game
+  // you're only viewing.
   const exitGame = useCallback(async () => {
-    if (!gameId) {
+    if (!gameId || replayMode) {
       resetToLanding()
       return
     }
@@ -566,7 +586,7 @@ export default function App() {
       // ignore — frontend resets either way
     }
     resetToLanding()
-  }, [gameId])
+  }, [gameId, replayMode])
 
   if (room) {
     return (
@@ -585,16 +605,25 @@ export default function App() {
 
   if (!gameId) {
     return (
-      <LandingScreen
-        mode={landingMode}
-        loading={loadingStart}
-        ttsEnabled={ttsEnabled}
-        onModeChange={setLandingMode}
-        onStart={(useLlm) => startGame(useLlm)}
-        onToggleTts={toggleTts}
-        onCreateLobby={createLobby}
-        error={startError || lobbyError}
-      />
+      <>
+        <LandingScreen
+          mode={landingMode}
+          loading={loadingStart}
+          ttsEnabled={ttsEnabled}
+          onModeChange={setLandingMode}
+          onStart={(useLlm) => startGame(useLlm)}
+          onToggleTts={toggleTts}
+          onCreateLobby={createLobby}
+          onOpenMatchRecords={() => setMatchRecordsOpen(true)}
+          error={startError || lobbyError}
+        />
+        {matchRecordsOpen && (
+          <MatchRecordsDialog
+            onSelect={openReplay}
+            onClose={() => setMatchRecordsOpen(false)}
+          />
+        )}
+      </>
     )
   }
 
@@ -829,6 +858,7 @@ function LandingScreen({
   onStart,
   onToggleTts,
   onCreateLobby,
+  onOpenMatchRecords,
   error,
 }: {
   mode: ViewMode
@@ -838,6 +868,7 @@ function LandingScreen({
   onStart: (useLlm: boolean) => void
   onToggleTts: () => void
   onCreateLobby: (useLlm: boolean) => void
+  onOpenMatchRecords: () => void
   error?: string | null
 }) {
   const [panel, setPanel] = useState<{ title: string; body: string } | null>(null)
@@ -856,7 +887,7 @@ function LandingScreen({
           <IconButton
             icon={`${A}/icons/actions/icon_landing_match_records.png`}
             label="对局记录"
-            onClick={() => setPanel({ title: '对局记录', body: '这里展示历史对局入口。进入对局后可在右侧记录面板查看聊天、投票和结算记录。' })}
+            onClick={onOpenMatchRecords}
           />
           <IconButton icon={ttsEnabled ? `${A}/icons/actions/icon_landing_sound_on.png` : `${A}/icons/actions/icon_landing_sound_off.png`} label={ttsEnabled ? '声音开' : '声音关'} onClick={onToggleTts} active={ttsEnabled} />
           <IconButton icon={`${A}/icons/actions/icon_landing_help.png`} label="帮助" onClick={() => setPanel({ title: '帮助', body: '个人视角只显示自己的身份和操作；上帝视角显示全局身份、技能与投票。点击两张模式卡可选择开局方式。' })} />
@@ -1630,6 +1661,102 @@ function StatusLegend({ onClose }: { onClose: () => void }) {
       ))}
     </aside>
   )
+}
+
+interface MatchSummary {
+  id: string
+  config_id?: string | null
+  status?: string | null
+  winner?: string | null
+  round_count?: number | null
+  started_at?: string | null
+  ended_at?: string | null
+}
+
+function MatchRecordsDialog({
+  onSelect, onClose,
+}: { onSelect: (gameId: string) => void; onClose: () => void }) {
+  const [games, setGames] = useState<MatchSummary[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    let cancelled = false
+    void (async () => {
+      try {
+        const list = await apiGet<MatchSummary[]>('/api/games?limit=30')
+        if (!cancelled) setGames(Array.isArray(list) ? list : [])
+      } catch (err) {
+        if (!cancelled) setError(err instanceof Error ? err.message : '加载失败')
+      } finally {
+        if (!cancelled) setLoading(false)
+      }
+    })()
+    return () => { cancelled = true }
+  }, [])
+
+  return (
+    <section className="info-backdrop" onClick={onClose}>
+      <article className="match-records-dialog" onClick={(event) => event.stopPropagation()}>
+        <header>
+          <h2>对局记录</h2>
+          <button className="drawer-close" onClick={onClose}>×</button>
+        </header>
+        {loading && <div className="match-records-empty">加载中…</div>}
+        {error && !loading && <div className="match-records-empty">{error}</div>}
+        {!loading && !error && games.length === 0 && (
+          <div className="match-records-empty">暂无对局记录</div>
+        )}
+        {!loading && !error && games.length > 0 && (
+          <ul className="match-records-list">
+            {games.map((g) => (
+              <li key={g.id}>
+                <button className="match-record-row" onClick={() => onSelect(g.id)}>
+                  <div className="match-record-id">
+                    <b>#{g.id.slice(0, 8).toUpperCase()}</b>
+                    <span>{g.config_id || ''}</span>
+                  </div>
+                  <div className="match-record-meta">
+                    <span>{formatGameTime(g.started_at) || '—'}</span>
+                    <span>{g.round_count ? `${g.round_count} 轮` : '—'}</span>
+                  </div>
+                  <WinnerChip status={g.status} winner={g.winner} />
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+        <footer className="match-records-hint">点击任意一局，进入复盘查看发言/投票/结算记录</footer>
+      </article>
+    </section>
+  )
+}
+
+function WinnerChip({ status, winner }: { status?: string | null; winner?: string | null }) {
+  if (status === 'failed') return <span className="winner-chip tone-bad">异常</span>
+  if (winner === 'wolf') return <span className="winner-chip tone-wolf">🐺 狼人胜</span>
+  if (winner === 'good' || winner === 'villager' || winner === 'good_camp')
+    return <span className="winner-chip tone-good">🌟 好人胜</span>
+  if (status === 'completed') return <span className="winner-chip tone-neutral">已结束</span>
+  if (status === 'running') return <span className="winner-chip tone-live">进行中</span>
+  return <span className="winner-chip tone-neutral">{status || '未知'}</span>
+}
+
+function formatGameTime(iso?: string | null): string | null {
+  if (!iso) return null
+  // Backend writes ISO timestamps with +08:00 offset. Render a short
+  // friendly form: "MM-DD HH:mm" — drops year + seconds for density.
+  try {
+    const d = new Date(iso)
+    if (Number.isNaN(d.getTime())) return iso.slice(5, 16).replace('T', ' ')
+    const mm = String(d.getMonth() + 1).padStart(2, '0')
+    const dd = String(d.getDate()).padStart(2, '0')
+    const hh = String(d.getHours()).padStart(2, '0')
+    const mi = String(d.getMinutes()).padStart(2, '0')
+    return `${mm}-${dd} ${hh}:${mi}`
+  } catch {
+    return iso
+  }
 }
 
 function InfoDialog({ title, body, onClose }: { title: string; body: string; onClose: () => void }) {

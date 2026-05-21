@@ -1661,6 +1661,143 @@ img {
   font-size: 20px;
 }
 
+/* ---------------------------------------------------------------
+   Match records dialog — landing → 对局记录 → list of past games.
+   --------------------------------------------------------------- */
+.match-records-dialog {
+  position: relative;
+  width: min(680px, 92vw);
+  max-height: 78vh;
+  display: flex;
+  flex-direction: column;
+  padding: 24px 28px;
+  border: 1px solid rgba(232, 172, 61, .32);
+  border-radius: 18px;
+  background: linear-gradient(180deg, rgba(18, 31, 47, .96), rgba(8, 17, 29, .98));
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.08), 0 24px 70px rgba(0,0,0,.48);
+  color: #f4ead4;
+}
+
+.match-records-dialog header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+.match-records-dialog header h2 {
+  margin: 0;
+  color: var(--gold-soft);
+  font-size: 22px;
+  letter-spacing: 0.05em;
+}
+
+.match-records-empty {
+  padding: 40px 0;
+  text-align: center;
+  color: rgba(244, 234, 212, .55);
+  font-size: 15px;
+}
+
+.match-records-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.match-record-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1.2fr) auto;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  padding: 12px 16px;
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 10px;
+  background: rgba(255,255,255,.04);
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background .15s ease, border-color .15s ease, transform .15s ease;
+}
+.match-record-row:hover {
+  background: rgba(232, 172, 61, .12);
+  border-color: rgba(232, 172, 61, .45);
+  transform: translateY(-1px);
+}
+
+.match-record-id {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+.match-record-id b {
+  font-size: 15px;
+  font-weight: 800;
+  color: #ffe2a0;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+.match-record-id span {
+  font-size: 12px;
+  color: rgba(244, 234, 212, .55);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.match-record-meta {
+  display: grid;
+  gap: 2px;
+  font-size: 13px;
+  color: rgba(244, 234, 212, .72);
+}
+
+.winner-chip {
+  padding: 4px 12px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+.winner-chip.tone-good {
+  background: rgba(120, 200, 140, .18);
+  border: 1px solid rgba(120, 200, 140, .55);
+  color: #c8f0c8;
+}
+.winner-chip.tone-wolf {
+  background: rgba(220, 80, 64, .18);
+  border: 1px solid rgba(220, 80, 64, .6);
+  color: #ffb09c;
+}
+.winner-chip.tone-bad {
+  background: rgba(140, 140, 140, .18);
+  border: 1px solid rgba(180, 90, 90, .5);
+  color: #f0b0b0;
+}
+.winner-chip.tone-neutral {
+  background: rgba(255,255,255,.06);
+  border: 1px solid rgba(255,255,255,.18);
+  color: rgba(244, 234, 212, .8);
+}
+.winner-chip.tone-live {
+  background: rgba(132, 178, 232, .18);
+  border: 1px solid rgba(132, 178, 232, .55);
+  color: #cfe0fa;
+}
+
+.match-records-hint {
+  margin-top: 14px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(255,255,255,.06);
+  text-align: center;
+  font-size: 12px;
+  color: rgba(244, 234, 212, .5);
+}
+
 .skill-card {
   position: relative;
   width: 780px;
