@@ -351,13 +351,44 @@ export default function App() {
     return current
   }, [events])
 
+  // Death state — also has to be derived from events for the same
+  // reason as sheriff: the REST snapshot's `survived` / `death_cause`
+  // fields are frozen at game start. Walk player_died events and the
+  // related wolf_self_destruct / hunter_shot signals to mark seats as
+  // out, so the death badge + grayscale state actually fire.
+  const deathsBySeat = useMemo<Record<number, { cause: string; round: number }>>(() => {
+    const map: Record<number, { cause: string; round: number }> = {}
+    for (const ev of events) {
+      if (ev.event_type === 'player_died') {
+        const pid = Number(ev.data?.player_id)
+        if (!Number.isFinite(pid)) continue
+        const cause = String(ev.data?.cause || 'unknown')
+        const round = Number(ev.data?.round || ev.round || 0)
+        map[pid] = { cause, round }
+      } else if (ev.event_type === 'wolf_self_destruct') {
+        const pid = Number(ev.data?.player_id)
+        if (Number.isFinite(pid) && !map[pid]) {
+          map[pid] = { cause: 'self_destruct', round: Number(ev.data?.round || ev.round || 0) }
+        }
+      }
+    }
+    return map
+  }, [events])
+
   const playersWithSheriff = useMemo<Player[]>(() => {
-    if (sheriffSeat == null) return players
-    return players.map((p) => ({
-      ...p,
-      is_sheriff: p.seat_index === sheriffSeat ? 1 : 0,
-    }))
-  }, [players, sheriffSeat])
+    if (sheriffSeat == null && Object.keys(deathsBySeat).length === 0) return players
+    return players.map((p) => {
+      const death = deathsBySeat[p.seat_index]
+      const next: Player = { ...p }
+      if (sheriffSeat != null) next.is_sheriff = p.seat_index === sheriffSeat ? 1 : 0
+      if (death) {
+        next.survived = 0
+        next.death_cause = death.cause
+        next.death_round = death.round || next.death_round
+      }
+      return next
+    })
+  }, [players, sheriffSeat, deathsBySeat])
 
   const loadGameDetail = async (gid: string) => {
     try {
