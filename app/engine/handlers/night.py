@@ -33,6 +33,12 @@ def handle_night_start(state: GameState, services: SessionServices) -> PhaseResu
 
 
 async def handle_night_wolf(state: GameState, services: SessionServices) -> PhaseResult:
+    # Fire phase_started + "狼人请睁眼" narration BEFORE any LLM / awaiter
+    # blocking, so the banner is visible to every player the moment this
+    # phase begins (not deferred until the first emit_event).
+    from app.engine.session import _ensure_phase_started
+    _ensure_phase_started(services, state, services.conn, state["phase"], state["round"])
+
     wolves = living_wolves(state)
     targets = [pid for pid in alive_player_ids(state) if pid not in wolves]
     if not wolves or not targets:
@@ -108,6 +114,9 @@ async def handle_night_wolf(state: GameState, services: SessionServices) -> Phas
 
 
 async def handle_night_seer(state: GameState, services: SessionServices) -> PhaseResult:
+    from app.engine.session import _ensure_phase_started
+    _ensure_phase_started(services, state, services.conn, state["phase"], state["round"])
+
     seer_id = _find_alive_role(state, Role.SEER)
     if seer_id is None:
         return PhaseResult(events=[])
@@ -153,6 +162,12 @@ async def handle_night_seer(state: GameState, services: SessionServices) -> Phas
 
 
 async def handle_night_witch(state: GameState, services: SessionServices) -> PhaseResult:
+    # Fire "女巫请睁眼" narration BEFORE any LLM / awaiter — the witch's
+    # antidote/poison choices can each take seconds, and we want the
+    # village banner to appear the moment the phase starts.
+    from app.engine.session import _ensure_phase_started
+    _ensure_phase_started(services, state, services.conn, state["phase"], state["round"])
+
     witch_id = _find_alive_role(state, Role.WITCH)
     wolf_target = state["night_actions"].get("wolf_target")
     if witch_id is None:

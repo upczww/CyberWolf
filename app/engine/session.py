@@ -141,7 +141,8 @@ async def run_game_session(
             state = _apply_phase_result(state, result)
             continue
 
-        # Ensure phase_started was emitted (handlers with no live events won't have triggered it)
+        # Backup: ensure phase_started fires even if the handler emitted
+        # no events (so the narration banner always shows).
         _ensure_phase_started(services, state, conn, current_phase, current_round)
 
         # End event after handler actions
