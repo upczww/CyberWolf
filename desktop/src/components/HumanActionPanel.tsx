@@ -92,7 +92,12 @@ export default function HumanActionPanel({ request, gameId, players }: Props) {
 
   const skip = () => submit(request.local_args || {})
 
-  const title = TOOL_TITLES[request.tool_name] || request.tool_name
+  // vote_target overloads two phases: day-vote (放逐) and sheriff
+  // election. Use a phase-aware title so sheriff voting doesn't mislead
+  // the human into thinking they're voting to exile someone.
+  const title = request.tool_name === 'vote_target' && request.phase === 'sheriff_election'
+    ? '警长投票'
+    : (TOOL_TITLES[request.tool_name] || request.tool_name)
   const isSpeech = request.tool_name === 'public_speech' || request.tool_name === 'death_speech'
   const isWitchAntidote = request.tool_name === 'witch_antidote'
   const isWitchPoison = request.tool_name === 'witch_poison'

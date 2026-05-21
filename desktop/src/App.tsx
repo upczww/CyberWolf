@@ -1802,10 +1802,16 @@ function DockButton({ icon, label, onClick }: { icon: string; label: string; onC
   )
 }
 
-function visiblePlayer(player: Player, viewMode: ViewMode, humanSeat: number | null, gameId: string | null): VisiblePlayer {
-  const selfCanSee = viewMode === 'self' && player.seat_index === humanSeat
+function visiblePlayer(player: Player, viewMode: ViewMode, _humanSeat: number | null, gameId: string | null): VisiblePlayer {
+  // Trust the backend: it already decides which seats to reveal to this
+  // client. In self mode the server unmasks the viewer's own seat AND
+  // any wolf-team mates (so wolves see each other) AND dead players.
+  // Anything else arrives as role='unknown'. So if role is non-empty
+  // and not 'unknown', show it; otherwise render the cloak. God /
+  // observer mode forces reveal even if a role field is missing.
   const revealAll = viewMode === 'god' || viewMode === 'observer'
-  const hidden = !(selfCanSee || revealAll)
+  const hasRealRole = !!player.role && player.role !== 'unknown'
+  const hidden = !revealAll && !hasRealRole
   if (hidden) {
     return {
       player,
