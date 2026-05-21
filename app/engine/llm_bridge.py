@@ -253,6 +253,8 @@ def _human_timeout_seconds(tool_name: str, phase: Phase) -> float:
         return 30.0  # also a single-target reveal-style choice
     if tool_name == "sheriff_candidacy":
         return 30.0
+    if tool_name == "sheriff_pick_direction":
+        return 20.0  # quick 顺/逆 pick
     if phase in {Phase.DAY_SPEECH, Phase.SHERIFF_ELECTION}:
         return 90.0  # speech-phase fallback also capped at 90s
     return 30.0

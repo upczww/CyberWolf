@@ -26,6 +26,7 @@ class Phase(StrEnum):
     NIGHT_WITCH = "night_witch"
     NIGHT_GUARD = "night_guard"
     NIGHT_HUNTER = "night_hunter"
+    NIGHT_IDIOT_REVEAL = "night_idiot_reveal"
     NIGHT_RESOLVE = "night_resolve"
     DAY_ANNOUNCE = "day_announce"
     SHERIFF_ELECTION = "sheriff_election"

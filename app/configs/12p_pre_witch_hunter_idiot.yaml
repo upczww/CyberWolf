@@ -36,6 +36,7 @@ phase_order:
   - night_witch
   - night_seer
   - night_hunter
+  - night_idiot_reveal
   - night_resolve
   - pending_skills
   - check_win
@@ -86,4 +87,5 @@ tool_profile:
     - vote_target
     - hunter_shoot
     - sheriff_transfer
+    - sheriff_pick_direction
     - wolf_self_destruct

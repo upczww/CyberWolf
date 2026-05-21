@@ -126,6 +126,19 @@ TOOL_REGISTRY: dict[str, ToolSpec] = {
         enabled_phases=[Phase.PENDING_SKILLS],
         output_mode="tool_call",
     ),
+    "sheriff_pick_direction": ToolSpec(
+        name="sheriff_pick_direction",
+        description="As sheriff at the start of day_speech, pick the speech direction (clockwise from sheriff-left or counter-clockwise from sheriff-right). Sheriff speaks last either way.",
+        input_schema={
+            "type": "object",
+            "properties": {"clockwise": {"type": "boolean"}},
+            "required": ["clockwise"],
+            "additionalProperties": False,
+        },
+        enabled_roles=[role for role in Role],
+        enabled_phases=[Phase.DAY_SPEECH],
+        output_mode="tool_call",
+    ),
     "guard_protect": ToolSpec(
         name="guard_protect",
         description="Protect a target at night.",

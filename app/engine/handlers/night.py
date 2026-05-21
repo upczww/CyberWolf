@@ -347,6 +347,44 @@ async def handle_night_hunter(state: GameState, services: SessionServices) -> Ph
     return PhaseResult(events=events, persisted_event_count=len(events))
 
 
+async def handle_night_idiot_reveal(state: GameState, services: SessionServices) -> PhaseResult:
+    """First-night idiot wake-up ceremony.
+
+    Standard script: judge wakes the idiot only on night 1 to confirm
+    their role. No action — just a rhythm beat + private reminder of
+    the idiot's ability so the human idiot knows they survive an exile.
+
+    Skipped entirely on round >= 2 (no banner, no hold).
+    """
+    if state["round"] >= 2:
+        return PhaseResult(skip_phase=True)
+
+    from app.engine.session import _ensure_phase_started
+    _ensure_phase_started(services, state, services.conn, state["phase"], state["round"])
+    phase_start = _monotonic()
+
+    idiot_id = _find_alive_role(state, Role.IDIOT)
+    if idiot_id is None:
+        # Idiot already dead before round 1 ends? Shouldn't happen on
+        # night 1, but hold the rhythm anyway.
+        await _hold_night_phase(phase_start)
+        return PhaseResult(events=[])
+
+    events: list[GameEvent] = []
+    emit_event(
+        services, state, events, EventType.NARRATION,
+        {
+            "text": "你的身份是白痴 · 白天被投票放逐时可以翻牌存活，但之后失去投票权",
+            "kind": "info",
+            "round": state["round"],
+            "phase": state["phase"].value,
+        },
+        scope=EventScope.ROLE_PRIVATE, targets={idiot_id},
+    )
+    await _hold_night_phase(phase_start)
+    return PhaseResult(events=events, persisted_event_count=len(events))
+
+
 async def handle_night_resolve(state: GameState, services: SessionServices) -> PhaseResult:
     wolf_target = state["night_actions"].get("wolf_target")
     use_antidote = bool(state["night_actions"].get("witch_use_antidote"))

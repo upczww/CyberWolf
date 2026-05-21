@@ -20,6 +20,7 @@ const TOOL_TITLES: Record<string, string> = {
   death_speech: '遗言',
   sheriff_candidacy: '警长竞选',
   sheriff_transfer: '警长传警徽',
+  sheriff_pick_direction: '指定发言方向',
 }
 
 const UNKNOWN_AVATAR = '/assets/ui/icons/status/icon_status_identity_hidden.png'
@@ -220,6 +221,16 @@ export default function HumanActionPanel({ request, gameId, players }: Props) {
             <div className="action-buttons">
               <button onClick={() => submit({ target_id: request.actor_id })} disabled={submitting}>参选</button>
               <button className="ghost" onClick={() => submit({ target_id: null })} disabled={submitting}>不参选</button>
+            </div>
+          </div>
+        )}
+
+        {request.tool_name === 'sheriff_pick_direction' && (
+          <div className="witch-action">
+            <p>请指定今日的发言方向。警长归票（最后发言），其他玩家依次发言。</p>
+            <div className="action-buttons">
+              <button onClick={() => submit({ clockwise: true })} disabled={submitting}>顺时针 · 警左起</button>
+              <button onClick={() => submit({ clockwise: false })} disabled={submitting}>逆时针 · 警右起</button>
             </div>
           </div>
         )}

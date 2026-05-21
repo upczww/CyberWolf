@@ -8,7 +8,7 @@ from app.domain.roles import Phase
 from app.domain.state import PhaseResult
 
 from .day import handle_day_announce, handle_day_resolve, handle_day_speech, handle_day_vote
-from .night import handle_night_hunter, handle_night_resolve, handle_night_seer, handle_night_start, handle_night_witch, handle_night_wolf
+from .night import handle_night_hunter, handle_night_idiot_reveal, handle_night_resolve, handle_night_seer, handle_night_start, handle_night_witch, handle_night_wolf
 from .setup import handle_setup_game
 from .sheriff import handle_sheriff_election
 from .skills import handle_check_win, handle_game_over, handle_pending_skills
@@ -20,6 +20,7 @@ PHASE_HANDLERS = {
     Phase.NIGHT_SEER: handle_night_seer,
     Phase.NIGHT_WITCH: handle_night_witch,
     Phase.NIGHT_HUNTER: handle_night_hunter,
+    Phase.NIGHT_IDIOT_REVEAL: handle_night_idiot_reveal,
     Phase.NIGHT_RESOLVE: handle_night_resolve,
     Phase.DAY_ANNOUNCE: handle_day_announce,
     Phase.SHERIFF_ELECTION: handle_sheriff_election,

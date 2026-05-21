@@ -228,6 +228,7 @@ _PHASE_NARRATION: dict[str, tuple[str, str]] = {
     "night_seer":       ("good", "预言家请睁眼 · 请选择查验目标"),
     "night_guard":      ("good", "守卫请睁眼 · 选择今晚守护的玩家"),
     "night_hunter":     ("good", "猎人请睁眼 · 确认你今晚的开枪状态"),
+    "night_idiot_reveal": ("good", "白痴请睁眼 · 确认你的身份"),
     "night_resolve":    ("info", "天将亮起 · 裁判结算夜晚行动"),
     "sheriff_election": ("gold", "第 {round} 天 · 警长竞选阶段开始"),
     "day_speech":       ("info", "第 {round} 天 · 进入发言阶段"),

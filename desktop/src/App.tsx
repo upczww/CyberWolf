@@ -172,6 +172,14 @@ const PHASE_META: Record<string, PhaseMeta> = {
     // on death.
     actionLabel: '猎人确认开枪状态',
   },
+  night_idiot_reveal: {
+    label: '第 1 夜 · 夜晚',
+    shortLabel: '白痴睁眼',
+    tone: 'skill',
+    icon: `${A}/icons/actions/icon_landing_ai_autoplay.png`,
+    background: `${A}/backgrounds/bg_phase_night_overview.png`,
+    actionLabel: '白痴确认身份',
+  },
   setup_game: {
     label: '准备开局',
     shortLabel: '准备',
