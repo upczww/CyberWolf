@@ -245,7 +245,10 @@ img {
 .game-topbar {
   height: 96px;
   display: grid;
-  grid-template-columns: 62px 220px minmax(360px, 1fr) 260px;
+  /* Last track sized for 4 icon buttons (56px each + 20px gap) plus a
+     little breathing room. Was 260px when the topbar only had 3 buttons —
+     the exit button pushed it past budget and squashed the icons. */
+  grid-template-columns: 62px 220px minmax(360px, 1fr) 320px;
   align-items: start;
   gap: 16px;
   padding: 16px 22px 0;
@@ -355,6 +358,10 @@ img {
   justify-items: center;
   gap: 5px;
   min-width: 54px;
+  /* Don't let flex parent squish the button — img has fixed 56px and
+     global `img { max-width: 100% }` would otherwise distort the icon
+     by shrinking its width while the height stays fixed. */
+  flex-shrink: 0;
   background: transparent;
   color: rgba(242, 238, 231, .84);
   font-weight: 600;
@@ -365,6 +372,11 @@ img {
   height: 56px;
   padding: 8px;
   border-radius: 50%;
+  /* Override the global `img { max-width: 100% }` — that rule was
+     squashing the icon's width when the parent grid track got tight
+     while the height stayed at 56px, distorting the icon. */
+  max-width: none;
+  object-fit: contain;
   background: linear-gradient(180deg, rgba(38, 48, 63, .84), rgba(18, 25, 38, .78));
   box-shadow: inset 0 1px 0 rgba(255,255,255,.08), 0 12px 25px rgba(0,0,0,.23);
 }
