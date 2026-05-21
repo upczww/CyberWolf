@@ -301,16 +301,94 @@ async def handle_night_witch(state: GameState, services: SessionServices) -> Pha
     return PhaseResult(state_patch=patch, actions=actions, events=witch_events, persisted_event_count=len(witch_events))
 
 
+async def handle_night_hunter(state: GameState, services: SessionServices) -> PhaseResult:
+    """Optional nightly hunter ability.
+
+    Every night the judge asks the hunter "do you want to shoot?". The
+    standard call-and-response keeps the phase rhythm consistent so
+    other roles can't infer "hunter is dead" from a missing beat.
+
+    Behavior:
+      * Hunter dead → 15s silence, no action.
+      * AI hunter   → always declines (target_id=None default).
+      * Human hunter → awaiter `hunter_shoot` with abstain. If they
+        pick a target, that seat is added to night_actions as
+        `hunter_target`, and night_resolve treats it like wolf_kill
+        (public death without cause; private skill_triggered to the
+        hunter as the perpetrator).
+    """
+    from app.engine.session import _ensure_phase_started
+    _ensure_phase_started(services, state, services.conn, state["phase"], state["round"])
+    phase_start = _monotonic()
+
+    hunter_id = _find_alive_role(state, Role.HUNTER)
+    if hunter_id is None:
+        await _hold_night_phase(phase_start)
+        return PhaseResult(events=[])
+
+    human_seats = state.get("human_seats") or set()
+    is_human = hunter_id in human_seats or state.get("human_seat") == hunter_id
+    target: int | None = None
+    events: list[GameEvent] = []
+
+    if is_human:
+        # Default = don't shoot. Human can pick a target via the panel.
+        proposed_args = await llm_decide(
+            state, services,
+            actor_id=hunter_id, role=Role.HUNTER, phase=state["phase"],
+            tool_name="hunter_shoot", local_args={"target_id": None},
+        )
+        raw_target = proposed_args.get("target_id")
+        try:
+            candidate = int(raw_target) if raw_target is not None else None
+        except (TypeError, ValueError):
+            candidate = None
+        # Validate: must be a living non-self seat.
+        living = [pid for pid in alive_player_ids(state) if pid != hunter_id]
+        if candidate is not None and candidate in living:
+            target = candidate
+
+    if target is None:
+        # No shot — just hold the rhythm and return silently.
+        await _hold_night_phase(phase_start)
+        return PhaseResult(events=[])
+
+    # Private skill event for the hunter (and only the hunter — public
+    # learns of the death at dawn without cause).
+    emit_event(
+        services, state, events, EventType.SKILL_TRIGGERED,
+        {"actor_id": hunter_id, "target_id": target},
+        content="event.hunter_shot",
+        scope=EventScope.ROLE_PRIVATE, targets={hunter_id},
+    )
+    night_actions_patch = {**state["night_actions"], "hunter_target": target}
+    await _hold_night_phase(phase_start)
+    return PhaseResult(
+        state_patch={"night_actions": night_actions_patch},
+        events=events, persisted_event_count=len(events),
+    )
+
+
 async def handle_night_resolve(state: GameState, services: SessionServices) -> PhaseResult:
     wolf_target = state["night_actions"].get("wolf_target")
     use_antidote = bool(state["night_actions"].get("witch_use_antidote"))
     poison_target = state["night_actions"].get("witch_poison_target")
+    hunter_target = state["night_actions"].get("hunter_target")
 
     deaths: list[tuple[int, str]] = []
+    seen: set[int] = set()
     if wolf_target is not None and not use_antidote:
         deaths.append((wolf_target, "wolf"))
-    if poison_target is not None:
+        seen.add(wolf_target)
+    if poison_target is not None and poison_target not in seen:
         deaths.append((poison_target, "poison"))
+        seen.add(poison_target)
+    if hunter_target is not None and hunter_target not in seen:
+        # Hunter shot at night — adds the seat to the dawn casualty
+        # list. Cause stays private to the hunter (the public
+        # player_died event carries no cause).
+        deaths.append((hunter_target, "hunter_shot"))
+        seen.add(hunter_target)
 
     patch: dict = {"night_result": {"deaths": [pid for pid, _ in deaths]}}
     events: list[GameEvent] = []

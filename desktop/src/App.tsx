@@ -161,6 +161,14 @@ const PHASE_META: Record<string, PhaseMeta> = {
     background: `${A}/backgrounds/bg_phase_night_overview.png`,
     actionLabel: '守卫行动',
   },
+  night_hunter: {
+    label: '第 1 夜 · 夜晚',
+    shortLabel: '猎人行动',
+    tone: 'skill',
+    icon: `${A}/icons/skills/icon_skill_hunter_shoot.png`,
+    background: `${A}/backgrounds/bg_phase_hunter_action.png`,
+    actionLabel: '猎人是否发动技能',
+  },
   setup_game: {
     label: '准备开局',
     shortLabel: '准备',

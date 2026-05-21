@@ -73,6 +73,8 @@ def build_phase_order(config: GameConfig) -> list[Phase]:
 
     if Role.GUARD not in roles:
         phases = [phase for phase in phases if phase != Phase.NIGHT_GUARD]
+    if Role.HUNTER not in roles:
+        phases = [phase for phase in phases if phase != Phase.NIGHT_HUNTER]
     if not flags.get("sheriff_enabled", True):
         phases = [phase for phase in phases if phase != Phase.SHERIFF_ELECTION]
     return phases

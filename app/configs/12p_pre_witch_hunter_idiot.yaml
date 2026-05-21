@@ -35,6 +35,7 @@ phase_order:
   - night_wolf
   - night_seer
   - night_witch
+  - night_hunter
   - night_resolve
   - pending_skills
   - check_win
@@ -72,6 +73,7 @@ prompt_profile:
     night_wolf: tool_call
     night_seer: tool_call
     night_witch: tool_call
+    night_hunter: tool_call
     day_speech: json
 
 tool_profile:
