@@ -1175,7 +1175,9 @@ img {
 
 .drawer-tabs {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  /* Three tabs (发言 / 投票 / 结算) all on one row. Was 1fr 1fr which
+     left the third tab wrapping to its own row. */
+  grid-template-columns: repeat(3, 1fr);
   height: 50px;
   overflow: hidden;
   border-radius: 6px;
