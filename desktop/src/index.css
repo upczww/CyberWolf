@@ -849,10 +849,8 @@ img {
   top: clamp(170px, 22vh, 240px);
   bottom: clamp(82px, 10vh, 108px);
   display: grid;
-  /* Three modes now: personal / god / team-lobby. Cards are a bit
-     narrower to fit the third one without breaking smaller viewports. */
-  grid-template-columns: repeat(3, clamp(260px, 22vw, 340px));
-  gap: clamp(16px, 2vw, 28px);
+  grid-template-columns: repeat(2, clamp(320px, 28vw, 410px));
+  gap: clamp(20px, 2.5vw, 34px);
   transform: translateX(-50%);
   align-items: stretch;
 }

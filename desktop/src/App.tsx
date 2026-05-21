@@ -854,18 +854,9 @@ function LandingScreen({
           onStart={() => onStart(true)}
           loading={loading && mode === 'god'}
         />
-        <ModeCard
-          active={false}
-          tone="gold"
-          icon={`${A}/icons/actions/icon_landing_match_records.png`}
-          silhouette={`${A}/portraits/extra/landing_role_personal.png`}
-          title="组队对战"
-          text="邀请好友加入同一局，AI 补齐空位"
-          bullets={['创建房间生成邀请链接', '好友点击链接即可入座', '房主可踢人、随时开局']}
-          onClick={() => onCreateLobby(true)}
-          onStart={() => onCreateLobby(true)}
-          loading={false}
-        />
+        {/* 组队对战 mode card hidden — feature still under iteration.
+            Lobby backend + LobbyRoom component + invite-link auto-join
+            remain wired so existing invite URLs keep working. */}
       </section>
 
       <span className="version-mark">版本：1.0.0</span>
