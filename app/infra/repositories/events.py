@@ -20,6 +20,12 @@ def insert_events(
     seq = start_seq
     rows = []
     for event in events:
+        # Stamp the seq/round back onto the event so the EventBus
+        # listeners (notably the WS broadcaster) can include them in
+        # the live payload — without this, the frontend sees no `seq`
+        # on live events and its history/live dedup + ordering breaks.
+        event.seq = seq
+        event.round = round_no
         rows.append(
             (
                 game_id,

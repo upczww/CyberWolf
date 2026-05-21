@@ -17,3 +17,8 @@ class GameEvent:
     content: str
     data: Any = None
     ts: float = field(default_factory=time)
+    # Stamped by `insert_events` once the event is persisted — exposed
+    # on the live WS payload so clients can order/dedupe history vs.
+    # live events consistently.
+    seq: int | None = None
+    round: int | None = None

@@ -778,6 +778,12 @@ def _serialize_event(event: GameEvent) -> dict[str, Any]:
         "event_type": event.event_type.value,
         "content": event.content,
         "data": event.data,
+        # seq/round are stamped by insert_events; ts is created at
+        # GameEvent construction. The frontend uses seq to order events
+        # and to dedupe history-vs-live arrivals — must be on the wire.
+        "seq": event.seq,
+        "round": event.round,
+        "created_at": event.ts,
     }
 
 
