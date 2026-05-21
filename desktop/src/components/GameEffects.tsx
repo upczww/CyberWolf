@@ -4,7 +4,7 @@
  * The goal is clarity first: every critical action should show who acted,
  * who was targeted, and what the ruling/result was.
  */
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { GameEvent } from '../stores/game'
 
@@ -70,24 +70,55 @@ const SUPERSEDING_EVENT_TYPES = new Set([
 
 export default function GameEffects({ latestEvent }: Props) {
   const [active, setActive] = useState<ActiveCue | null>(null)
+  // Cues queue up so consecutive action events (two player_died, a
+  // wolf_target_selected followed by a player_died, etc.) each get
+  // their full duration on screen instead of the next one immediately
+  // overwriting the previous. The dispatcher useEffect below drains
+  // the queue one cue at a time.
+  const queueRef = useRef<ActionCue[]>([])
+  const idRef = useRef(0)
+  const lastSeqRef = useRef<number>(-1)
+  const lastKeyRef = useRef<string>('')
+  // Bumped whenever the queue changes so the dispatcher re-runs.
+  const [queueTick, setQueueTick] = useState(0)
 
+  // Enqueue (or supersede) on every new event.
   useEffect(() => {
     if (!latestEvent) return
+    const seq = typeof latestEvent.seq === 'number' ? latestEvent.seq : -1
+    const key = seq >= 0
+      ? `seq:${seq}`
+      : `${latestEvent.event_type}:${latestEvent.content}:${JSON.stringify(latestEvent.data || {})}`
+    if (seq >= 0 && seq <= lastSeqRef.current) return
+    if (seq < 0 && key === lastKeyRef.current) return
+    if (seq >= 0) lastSeqRef.current = seq
+    lastKeyRef.current = key
+
     if (SUPERSEDING_EVENT_TYPES.has(latestEvent.event_type)) {
+      // Phase boundary — drop pending + active so a stale cue can't
+      // bleed into the next phase.
+      queueRef.current = []
       setActive(null)
+      setQueueTick((t) => t + 1)
       return
     }
     const cue = cueFromEvent(latestEvent)
     if (!cue) return
-
-    const id = Date.now()
-    setActive({ id, cue })
-    const timer = window.setTimeout(() => {
-      setActive(null)
-    }, cue.duration)
-
-    return () => window.clearTimeout(timer)
+    queueRef.current.push(cue)
+    setQueueTick((t) => t + 1)
   }, [latestEvent])
+
+  // Single dispatcher: when there's no active cue and the queue has
+  // items, pop and play the next one.
+  useEffect(() => {
+    if (active || queueRef.current.length === 0) return
+    const next = queueRef.current.shift()!
+    idRef.current += 1
+    const id = idRef.current
+    setActive({ id, cue: next })
+    const timer = window.setTimeout(() => setActive(null), next.duration)
+    return () => window.clearTimeout(timer)
+  }, [active, queueTick])
 
   return (
     <AnimatePresence>
