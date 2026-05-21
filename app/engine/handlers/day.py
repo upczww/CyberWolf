@@ -24,10 +24,10 @@ _log = logging.getLogger(__name__)
 TZ_CN = timezone(timedelta(hours=8))
 
 
-def handle_day_announce(state: GameState, services: SessionServices) -> PhaseResult:
+async def handle_day_announce(state: GameState, services: SessionServices) -> PhaseResult:
     deaths = state["night_result"].get("deaths", [])
     events: list[GameEvent] = []
-    # Player-facing narration for the human seat
+    # Public dawn announcement — village learns WHO died, not how.
     if not deaths:
         emit_event(services, state, events, EventType.NARRATION,
                    {"text": f"第 {state['round']} 天 · 昨晚是平安夜，无人出局",
@@ -37,6 +37,22 @@ def handle_day_announce(state: GameState, services: SessionServices) -> PhaseRes
                    {"text": f"第 {state['round']} 天 · 昨晚 {len(deaths)} 名玩家出局："
                             f"{ '、'.join(f'{pid}号' for pid in deaths) }",
                     "kind": "wolf", "round": state["round"], "phase": state["phase"].value})
+        # Then collect last words from each fallen seat (per-player
+        # narration banner + 90s death_speech awaiter). Standard rule
+        # gates these to round 1 — _collect_death_speeches enforces.
+        from app.engine.handlers.night import _collect_death_speeches
+        # Pull causes for any of these seats from dead_history (most
+        # recent record per pid wins). We don't expose cause in the
+        # awaiter prompt — this is just metadata for downstream tools.
+        cause_by_pid: dict[int, str] = {}
+        for entry in reversed(state.get("dead_history", [])):
+            pid = int(entry.get("player_id", -1))
+            if pid in deaths and pid not in cause_by_pid:
+                cause_by_pid[pid] = str(entry.get("cause", ""))
+        speech_events = await _collect_death_speeches(
+            state, services, list(deaths), death_causes=cause_by_pid,
+        )
+        events.extend(speech_events)
     return PhaseResult(events=events, persisted_event_count=len(events))
 
 

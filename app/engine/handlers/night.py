@@ -294,11 +294,10 @@ async def handle_night_resolve(state: GameState, services: SessionServices) -> P
     patch["dead_history"] = dead_history
     patch["pending_skills"] = pending
 
-    # Death speeches for first-night deaths
-    dead_ids = [pid for pid, _ in deaths]
-    death_causes = {pid: cause for pid, cause in deaths}
-    speech_events = await _collect_death_speeches(state, services, dead_ids, death_causes=death_causes)
-    events.extend(speech_events)
+    # NOTE: Death speeches for night deaths are NOT collected here —
+    # they're emitted by handle_day_announce AFTER the dawn "X 名
+    # 玩家出局" narration so the read order matches the village's
+    # experience: announcement first, then last words.
 
     return PhaseResult(state_patch=patch, events=events, persisted_event_count=len(events))
 
@@ -338,18 +337,21 @@ async def _collect_death_speeches(
     """Collect death speeches (遗言) for newly dead players.
 
     Standard 12-人 ruleset (用户约定):
-      * First-night NIGHT_RESOLVE deaths → 完整遗言
-      * Any DAY_RESOLVE (放逐) death     → 完整遗言
-      * NIGHT_RESOLVE deaths after night 1 → 不发表遗言（保持闭眼节奏）
+      * Night-1 deaths (collected at DAY_ANNOUNCE of round 1) → 完整遗言
+      * Any DAY_RESOLVE (放逐) death                          → 完整遗言
+      * Later-night deaths (DAY_ANNOUNCE of round >= 2)       → 不发表遗言
     """
     from app.engine.event_helpers import emit_narration
 
     events: list[GameEvent] = []
-    if state["phase"] not in (Phase.NIGHT_RESOLVE, Phase.DAY_RESOLVE):
+    # Death speeches fire either:
+    #   * during DAY_ANNOUNCE (the dawn re-airs night kills, then speeches)
+    #   * during DAY_RESOLVE (the exiled player gives their last words)
+    if state["phase"] not in (Phase.DAY_ANNOUNCE, Phase.DAY_RESOLVE):
         return events
-    is_night = state["phase"] == Phase.NIGHT_RESOLVE
-    # Later-night deaths don't get a death speech.
-    if is_night and state["round"] >= 2:
+    is_post_night = state["phase"] == Phase.DAY_ANNOUNCE
+    # Subsequent-night deaths stay silent — only night 1 gets the slot.
+    if is_post_night and state["round"] >= 2:
         return events
 
     for player_id in dead_player_ids:
