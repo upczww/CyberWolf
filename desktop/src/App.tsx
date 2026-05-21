@@ -413,7 +413,7 @@ export default function App() {
           setHistoryOpen(true)
           setHistoryTab('settle')
         }}
-        onSettings={toggleTts}
+        onToggleSound={toggleTts}
         onExit={exitGame}
         ttsEnabled={ttsEnabled}
       />
@@ -437,7 +437,6 @@ export default function App() {
           currentSpeaker={currentSpeaker}
           winner={winner}
           connected={connected}
-          onReset={resetToLanding}
         />
 
         <PlayerColumn
@@ -581,7 +580,7 @@ function TopBar({
   onMenu,
   onHistory,
   onInspector,
-  onSettings,
+  onToggleSound,
   onExit,
 }: {
   roomId: string
@@ -592,7 +591,7 @@ function TopBar({
   onMenu: () => void
   onHistory: () => void
   onInspector: () => void
-  onSettings: () => void
+  onToggleSound: () => void
   onExit: () => void
 }) {
   return (
@@ -615,7 +614,12 @@ function TopBar({
       <div className="top-actions">
         <IconButton icon={`${A}/icons/actions/icon_action_record.png`} label="记录" onClick={onHistory} />
         <IconButton icon={`${A}/icons/actions/icon_action_history.png`} label="历史" onClick={onInspector} />
-        <IconButton icon={`${A}/icons/actions/icon_action_settings.png`} label="设置" onClick={onSettings} active={ttsEnabled} />
+        <IconButton
+          icon={ttsEnabled ? `${A}/icons/actions/icon_landing_sound_on.png` : `${A}/icons/actions/icon_landing_sound_off.png`}
+          label={ttsEnabled ? '声音开' : '声音关'}
+          onClick={onToggleSound}
+          active={ttsEnabled}
+        />
         <IconButton icon={`${A}/icons/actions/icon_game_stop.png`} label="退出" onClick={onExit} danger />
       </div>
     </header>
@@ -840,7 +844,6 @@ function CenterStage({
   currentSpeaker,
   winner,
   connected,
-  onReset,
 }: {
   phase: string
   meta: PhaseMeta
@@ -850,7 +853,6 @@ function CenterStage({
   currentSpeaker: number
   winner: string | null
   connected: boolean
-  onReset: () => void
 }) {
   const latest = events[events.length - 1]
   if (phase === 'sheriff_election') {
@@ -888,10 +890,6 @@ function CenterStage({
       {phase === 'day_vote'
         ? <VotePanel players={players} events={events} />
         : <NoticePanel latest={latest} connected={connected} />}
-
-      <section className="stage-actions">
-        <button className="ghost-action" onClick={onReset}>返回大厅</button>
-      </section>
     </section>
   )
 }
@@ -1027,12 +1025,11 @@ function SheriffPanel({
           <h2>当前竞选者（{candidates.length}/12）</h2>
           <div className="candidate-row">
             {candidates.map((player) => (
-              // Candidate identity is hidden during sheriff election — only
-              // the seat number is public, never the role-specific portrait.
-              <div key={player.seat_index} className="candidate-avatar">
-                <img src={unknownPortraitForSeat(player.seat_index)} alt="" />
+              // Only the seat number is public during sheriff election —
+              // no avatar (identity hidden until natural reveal).
+              <div key={player.seat_index} className="candidate-chip">
                 <b>{player.seat_index}</b>
-                <span>玩家{player.seat_index}</span>
+                <span>号</span>
               </div>
             ))}
             {candidates.length === 0 && (
