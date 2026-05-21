@@ -57,6 +57,27 @@ class SessionServices:
     human_awaiter: HumanAwaiter | None = None
     phase_delay_seconds: float = 0.0  # debug/demo aid: pause after each phase
     _phase_started_emitted: bool = False
+    # Monotonic timestamp of the last phase_started narration. Used to
+    # enforce a minimum on-screen lifetime for each phase prompt so it
+    # doesn't get instantly replaced by the next phase's narration.
+    _last_narration_at: float | None = None
+
+
+# Every phase narration ("天黑请闭眼", "狼人请睁眼", "进入放逐投票"...)
+# must stay visible at least this long before the next phase's narration
+# is allowed to replace it. Phases that naturally take longer (LLM,
+# human awaiters) pay no cost — the wait only kicks in for transitions
+# that would otherwise flash by faster than a human can read.
+MIN_PHASE_NARRATION_HOLD_SECONDS = 5.0
+
+
+async def _wait_for_min_narration_hold(services: SessionServices) -> None:
+    if services._last_narration_at is None:
+        return
+    elapsed = monotonic() - services._last_narration_at
+    remaining = MIN_PHASE_NARRATION_HOLD_SECONDS - elapsed
+    if remaining > 0:
+        await asyncio.sleep(remaining)
 
 
 async def run_game_session(
@@ -93,6 +114,11 @@ async def run_game_session(
 
         # Mark that phase_started hasn't been emitted yet for this phase
         services._phase_started_emitted = False
+
+        # Hold the previous phase's narration on screen long enough to be
+        # read before this phase emits its own. Phases that already took
+        # >= MIN_PHASE_NARRATION_HOLD_SECONDS pay nothing.
+        await _wait_for_min_narration_hold(services)
 
         try:
             result = await _handle_phase(state, services)
@@ -233,6 +259,7 @@ def _ensure_phase_started(services: SessionServices, state: GameState, conn: sql
             data={"text": text, "kind": kind, "style": "intro",
                   "round": round_no, "phase": phase.value},
         ))
+        services._last_narration_at = monotonic()
     services.event_seq = _publish_and_persist(services, state, events_to_send, round_no=round_no)
 
 

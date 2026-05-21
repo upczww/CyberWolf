@@ -1,7 +1,6 @@
 """Night phase handlers: wolf, seer, witch, resolve."""
 from __future__ import annotations
 
-import asyncio
 import logging
 from typing import TYPE_CHECKING
 
@@ -23,19 +22,10 @@ if TYPE_CHECKING:
 
 _log = logging.getLogger(__name__)
 
-# How long to hold on "天黑请闭眼" before the wolves' phase begins.
-# Real werewolf pacing — humans need a beat to register that night started
-# before the next role-call ("狼人请睁眼") replaces the prompt.
-NIGHT_START_HOLD_SECONDS = 5.0
 
-
-async def handle_night_start(state: GameState, services: SessionServices) -> PhaseResult:
-    # Emit phase_started + "天黑请闭眼" narration BEFORE the pause so the
-    # human sees the prompt and has 5 seconds to react before night_wolf's
-    # narration takes its place.
-    from app.engine.session import _ensure_phase_started
-    _ensure_phase_started(services, state, services.conn, state["phase"], state["round"])
-    await asyncio.sleep(NIGHT_START_HOLD_SECONDS)
+def handle_night_start(state: GameState, services: SessionServices) -> PhaseResult:
+    # Pacing (天黑请闭眼 holds for 5s before night_wolf) is enforced
+    # generically by the session loop via MIN_PHASE_NARRATION_HOLD_SECONDS.
     return PhaseResult(
         state_patch={"night_actions": {}, "night_result": {}, "vote_records": {}, "vote_candidates": []},
         events=[],
