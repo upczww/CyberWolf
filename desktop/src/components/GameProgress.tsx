@@ -27,11 +27,10 @@ interface Props {
 // holds 天黑请闭眼 for 5s before night_wolf begins; keep the banner up for
 // at least that long so it doesn't disappear into a blank screen between
 // role calls.
-const PHASE_FLASH_MS = 5500
-// EventFlash items pop one at a time from a queue. 2.4s per item felt
-// snappy in isolation but rushed when 3–4 items fire in a row (dawn
-// announcement + per-death-speech intros), so each ticker line now
-// gets a longer reading window.
+// PhaseFlash has no auto-dismiss timer — it stays on screen until the
+// next phase's intro narration replaces it, so night phases (which the
+// backend holds for 15-30s) keep their title visible the whole way.
+// EventFlash items pop one at a time from a queue.
 const EVENT_FLASH_MS = 3800
 
 // Backend ``kind`` → frontend glyph default. The engine can override by
@@ -78,12 +77,18 @@ export default function GameProgress({ phase, round, events, humanSeat, winner }
         const glyph = typeof ev.data?.glyph === 'string' && ev.data.glyph
           ? ev.data.glyph
           : (KIND_GLYPH[kind] || KIND_GLYPH.info)
-        // Big banner — show immediately, replacing any current intro.
+        // Big banner — show immediately. The banner stays visible until
+        // the NEXT intro narration replaces it (or game ends). No
+        // auto-dismiss timer: backend night phases hold for 15-30s and
+        // we want the phase title visible the whole time, not just for
+        // PHASE_FLASH_MS then a blank stretch until the next role-call.
         const isNight = String(ev.data?.phase || '').startsWith('night')
         const sub = `第 ${ev.data?.round || round || 1} ${isNight ? '夜' : '天'}`
         setPhaseFlash({ glyph, title: text, sub })
-        if (phaseTimer.current) window.clearTimeout(phaseTimer.current)
-        phaseTimer.current = window.setTimeout(() => setPhaseFlash(null), PHASE_FLASH_MS)
+        if (phaseTimer.current) {
+          window.clearTimeout(phaseTimer.current)
+          phaseTimer.current = null
+        }
         continue
       }
 
