@@ -152,6 +152,11 @@ async def handle_night_witch(state: GameState, services: SessionServices) -> Pha
         else:
             local_use = wolf_target != witch_id or can_save_self
             local_args = {"use_antidote": local_use and services.rng.random() < 0.35}
+        # Carry the night's kill target into local_args so the human witch
+        # panel can render the real seat ("今晚的死亡目标是 N 号"). Without
+        # this the UI fell back to "?" since the panel reads target_id off
+        # request.local_args.
+        local_args["target_id"] = wolf_target
 
         llm_args = await llm_decide(
             state, services,

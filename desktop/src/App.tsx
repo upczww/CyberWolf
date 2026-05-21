@@ -266,7 +266,6 @@ export default function App() {
   const [historyOpen, setHistoryOpen] = useState(false)
   const [historyTab, setHistoryTab] = useState<DrawerTab>('vote')
   const [legendOpen, setLegendOpen] = useState(false)
-  const [infoPanel, setInfoPanel] = useState<{ title: string; body: string } | null>(null)
   const [landingMode, setLandingMode] = useState<ViewMode>('self')
   const [loadingStart, setLoadingStart] = useState(false)
   const startingRef = useRef(false)
@@ -301,7 +300,24 @@ export default function App() {
   const meta = PHASE_META[visiblePhase] || PHASE_META.day_speech
   const latestEvent = events[events.length - 1] || null
   const voteCounts = useMemo(() => buildVoteCounts(events), [events])
-  const currentSpeaker = latestSpeaker(events) || awaitingHuman?.actor_id || humanSeat || 0
+  // Tools whose awaiter should NOT promote the actor to "current
+  // speaker" — these are silent backend prompts (candidacy yes/no,
+  // identity confirmation, private night actions). The player rail
+  // highlight should only follow real speech / vote turns.
+  const silentAwaiterTools = new Set([
+    'sheriff_candidacy',
+    'confirm_identity',
+    'witch_antidote',
+    'witch_poison',
+    'seer_check',
+    'wolf_kill_proposal',
+    'guard_protect',
+    'hunter_shoot',
+  ])
+  const awaitingForHighlight = awaitingHuman && !silentAwaiterTools.has(awaitingHuman.tool_name)
+    ? awaitingHuman.actor_id
+    : null
+  const currentSpeaker = latestSpeaker(events) || awaitingForHighlight || humanSeat || 0
   const roomId = gameId ? gameId.slice(0, 6) : '------'
 
   // Derive current sheriff seat from events. loadGameDetail only runs
@@ -485,11 +501,6 @@ export default function App() {
             setHistoryOpen(true)
           }}
         />
-        <DockButton
-          icon={`${A}/icons/actions/icon_landing_match_records.png`}
-          label="送礼"
-          onClick={() => setInfoPanel({ title: '送礼', body: '送礼入口已打开。当前可用于预览交互，后续可接入礼物动画、礼物记录和亲密度变化。' })}
-        />
       </footer>
 
       {historyOpen && (
@@ -552,11 +563,6 @@ export default function App() {
           && awaitingHuman.actor_id === humanSeat
         if (needsHumanAction) {
           return <HumanActionPanel request={awaitingHuman!} gameId={gameId!} players={playersWithSheriff} />
-        }
-
-        // 3) InfoDialog — passive notifications
-        if (infoPanel) {
-          return <InfoDialog title={infoPanel.title} body={infoPanel.body} onClose={() => setInfoPanel(null)} />
         }
 
         return null
@@ -682,6 +688,11 @@ function LandingScreen({
           </div>
         </div>
         <div className="landing-sound">
+          <IconButton
+            icon={`${A}/icons/actions/icon_landing_match_records.png`}
+            label="对局记录"
+            onClick={() => setPanel({ title: '对局记录', body: '这里展示历史对局入口。进入对局后可在右侧记录面板查看聊天、投票和结算记录。' })}
+          />
           <IconButton icon={ttsEnabled ? `${A}/icons/actions/icon_landing_sound_on.png` : `${A}/icons/actions/icon_landing_sound_off.png`} label={ttsEnabled ? '声音开' : '声音关'} onClick={onToggleTts} active={ttsEnabled} />
           <IconButton icon={`${A}/icons/actions/icon_landing_help.png`} label="帮助" onClick={() => setPanel({ title: '帮助', body: '个人视角只显示自己的身份和操作；上帝视角显示全局身份、技能与投票。点击两张模式卡可选择开局方式。' })} />
           <IconButton icon={`${A}/icons/actions/icon_landing_settings.png`} label="设置" onClick={() => setPanel({ title: '设置', body: `声音状态：${ttsEnabled ? '已开启' : '已关闭'}。你可以点击声音按钮实时切换。` })} />
@@ -722,13 +733,6 @@ function LandingScreen({
         />
       </section>
 
-      <footer className="landing-nav">
-        <LandingNavItem icon={`${A}/icons/actions/icon_landing_match_records.png`} label="对局记录" onClick={() => setPanel({ title: '对局记录', body: '这里展示历史对局入口。进入对局后可在右侧记录面板查看聊天、投票和结算记录。' })} />
-        <LandingNavItem icon={`${A}/icons/actions/icon_landing_ai_autoplay.png`} label="AI 托管" badge="NEW" onClick={() => setPanel({ title: 'AI 托管', body: 'AI 托管已准备。个人视角中可由 AI 接管超时行动，演示局会自动推进。' })} />
-        <LandingNavItem icon={`${A}/icons/actions/icon_landing_ai_summary.png`} label="游戏总结" onClick={() => setPanel({ title: '游戏总结', body: '游戏结束后可查看阵营胜负、投票轨迹、关键发言和 AI 复盘摘要。' })} />
-        <LandingNavItem icon={`${A}/icons/actions/icon_landing_achievement.png`} label="成就" onClick={() => setPanel({ title: '成就', body: '成就系统入口已打开。后续可接入首胜、神职高光、狼队悍跳等成就。' })} />
-        <LandingNavItem icon={`${A}/icons/actions/icon_landing_ranking.png`} label="排行榜" onClick={() => setPanel({ title: '排行榜', body: '排行榜入口已打开。后续可展示胜率、MVP、发言贡献和阵营表现。' })} />
-      </footer>
       <span className="version-mark">版本：1.0.0</span>
       {panel && <InfoDialog title={panel.title} body={panel.body} onClose={() => setPanel(null)} />}
     </div>
@@ -787,16 +791,6 @@ function ModeCard({
         onStart()
       }}>{loading ? '启动中' : '开始游戏'}<span>›</span></button>
     </article>
-  )
-}
-
-function LandingNavItem({ icon, label, badge, onClick }: { icon: string; label: string; badge?: string; onClick: () => void }) {
-  return (
-    <button className="landing-nav-item" onClick={onClick}>
-      <span>{badge}</span>
-      <img src={icon} alt="" />
-      <b>{label}</b>
-    </button>
   )
 }
 

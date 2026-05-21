@@ -107,7 +107,6 @@ img {
 .landing-top,
 .landing-logo,
 .mode-cards,
-.landing-nav,
 .version-mark,
 .legend-hotspot {
   position: relative;
@@ -349,8 +348,7 @@ img {
 }
 
 .icon-button,
-.dock-button,
-.landing-nav-item {
+.dock-button {
   position: relative;
   z-index: 6;
   pointer-events: auto;
@@ -1048,46 +1046,6 @@ img {
   line-height: .65;
 }
 
-.landing-nav {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  z-index: 5;
-  height: 92px;
-  display: flex;
-  justify-content: center;
-  gap: 50px;
-  padding-top: 18px;
-  border-top: 1px solid rgba(230, 188, 113, .18);
-  background: linear-gradient(180deg, rgba(4, 10, 18, .1), rgba(4, 10, 18, .74));
-}
-
-.landing-nav-item {
-  position: relative;
-  grid-auto-flow: column;
-  align-items: center;
-  gap: 10px;
-  color: #ddb678;
-  font-size: 20px;
-}
-
-.landing-nav-item img {
-  width: 32px;
-  height: 32px;
-}
-
-.landing-nav-item span {
-  position: absolute;
-  top: -10px;
-  right: -20px;
-  min-width: 34px;
-  border-radius: 999px;
-  background: #c94b3f;
-  color: #fff;
-  font-size: 12px;
-}
-
 .version-mark {
   position: absolute;
   right: 34px;
@@ -1487,37 +1445,45 @@ img {
 }
 
 .speech-order > div {
+  /* Wraps to multiple rows for 12-player games so the row doesn't bleed
+     into the right-side player rail. Centered per row, vertical gap
+     between wrapped rows. */
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  justify-content: space-around;
+  justify-content: center;
+  column-gap: 18px;
+  row-gap: 10px;
   min-height: 64px;
+  padding: 10px 12px;
   border-radius: 8px;
   background: rgba(255,255,255,.045);
 }
 
 .speech-order span {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   color: #f1eee6;
-  font-size: 18px;
+  font-size: 16px;
 }
 
 .speech-order b {
-  width: 34px;
-  height: 34px;
+  width: 30px;
+  height: 30px;
   display: grid;
   place-items: center;
   border-radius: 50%;
   background: linear-gradient(180deg, #f0c76a, #d8942d);
   color: #34200f;
+  font-size: 15px;
 }
 
 .speech-order i {
-  margin-left: 42px;
+  margin-left: 12px;
   color: rgba(244,240,232,.42);
   font-style: normal;
-  font-size: 30px;
+  font-size: 22px;
 }
 
 /* day_speech progress states — current speaker highlighted, finished
@@ -2122,12 +2088,15 @@ img {
 }
 
 .human-action-panel header {
+  /* Timer is absolutely positioned in the panel's top-right, so the
+     header only needs to lay out tag + h2. */
   display: grid;
-  grid-template-columns: auto 1fr auto;
+  grid-template-columns: auto 1fr;
   align-items: center;
   gap: 14px;
   margin-bottom: 16px;
   padding-bottom: 14px;
+  padding-right: 80px; /* leave room for the floating timer */
   border-bottom: 1px solid rgba(213, 175, 99, .22);
 }
 
@@ -2153,6 +2122,10 @@ img {
 }
 
 .panel-timer {
+  position: absolute;
+  top: 14px;
+  right: 16px;
+  z-index: 2;
   min-width: 56px;
   padding: 5px 12px;
   border-radius: 14px;
@@ -2514,15 +2487,19 @@ img {
 
 /* ---------------------------------------------------------------
    IdentityReveal — 30s confirmation countdown
+   Timer + progress strip pinned to top of the panel, OUT of the
+   content flow so the seat/name/portrait/abilities have full width.
    --------------------------------------------------------------- */
 .identity-head {
   position: relative;
+  width: 100%;
 }
 
 .identity-timer {
   position: absolute;
-  top: 0;
-  right: 0;
+  top: 10px;
+  right: 12px;
+  z-index: 2;
   padding: 4px 10px;
   border-radius: 12px;
   background: rgba(11, 17, 32, .82);
@@ -2542,9 +2519,12 @@ img {
 }
 
 .identity-countdown {
-  width: 100%;
-  height: 4px;
-  border-radius: 2px;
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  border-radius: 14px 14px 0 0;
   background: rgba(255, 255, 255, .06);
   overflow: hidden;
   margin: 4px 0 8px;
