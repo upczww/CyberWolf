@@ -219,18 +219,20 @@ def _handle_noop(state: GameState, services: SessionServices) -> PhaseResult:
 
 _PHASE_NARRATION: dict[str, tuple[str, str]] = {
     # phase.value -> (kind, text). {round} placeholder gets replaced.
-    "setup_game":       ("info", "对局准备中…"),
+    # Wording follows the standard 12-人 judge script (狼/女巫/预言家/
+    # 猎人) so the village reads each role-call in the familiar cadence.
+    "setup_game":       ("info", "对局准备中 · 请确认你的身份"),
     "night_start":      ("info", "第 {round} 夜 · 天黑请闭眼"),
-    "night_wolf":       ("wolf", "狼人请睁眼，选择今夜的目标"),
-    "night_seer":       ("good", "预言家请睁眼，选择一名玩家查验"),
-    "night_witch":      ("good", "女巫请睁眼，是否使用解药与毒药"),
-    "night_guard":      ("good", "守卫请守护一名玩家"),
-    "night_hunter":     ("good", "猎人请睁眼，是否发动技能"),
+    "night_wolf":       ("wolf", "狼人请睁眼 · 互相确认同伴，商议今晚的击杀目标"),
+    "night_witch":      ("good", "女巫请睁眼 · 是否使用解药救人或毒药杀人"),
+    "night_seer":       ("good", "预言家请睁眼 · 请选择查验目标"),
+    "night_guard":      ("good", "守卫请睁眼 · 选择今晚守护的玩家"),
+    "night_hunter":     ("good", "猎人请睁眼 · 确认你今晚的开枪状态"),
     "night_resolve":    ("info", "天将亮起 · 裁判结算夜晚行动"),
     "sheriff_election": ("gold", "第 {round} 天 · 警长竞选阶段开始"),
     "day_speech":       ("info", "第 {round} 天 · 进入发言阶段"),
-    "day_vote":         ("info", "进入放逐投票，请投出你的一票"),
-    "day_resolve":      ("info", "裁判结算投票"),
+    "day_vote":         ("info", "投票放逐 · 请投出你的一票"),
+    "day_resolve":      ("info", "裁判结算白天投票"),
     "pending_skills":   ("info", "出局玩家依次结算死亡技能"),
     # check_win is a fast pass-through — no narration; game_over has its own
     # GAME_ENDED event which the frontend already renders as victory banner.

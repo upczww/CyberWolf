@@ -302,20 +302,20 @@ async def handle_night_witch(state: GameState, services: SessionServices) -> Pha
 
 
 async def handle_night_hunter(state: GameState, services: SessionServices) -> PhaseResult:
-    """Optional nightly hunter ability.
+    """Hunter's nightly ceremony — confirms shoot state, no action.
 
-    Every night the judge asks the hunter "do you want to shoot?". The
-    standard call-and-response keeps the phase rhythm consistent so
-    other roles can't infer "hunter is dead" from a missing beat.
+    Standard 12-人 script: the judge wakes the hunter every night and
+    silently tells them their "shoot state" (poisoned by witch → can't
+    shoot; otherwise → can shoot on death). The hunter does NOT actually
+    fire at night — that only happens via pending_skills on death.
 
-    Behavior:
-      * Hunter dead → 15s silence, no action.
-      * AI hunter   → always declines (target_id=None default).
-      * Human hunter → awaiter `hunter_shoot` with abstain. If they
-        pick a target, that seat is added to night_actions as
-        `hunter_target`, and night_resolve treats it like wolf_kill
-        (public death without cause; private skill_triggered to the
-        hunter as the perpetrator).
+    This phase exists purely for rhythm: every role gets its slot so
+    observers can't infer "hunter dead/alive" from a missing beat. AI
+    plays no part. Human hunter sees the banner but no panel.
+
+    Optional private narration to the human hunter telling them their
+    shoot state (poisoned → 不能开枪; otherwise → 可以开枪) — leverages
+    the fact that night_witch already ran and set witch_poison_target.
     """
     from app.engine.session import _ensure_phase_started
     _ensure_phase_started(services, state, services.conn, state["phase"], state["round"])
@@ -326,54 +326,31 @@ async def handle_night_hunter(state: GameState, services: SessionServices) -> Ph
         await _hold_night_phase(phase_start)
         return PhaseResult(events=[])
 
-    human_seats = state.get("human_seats") or set()
-    is_human = hunter_id in human_seats or state.get("human_seat") == hunter_id
-    target: int | None = None
+    # Private status hint to the hunter: tonight you {can|cannot} shoot
+    # if you die. Poisoned → can't shoot (unless rule_flag allows).
+    poison_target = state["night_actions"].get("witch_poison_target")
+    can_shoot_if_poisoned = state["runtime"]["rule_flags"].get("hunter_can_shoot_if_poisoned", False)
+    poisoned_tonight = poison_target == hunter_id and not can_shoot_if_poisoned
     events: list[GameEvent] = []
-
-    if is_human:
-        # Default = don't shoot. Human can pick a target via the panel.
-        proposed_args = await llm_decide(
-            state, services,
-            actor_id=hunter_id, role=Role.HUNTER, phase=state["phase"],
-            tool_name="hunter_shoot", local_args={"target_id": None},
-        )
-        raw_target = proposed_args.get("target_id")
-        try:
-            candidate = int(raw_target) if raw_target is not None else None
-        except (TypeError, ValueError):
-            candidate = None
-        # Validate: must be a living non-self seat.
-        living = [pid for pid in alive_player_ids(state) if pid != hunter_id]
-        if candidate is not None and candidate in living:
-            target = candidate
-
-    if target is None:
-        # No shot — just hold the rhythm and return silently.
-        await _hold_night_phase(phase_start)
-        return PhaseResult(events=[])
-
-    # Private skill event for the hunter (and only the hunter — public
-    # learns of the death at dawn without cause).
     emit_event(
-        services, state, events, EventType.SKILL_TRIGGERED,
-        {"actor_id": hunter_id, "target_id": target},
-        content="event.hunter_shot",
+        services, state, events, EventType.NARRATION,
+        {
+            "text": "你今晚不能开枪（被女巫毒杀时无法开枪）" if poisoned_tonight
+                    else "你今晚可以开枪",
+            "kind": "info",
+            "round": state["round"],
+            "phase": state["phase"].value,
+        },
         scope=EventScope.ROLE_PRIVATE, targets={hunter_id},
     )
-    night_actions_patch = {**state["night_actions"], "hunter_target": target}
     await _hold_night_phase(phase_start)
-    return PhaseResult(
-        state_patch={"night_actions": night_actions_patch},
-        events=events, persisted_event_count=len(events),
-    )
+    return PhaseResult(events=events, persisted_event_count=len(events))
 
 
 async def handle_night_resolve(state: GameState, services: SessionServices) -> PhaseResult:
     wolf_target = state["night_actions"].get("wolf_target")
     use_antidote = bool(state["night_actions"].get("witch_use_antidote"))
     poison_target = state["night_actions"].get("witch_poison_target")
-    hunter_target = state["night_actions"].get("hunter_target")
 
     deaths: list[tuple[int, str]] = []
     seen: set[int] = set()
@@ -383,12 +360,6 @@ async def handle_night_resolve(state: GameState, services: SessionServices) -> P
     if poison_target is not None and poison_target not in seen:
         deaths.append((poison_target, "poison"))
         seen.add(poison_target)
-    if hunter_target is not None and hunter_target not in seen:
-        # Hunter shot at night — adds the seat to the dawn casualty
-        # list. Cause stays private to the hunter (the public
-        # player_died event carries no cause).
-        deaths.append((hunter_target, "hunter_shot"))
-        seen.add(hunter_target)
 
     patch: dict = {"night_result": {"deaths": [pid for pid, _ in deaths]}}
     events: list[GameEvent] = []
