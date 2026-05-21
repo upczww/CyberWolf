@@ -238,15 +238,24 @@ def _human_timeout_seconds(tool_name: str, phase: Phase) -> float:
         return 90.0
     if tool_name == "vote_target":
         return 120.0
-    if tool_name == "wolf_kill_proposal":
-        return 120.0
-    if tool_name in {"seer_check", "witch_antidote", "witch_poison", "hunter_shoot"}:
-        return 105.0
+    # Night role-call tools all share the 15–30s phase budget enforced
+    # in handle_night_*. Capping the awaiter at 30s keeps the phase
+    # from running past its window even if the human is deciding.
+    if tool_name in {
+        "wolf_kill_proposal",
+        "seer_check",
+        "witch_antidote",
+        "witch_poison",
+        "guard_protect",
+    }:
+        return 30.0
+    if tool_name == "hunter_shoot":
+        return 30.0  # also a single-target reveal-style choice
     if tool_name == "sheriff_candidacy":
-        return 75.0
+        return 30.0
     if phase in {Phase.DAY_SPEECH, Phase.SHERIFF_ELECTION}:
         return 90.0  # speech-phase fallback also capped at 90s
-    return 90.0
+    return 30.0
 
 
 async def llm_death_speech(

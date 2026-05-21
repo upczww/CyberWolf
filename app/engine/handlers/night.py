@@ -1,7 +1,9 @@
 """Night phase handlers: wolf, seer, witch, resolve."""
 from __future__ import annotations
 
+import asyncio as _asyncio
 import logging
+from time import monotonic as _monotonic
 from typing import TYPE_CHECKING
 
 from app.domain.events import GameEvent
@@ -22,6 +24,22 @@ if TYPE_CHECKING:
 
 _log = logging.getLogger(__name__)
 
+# Every night role phase (wolf / seer / witch / guard) sits inside a
+# 15..30s window so the village reads each role being summoned and
+# silenced at a consistent cadence — dead-role phases still tick the
+# same beat so observers can't infer who's out from timing.
+NIGHT_PHASE_MIN_SECONDS = 15.0
+NIGHT_PHASE_MAX_SECONDS = 30.0
+
+
+async def _hold_night_phase(start_time: float) -> None:
+    """Sleep up to NIGHT_PHASE_MIN_SECONDS so the phase rhythm is
+    consistent. Human awaiter timeouts are capped at MAX_SECONDS in
+    llm_bridge — this only handles the lower bound."""
+    elapsed = _monotonic() - start_time
+    if elapsed < NIGHT_PHASE_MIN_SECONDS:
+        await _asyncio.sleep(NIGHT_PHASE_MIN_SECONDS - elapsed)
+
 
 def handle_night_start(state: GameState, services: SessionServices) -> PhaseResult:
     # Pacing (天黑请闭眼 holds for 5s before night_wolf) is enforced
@@ -38,10 +56,14 @@ async def handle_night_wolf(state: GameState, services: SessionServices) -> Phas
     # phase begins (not deferred until the first emit_event).
     from app.engine.session import _ensure_phase_started
     _ensure_phase_started(services, state, services.conn, state["phase"], state["round"])
+    phase_start = _monotonic()
 
     wolves = living_wolves(state)
     targets = [pid for pid in alive_player_ids(state) if pid not in wolves]
     if not wolves or not targets:
+        # Even with no wolves alive, hold the phase 15s so the village
+        # can't infer "all wolves dead" from a missing role-call beat.
+        await _hold_night_phase(phase_start)
         return PhaseResult(state_patch={"night_actions": {"wolf_votes": {}, "wolf_target": None}}, events=[])
 
     # If any wolf is human-controlled, they pick the target by default
@@ -107,6 +129,7 @@ async def handle_night_wolf(state: GameState, services: SessionServices) -> Phas
     emit_event(services, state, events, EventType.WOLF_TARGET_SELECTED,
                {"votes": votes, "target_id": selected},
                scope=EventScope.WOLF_TEAM, targets=set(wolves))
+    await _hold_night_phase(phase_start)
     return PhaseResult(
         state_patch={"night_actions": {"wolf_votes": votes, "wolf_target": selected}},
         actions=[action], events=events, persisted_event_count=len(events),
@@ -116,9 +139,12 @@ async def handle_night_wolf(state: GameState, services: SessionServices) -> Phas
 async def handle_night_seer(state: GameState, services: SessionServices) -> PhaseResult:
     from app.engine.session import _ensure_phase_started
     _ensure_phase_started(services, state, services.conn, state["phase"], state["round"])
+    phase_start = _monotonic()
 
     seer_id = _find_alive_role(state, Role.SEER)
     if seer_id is None:
+        # Seer is dead — go through the silence so the village can't infer.
+        await _hold_night_phase(phase_start)
         return PhaseResult(events=[])
     checked = {entry["target_id"] for entry in state["seer_checks"]}
     candidates = [pid for pid in alive_player_ids(state) if pid != seer_id and pid not in checked]
@@ -146,6 +172,7 @@ async def handle_night_seer(state: GameState, services: SessionServices) -> Phas
     )
     if not validated["is_valid"]:
         _log.warning("invalid seer_check for player %s: %s – skipping", seer_id, validated.get("validation_errors", []))
+        await _hold_night_phase(phase_start)
         return PhaseResult(events=[])
     action = resolve_action(validated)
     target = action["args"]["target_id"]
@@ -155,6 +182,7 @@ async def handle_night_seer(state: GameState, services: SessionServices) -> Phas
     emit_event(services, state, events, EventType.SEER_CHECKED,
                {"target_id": target, "result": result},
                scope=EventScope.ROLE_PRIVATE, targets={seer_id})
+    await _hold_night_phase(phase_start)
     return PhaseResult(
         state_patch={"seer_checks": checks},
         actions=[action], events=events, persisted_event_count=len(events),
@@ -167,10 +195,13 @@ async def handle_night_witch(state: GameState, services: SessionServices) -> Pha
     # village banner to appear the moment the phase starts.
     from app.engine.session import _ensure_phase_started
     _ensure_phase_started(services, state, services.conn, state["phase"], state["round"])
+    phase_start = _monotonic()
 
     witch_id = _find_alive_role(state, Role.WITCH)
     wolf_target = state["night_actions"].get("wolf_target")
     if witch_id is None:
+        # Witch dead — hold the silence so observers can't infer it.
+        await _hold_night_phase(phase_start)
         return PhaseResult(events=[])
 
     actions = []
@@ -265,6 +296,7 @@ async def handle_night_witch(state: GameState, services: SessionServices) -> Pha
         "witch_antidote_used": state["witch_antidote_used"] or use_antidote,
         "witch_poison_used": state["witch_poison_used"] or (poison_target is not None),
     }
+    await _hold_night_phase(phase_start)
     return PhaseResult(state_patch=patch, actions=actions, events=witch_events, persisted_event_count=len(witch_events))
 
 
