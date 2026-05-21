@@ -207,7 +207,11 @@ const PHASE_META: Record<string, PhaseMeta> = {
     tone: 'skill',
     icon: `${A}/icons/actions/icon_match_summary.png`,
     background: `${A}/backgrounds/bg_phase_hunter_action.png`,
-    actionLabel: '号玩家发动技能',
+    // System-style label — pending_skills can be empty (no hunter/sheriff
+    // triggered) and we don't have the specific dead actor's seat in
+    // frontend state, so DON'T prefix the human's seat via the '号'
+    // convention. "1号玩家发动技能" was wrong: the human wasn't acting.
+    actionLabel: '结算死亡技能',
   },
   check_win: {
     label: '胜负检查',
