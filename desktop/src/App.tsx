@@ -1414,31 +1414,7 @@ function HistoryDrawer({
         <button className={tab === 'vote' ? 'active' : ''} onClick={() => onTab('vote')}>投票记录</button>
         <button className={tab === 'settle' ? 'active' : ''} onClick={() => onTab('settle')}>结算记录</button>
       </div>
-      {tab === 'chat' && (
-        <section className="drawer-feed">
-          {events
-            .filter((ev) => ['public_speech_made', 'sheriff_campaign', 'death_speech'].includes(ev.event_type))
-            .slice()
-            .reverse()
-            .map((ev, index) => {
-              const seat = Number(ev.data?.player_id || ev.data?.actor_id || 0)
-              const speech = String(ev.data?.public_speech || ev.data?.speech || ev.content || '')
-              return (
-                <article key={`${ev.event_type}-${index}`} className="record-row">
-                  <img src={avatarForSeat(players, seat, gameId)} alt="" />
-                  <div>
-                    <b>{seat ? `${seat}号玩家` : '系统'}</b>
-                    <p>{speech}</p>
-                  </div>
-                  <time>第{ev.round || 1}天</time>
-                </article>
-              )
-            })}
-          {events.filter((ev) => ['public_speech_made','sheriff_campaign','death_speech'].includes(ev.event_type)).length === 0 && (
-            <div className="drawer-empty">暂无发言记录</div>
-          )}
-        </section>
-      )}
+      {tab === 'chat' && <SpeechRecords events={events} players={players} gameId={gameId} />}
       {tab === 'vote' && <VoteRecords events={events} players={players} />}
       {tab === 'settle' && <SettleRecords events={events} />}
     </aside>
@@ -1495,6 +1471,53 @@ function buildVoteGroups(events: GameEvent[]): VoteGroup[] {
     }
   }
   return groups
+}
+
+function SpeechRecords({
+  events, players, gameId,
+}: { events: GameEvent[]; players: Player[]; gameId: string | null }) {
+  // Chronological order (oldest at top, newest at bottom) so the feed
+  // reads like a chat log. Auto-scroll to the bottom whenever the
+  // visible speech count grows.
+  const items = useMemo(
+    () => events.filter((ev) => ['public_speech_made', 'sheriff_campaign', 'death_speech'].includes(ev.event_type)),
+    [events],
+  )
+  const bottomRef = useRef<HTMLDivElement | null>(null)
+  const lastCountRef = useRef(0)
+  useEffect(() => {
+    if (items.length > lastCountRef.current) {
+      bottomRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' })
+    }
+    lastCountRef.current = items.length
+  }, [items.length])
+
+  if (items.length === 0) {
+    return (
+      <section className="drawer-feed">
+        <div className="drawer-empty">暂无发言记录</div>
+      </section>
+    )
+  }
+  return (
+    <section className="drawer-feed">
+      {items.map((ev, index) => {
+        const seat = Number(ev.data?.player_id || ev.data?.actor_id || 0)
+        const speech = String(ev.data?.public_speech || ev.data?.speech || ev.content || '')
+        return (
+          <article key={`${ev.event_type}-${ev.seq ?? index}`} className="record-row">
+            <img src={avatarForSeat(players, seat, gameId)} alt="" />
+            <div>
+              <b>{seat ? `${seat}号玩家` : '系统'}</b>
+              <p>{speech}</p>
+            </div>
+            <time>第{ev.round || 1}天</time>
+          </article>
+        )
+      })}
+      <div ref={bottomRef} />
+    </section>
+  )
 }
 
 function VoteRecords({ events, players }: { events: GameEvent[]; players: Player[] }) {
