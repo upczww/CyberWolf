@@ -845,20 +845,43 @@ function PlayerCard({
 }) {
   const { player, meta, hidden, portrait } = visible
   const dead = !player.survived
+  const deathBadge = dead ? deathBadgeIcon(player.death_cause) : null
   return (
     <article className={`player-card tone-${meta.tone} ${active ? 'active' : ''} ${dead ? 'dead' : ''} ${reverse ? 'reverse' : ''}`}>
-      <div className="seat-number">{player.seat_index}</div>
-      <div className="player-copy">
-        <span>{`玩家${player.seat_index}`}</span>
-        <strong>{hidden ? '未知' : meta.label}</strong>
+      <div className="player-info">
+        <div className="seat-number">{player.seat_index}</div>
+        <div className="player-copy">
+          <span>{`玩家${player.seat_index}`}</span>
+          <strong>{hidden ? '未知' : meta.label}</strong>
+        </div>
       </div>
       <img className="player-portrait" src={portrait} alt="" />
       <div className="status-stack">
-        {player.is_sheriff ? <img src={`${A}/icons/status/icon_status_sheriff.png`} alt="" /> : null}
+        {player.is_sheriff ? <img src={`${A}/icons/status/icon_status_sheriff.png`} alt="警长" title="警长" /> : null}
+        {deathBadge ? <img src={deathBadge.icon} alt={deathBadge.label} title={deathBadge.label} /> : null}
         {voteCount ? <b>{voteCount}</b> : null}
       </div>
     </article>
   )
+}
+
+function deathBadgeIcon(cause?: string): { icon: string; label: string } | null {
+  switch (cause) {
+    case 'wolf':
+    case 'wolf_kill':
+      return { icon: `${A}/icons/skills/icon_skill_wolf_kill.png`, label: '被狼刀' }
+    case 'poison':
+      return { icon: `${A}/icons/skills/icon_skill_witch_poison.png`, label: '被毒' }
+    case 'hunter':
+    case 'hunter_shot':
+      return { icon: `${A}/icons/skills/icon_skill_hunter_shoot.png`, label: '被猎人开枪' }
+    case 'exile':
+      return { icon: `${A}/icons/status/icon_status_exiled.png`, label: '被放逐' }
+    case 'self_destruct':
+      return { icon: `${A}/icons/actions/icon_action_explode.png`, label: '自爆' }
+    default:
+      return { icon: `${A}/icons/status/icon_status_exiled.png`, label: '已出局' }
+  }
 }
 
 function CenterStage({
