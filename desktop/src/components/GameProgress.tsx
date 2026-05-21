@@ -23,7 +23,11 @@ interface Props {
   winner: string | null
 }
 
-const PHASE_FLASH_MS = 2400
+// Long enough for the human to register the phase and react. The backend
+// holds 天黑请闭眼 for 5s before night_wolf begins; keep the banner up for
+// at least that long so it doesn't disappear into a blank screen between
+// role calls.
+const PHASE_FLASH_MS = 5500
 const EVENT_FLASH_MS = 2400
 
 // Backend ``kind`` → frontend glyph default. The engine can override by
