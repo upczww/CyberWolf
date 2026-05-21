@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { apiPost } from '../hooks/useApi'
 import { useRoomWS, type RoomLite, type RoomSeatLite } from '../hooks/useRoomWS'
 import { buildInviteUrl, defaultNicknameFor } from '../lib/identity'
+import ConfirmDialog from './ConfirmDialog'
 
 interface Props {
   initialRoom: RoomLite
@@ -29,6 +30,8 @@ export default function LobbyRoom({
   const [busy, setBusy] = useState<'start' | 'leave' | null>(null)
   const [copied, setCopied] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [leaveAsk, setLeaveAsk] = useState(false)
+  const [kickAsk, setKickAsk] = useState<number | null>(null)
 
   useRoomWS(room.id, userId, {
     onState: (next) => setRoom(next),
@@ -97,9 +100,13 @@ export default function LobbyRoom({
     }
   }
 
-  const handleLeave = async () => {
+  const handleLeave = () => {
     if (busy) return
-    if (!window.confirm(isHost ? '退出会解散整个房间，确认？' : '确认退出房间？')) return
+    setLeaveAsk(true)
+  }
+
+  const confirmLeave = async () => {
+    setLeaveAsk(false)
     setBusy('leave')
     try {
       await apiPost(`/api/rooms/${room.id}/leave`, { user_id: userId })
@@ -109,9 +116,15 @@ export default function LobbyRoom({
     onLeave()
   }
 
-  const handleKick = async (seatIndex: number) => {
+  const handleKick = (seatIndex: number) => {
     if (!isHost) return
-    if (!window.confirm(`确认踢出 ${seatIndex} 号玩家？该座位会变回 AI。`)) return
+    setKickAsk(seatIndex)
+  }
+
+  const confirmKick = async () => {
+    const seatIndex = kickAsk
+    setKickAsk(null)
+    if (seatIndex == null) return
     try {
       await apiPost(`/api/rooms/${room.id}/kick`, { host_user_id: userId, seat_index: seatIndex })
     } catch (err) {
@@ -167,6 +180,31 @@ export default function LobbyRoom({
           ? '👑 你是房主 — 复制邀请链接分享给好友，他们点开即可入座。AI 座位会在开始时自动补齐。'
           : '⏳ 等待房主开始游戏…'}
       </footer>
+
+      {leaveAsk && (
+        <ConfirmDialog
+          title={isHost ? '解散房间' : '退出房间'}
+          message={isHost
+            ? '退出会解散整个房间，所有已加入的玩家会被踢出。确认退出？'
+            : '确认退出当前房间？'}
+          confirmLabel={isHost ? '解散房间' : '退出'}
+          cancelLabel="留下"
+          tone="danger"
+          onConfirm={confirmLeave}
+          onCancel={() => setLeaveAsk(false)}
+        />
+      )}
+      {kickAsk != null && (
+        <ConfirmDialog
+          title="踢出玩家"
+          message={`确认踢出 ${kickAsk} 号玩家？该座位会变回 AI。`}
+          confirmLabel="踢出"
+          cancelLabel="取消"
+          tone="danger"
+          onConfirm={confirmKick}
+          onCancel={() => setKickAsk(null)}
+        />
+      )}
     </div>
   )
 }

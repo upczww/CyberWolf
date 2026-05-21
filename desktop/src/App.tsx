@@ -3,6 +3,7 @@ import GameAudio from './components/GameAudio'
 import GameEffects from './components/GameEffects'
 import GameProgress from './components/GameProgress'
 import HumanActionPanel from './components/HumanActionPanel'
+import ConfirmDialog from './components/ConfirmDialog'
 import IdentityReveal, { hasSeenIdentityReveal } from './components/IdentityReveal'
 import LobbyRoom from './components/LobbyRoom'
 import { apiDelete, apiGet, apiPost } from './hooks/useApi'
@@ -286,6 +287,7 @@ export default function App() {
   // back instead of DELETEing, IdentityReveal is skipped, etc.
   const [matchRecordsOpen, setMatchRecordsOpen] = useState(false)
   const [replayMode, setReplayMode] = useState(false)
+  const [exitConfirmOpen, setExitConfirmOpen] = useState(false)
   const [loadingStart, setLoadingStart] = useState(false)
   const startingRef = useRef(false)
   const [startError, setStartError] = useState<string | null>(null)
@@ -569,24 +571,30 @@ export default function App() {
     setGameId(startedGameId)
   }, [setGameId, setHumanSeat, setViewMode])
 
-  // Hard exit: tell the backend to cancel the engine task + drop the row,
-  // then clear local state. Backend is authoritative — even if the DELETE
-  // request fails (e.g. game already ended), we still reset the UI.
-  // In replay mode we just navigate back — never delete a finished game
-  // you're only viewing.
-  const exitGame = useCallback(async () => {
+  // Click handler — replay mode is non-destructive (just navigate
+  // back). For a live game we open the confirm dialog and defer the
+  // actual DELETE until confirmExit() fires.
+  const exitGame = useCallback(() => {
     if (!gameId || replayMode) {
       resetToLanding()
       return
     }
-    if (!window.confirm('确定退出当前对局？后端引擎会立即停止并删除该局记录。')) return
+    setExitConfirmOpen(true)
+  }, [gameId, replayMode])
+
+  const confirmExit = useCallback(async () => {
+    setExitConfirmOpen(false)
+    if (!gameId) {
+      resetToLanding()
+      return
+    }
     try {
       await apiDelete(`/api/games/${gameId}`)
     } catch {
       // ignore — frontend resets either way
     }
     resetToLanding()
-  }, [gameId, replayMode])
+  }, [gameId])
 
   if (room) {
     return (
@@ -787,6 +795,18 @@ export default function App() {
       )}
 
       <button className="legend-hotspot" onClick={() => setLegendOpen(true)}>状态图标</button>
+
+      {exitConfirmOpen && (
+        <ConfirmDialog
+          title="退出当前对局"
+          message="后端引擎会立即停止并删除本局记录，确认退出？"
+          confirmLabel="退出对局"
+          cancelLabel="继续游戏"
+          tone="danger"
+          onConfirm={confirmExit}
+          onCancel={() => setExitConfirmOpen(false)}
+        />
+      )}
     </div>
   )
 }

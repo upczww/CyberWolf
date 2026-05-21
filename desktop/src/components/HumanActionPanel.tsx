@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { apiPost } from '../hooks/useApi'
 import { useGameStore, type AwaitingHumanRequest, type GameEvent, type Player } from '../stores/game'
+import ConfirmDialog from './ConfirmDialog'
 
 interface Props {
   request: AwaitingHumanRequest
@@ -31,6 +32,7 @@ export default function HumanActionPanel({ request, gameId, players }: Props) {
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [speechText, setSpeechText] = useState('')
+  const [selfDestructAsk, setSelfDestructAsk] = useState(false)
 
   useEffect(() => {
     setRemaining(Math.max(5, Math.floor(request.timeout_seconds || 60)))
@@ -237,10 +239,7 @@ export default function HumanActionPanel({ request, gameId, players }: Props) {
           {canSelfDestruct && (
             <button
               className="danger self-destruct"
-              onClick={() => {
-                if (!confirm('确定狼人自爆?当前阶段立即结束。')) return
-                submit({ _wolf_self_destruct: true })
-              }}
+              onClick={() => setSelfDestructAsk(true)}
               disabled={submitting}
             >
               💥 狼人自爆
@@ -249,6 +248,20 @@ export default function HumanActionPanel({ request, gameId, players }: Props) {
           {error ? <span className="panel-error">{error}</span> : null}
         </footer>
       </div>
+      {selfDestructAsk && (
+        <ConfirmDialog
+          title="狼人自爆"
+          message="自爆会立即结束当前阶段并暴露你的身份，确认引爆？"
+          confirmLabel="💥 立即自爆"
+          cancelLabel="取消"
+          tone="danger"
+          onConfirm={() => {
+            setSelfDestructAsk(false)
+            submit({ _wolf_self_destruct: true })
+          }}
+          onCancel={() => setSelfDestructAsk(false)}
+        />
+      )}
     </div>
   )
 }
