@@ -93,6 +93,47 @@ class ServerFlowSecurityTests(unittest.TestCase):
         self.assertFalse(api._authorize_seat_access("game-1", 3, "wrong"))
         self.assertTrue(api._authorize_seat_access("game-1", 3, "token-c"))
 
+    def test_finished_human_game_is_freely_observable(self) -> None:
+        # A finished personal game must be replayable without a token —
+        # otherwise the records→replay flow hangs at loading.
+        paths = self._temp_paths()
+        initialize_database(paths.database, paths.schema)
+        api._get_paths = lambda: paths
+        conn = connect_database(paths.database)
+        try:
+            conn.execute(
+                """
+                INSERT INTO games (
+                    id, status, started_at, ended_at, round_count, config_id,
+                    config_json, prompt_profile_json, seed, created_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    "game-done",
+                    "completed",
+                    "2026-05-22T00:00:00+08:00",
+                    "2026-05-22T00:10:00+08:00",
+                    5,
+                    "test-config",
+                    "{}",
+                    "{}",
+                    1,
+                    "2026-05-22T00:00:00+08:00",
+                ),
+            )
+            conn.commit()
+            api._persist_seat_tokens(conn, game_id="game-done", seat_tokens={3: "token-c"})
+        finally:
+            conn.close()
+
+        api._human_seats.clear()
+        api._seat_tokens.clear()
+
+        # Observer (no seat / token) is allowed because the game is over.
+        self.assertTrue(api._authorize_seat_access("game-done", None, None))
+        # The original seat owner can still rejoin with their token.
+        self.assertTrue(api._authorize_seat_access("game-done", 3, "token-c"))
+
     def test_sanitize_snapshot_keeps_only_own_pending_skills(self) -> None:
         detail = {
             "players": [

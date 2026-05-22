@@ -914,6 +914,31 @@ def _load_persisted_seat_tokens(game_id: str) -> dict[int, str]:
     return {int(row["seat_index"]): str(row["seat_token"]) for row in rows}
 
 
+def _game_is_over(game_id: str) -> bool:
+    """True once a game has finished.
+
+    Finished games carry no fairness concern (identities are revealed
+    post-game), so they can be freely observed / replayed without a
+    seat token — even if they were personal games that persisted
+    per-seat tokens.
+    """
+    try:
+        paths = _get_paths()
+        conn = connect_database(paths.database)
+        try:
+            row = conn.execute(
+                "SELECT status, ended_at FROM games WHERE id = ?", (game_id,)
+            ).fetchone()
+        finally:
+            conn.close()
+    except Exception:
+        return False
+    if row is None:
+        return False
+    status = str(row["status"] or "")
+    return status in ("completed", "failed") or bool(row["ended_at"])
+
+
 def _authorize_seat_access(game_id: str, seat: int | None, seat_token: str | None) -> bool:
     human_seats = _human_seats.get(game_id) or set()
     if not human_seats:
@@ -924,10 +949,15 @@ def _authorize_seat_access(game_id: str, seat: int | None, seat_token: str | Non
             human_seats = set(persisted_tokens)
     if not human_seats:
         return True
-    if seat is None or seat not in human_seats:
-        return False
-    expected = (_seat_tokens.get(game_id) or {}).get(seat)
-    return bool(expected and seat_token and secrets.compare_digest(expected, seat_token))
+    # A valid seat-owner token grants access at any time (the human
+    # player rejoining their own running game).
+    if seat is not None and seat in human_seats:
+        expected = (_seat_tokens.get(game_id) or {}).get(seat)
+        if expected and seat_token and secrets.compare_digest(expected, seat_token):
+            return True
+    # Otherwise access is only granted once the game is over — finished
+    # games are freely observable / replayable (god view, no token).
+    return _game_is_over(game_id)
 
 
 def _require_seat_access(game_id: str, seat: int | None, seat_token: str | None) -> None:
