@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import logging
 from random import Random
+from time import monotonic
 from typing import TYPE_CHECKING, TypeGuard
 
 from app.domain.events import GameEvent
@@ -14,6 +15,7 @@ from app.domain.state import (
 )
 from app.engine.event_helpers import emit_event, emit_speaking_started
 from app.engine.llm_bridge import llm_decide, llm_speech, _build_cache_friendly_system_and_user
+from app.engine.pacing import hold_visible_action, phase_has_time, set_phase_deadline
 from app.engine.registry import phase
 from app.services.context_builder import build_prompt_context
 from app.services.decisions import resolve_action, validate_tool_call
@@ -38,6 +40,10 @@ async def handle_sheriff_election(state: GameState, services: SessionServices) -
     alive = alive_player_ids(state)
     events: list[GameEvent] = []
     actions = []
+
+    # Re-arm for the candidacy round: every alive seat may get a 30s
+    # candidacy awaiter. Ceiling only — AI decides instantly.
+    set_phase_deadline(services, 20.0 + len(alive) * 32.0)
 
     # Phase 1: Declare candidacy
     living_wolves_list = [pid for pid in alive if state["players"][pid]["faction"] == Faction.WOLF]
@@ -98,8 +104,13 @@ async def handle_sheriff_election(state: GameState, services: SessionServices) -
 
     # Phase 2: Campaign speeches — seat order (lowest seat first), the
     # standard for werewolf judging. No RNG shuffle.
+    # Re-arm to fit every candidate's full 90s campaign speech + buffer.
+    set_phase_deadline(services, 20.0 + len(candidates) * 95.0)
     speech_order = sorted(candidates)
     for player_id in speech_order:
+        if not phase_has_time(services):
+            break
+        visible_started = monotonic()
         role = state["players"][player_id]["role"]
         emit_speaking_started(services, state, events, player_id=player_id)
         proposed_args = await llm_speech(
@@ -111,14 +122,20 @@ async def handle_sheriff_election(state: GameState, services: SessionServices) -
         if speech:
             emit_event(services, state, events, EventType.SHERIFF_CAMPAIGN,
                        {"player_id": player_id, "speech": speech})
+        await hold_visible_action(visible_started, services)
 
     # Phase 3: Vote — only NON-candidates vote
     voters = [pid for pid in alive if pid not in candidates]
+    # Re-arm to fit every voter's full turn (120s vote cap + buffer).
+    set_phase_deadline(services, 20.0 + len(voters) * 130.0)
     votes: dict[int, int] = {}
     for voter in voters:
         voter_candidates = list(candidates)
         if not voter_candidates:
             votes[voter] = None
+            continue
+        if not phase_has_time(services):
+            votes[voter] = services.rng.choice(voter_candidates)
             continue
         proposed_args = await llm_decide(
             state, services,
@@ -217,6 +234,9 @@ async def _resolve_sheriff_election(
     tied = sorted(pid for pid, count in tally.items() if count == top)
 
     for player_id in tied:
+        if not phase_has_time(services):
+            break
+        visible_started = monotonic()
         role = state["players"][player_id]["role"]
         emit_speaking_started(services, state, events, player_id=player_id)
         proposed_args = await llm_speech(
@@ -228,6 +248,7 @@ async def _resolve_sheriff_election(
         if speech:
             emit_event(services, state, events, EventType.SHERIFF_CAMPAIGN,
                        {"player_id": player_id, "speech": speech, "tie_breaker": True})
+        await hold_visible_action(visible_started, services)
 
     # Re-vote among tied candidates
     new_votes: dict[int, int] = {}
@@ -235,6 +256,9 @@ async def _resolve_sheriff_election(
         voter_candidates = [pid for pid in tied if pid != voter] or list(tied)
         if not voter_candidates:
             new_votes[voter] = None
+            continue
+        if not phase_has_time(services):
+            new_votes[voter] = services.rng.choice(voter_candidates)
             continue
         proposed_args = await llm_decide(
             state, services,

@@ -17,6 +17,7 @@ from app.domain.state import (
 )
 from app.engine.event_helpers import action_source, emit_event, emit_speaking_started
 from app.engine.llm_bridge import llm_death_speech, llm_decide
+from app.engine.pacing import hold_visible_action
 from app.engine.registry import phase
 from app.services.decisions import resolve_action, validate_tool_call
 
@@ -537,6 +538,7 @@ async def _collect_death_speeches(
             f"{player_id} 号玩家发表遗言",
             kind="info", glyph="🪦", intro=True,
         )
+        visible_started = _monotonic()
         emit_speaking_started(services, state, events, player_id=player_id)
         proposed_args = await llm_death_speech(
             state, services,
@@ -550,4 +552,5 @@ async def _collect_death_speeches(
             # here would leak via the public death_speech event.
             emit_event(services, state, events, EventType.DEATH_SPEECH,
                        {"player_id": player_id, "speech": speech})
+        await hold_visible_action(visible_started, services)
     return events

@@ -23,7 +23,7 @@ export interface RoomLite {
 
 interface Callbacks {
   onState: (room: RoomLite) => void
-  onStarted: (gameId: string, seatOwners: Record<string, string>) => void
+  onStarted: (gameId: string, seatOwners: Record<string, string>, seatToken: string | null) => void
   onClosed: (reason?: string) => void
 }
 
@@ -59,7 +59,11 @@ export function useRoomWS(
         if (payload.type === 'room_state' && payload.room) {
           cbRef.current.onState(payload.room as RoomLite)
         } else if (payload.type === 'room_started' && payload.game_id) {
-          cbRef.current.onStarted(payload.game_id, payload.seat_owners || {})
+          cbRef.current.onStarted(
+            payload.game_id,
+            payload.your_seat != null ? { [payload.your_seat]: userId || '' } : (payload.seat_owners || {}),
+            payload.seat_token || null,
+          )
         } else if (payload.type === 'room_closed') {
           cbRef.current.onClosed(payload.reason)
         }

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { apiPost } from '../hooks/useApi'
 import { useRoomWS, type RoomLite, type RoomSeatLite } from '../hooks/useRoomWS'
 import { buildInviteUrl, defaultNicknameFor } from '../lib/identity'
@@ -10,7 +10,7 @@ interface Props {
   // Called with the spawned game_id + the human seat assigned to THIS user
   // once the host hits start. The seat may be null if the user wasn't
   // seated in the room (shouldn't normally happen).
-  onStarted: (gameId: string, mySeat: number | null) => void
+  onStarted: (gameId: string, mySeat: number | null, mySeatToken: string | null) => void
   onLeave: () => void
   onClosed: (reason?: string) => void
 }
@@ -32,12 +32,19 @@ export default function LobbyRoom({
   const [error, setError] = useState<string | null>(null)
   const [leaveAsk, setLeaveAsk] = useState(false)
   const [kickAsk, setKickAsk] = useState<number | null>(null)
+  const startedRef = useRef(false)
+
+  const finishStarted = (gameId: string, mySeat: number | null, mySeatToken: string | null) => {
+    if (startedRef.current) return
+    startedRef.current = true
+    onStarted(gameId, mySeat, mySeatToken)
+  }
 
   useRoomWS(room.id, userId, {
     onState: (next) => setRoom(next),
-    onStarted: (gameId, seatOwners) => {
+    onStarted: (gameId, seatOwners, seatToken) => {
       const mySeat = findMySeat(seatOwners, userId)
-      onStarted(gameId, mySeat)
+      finishStarted(gameId, mySeat, seatToken)
     },
     onClosed: (reason) => onClosed(reason),
   })
@@ -83,7 +90,7 @@ export default function LobbyRoom({
     setBusy('start')
     setError(null)
     try {
-      const res = await apiPost<{ game_id?: string; error?: string }>(
+      const res = await apiPost<{ game_id?: string; error?: string; your_seat?: number | null; seat_token?: string | null }>(
         `/api/rooms/${room.id}/start`,
         { host_user_id: userId },
       )
@@ -92,8 +99,7 @@ export default function LobbyRoom({
         setBusy(null)
         return
       }
-      // The WS room_started broadcast also delivers this — we just wait
-      // for it (handled by onStarted). Don't navigate here directly.
+      finishStarted(res.game_id, res.your_seat ?? null, res.seat_token ?? null)
     } catch (err) {
       setError(err instanceof Error ? err.message : '网络错误')
       setBusy(null)

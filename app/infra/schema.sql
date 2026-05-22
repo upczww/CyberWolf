@@ -31,6 +31,15 @@ CREATE TABLE IF NOT EXISTS game_players (
     FOREIGN KEY (game_id) REFERENCES games(id)
 );
 
+CREATE TABLE IF NOT EXISTS game_seat_tokens (
+    game_id TEXT NOT NULL,
+    seat_index INTEGER NOT NULL,
+    seat_token TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    PRIMARY KEY (game_id, seat_index),
+    FOREIGN KEY (game_id) REFERENCES games(id)
+);
+
 CREATE TABLE IF NOT EXISTS game_events (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     game_id TEXT NOT NULL,

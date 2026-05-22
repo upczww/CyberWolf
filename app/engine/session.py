@@ -36,6 +36,7 @@ from app.domain.state import (
 )
 from app.engine.handlers import PHASE_HANDLERS
 from app.engine.human import HumanAwaiter
+from app.engine.pacing import start_phase_budget
 from app.engine.state_machine import build_phase_machine
 from app.infra.events import EventBus
 from app.infra.repositories.events import insert_events
@@ -74,6 +75,8 @@ class SessionServices:
     phase_delay_seconds: float = 0.0  # debug/demo aid: pause after each phase
     _phase_started_emitted: bool = False
     _last_narration_at: float | None = None
+    _phase_started_at: float | None = None
+    _phase_deadline_at: float | None = None
 
 
 # ---------------------------------------------------------------------------
@@ -152,6 +155,7 @@ class GameSession:
         # Hold the previous phase's narration on screen long enough to
         # be read before this phase emits its own.
         await _wait_for_min_narration_hold(self.services)
+        start_phase_budget(self.services, phase)
 
         try:
             result = await _dispatch_handler(self, self.game_state, self.services)

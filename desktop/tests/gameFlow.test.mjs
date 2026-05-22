@@ -26,6 +26,7 @@ async function loadTsModule(relativePath) {
 
 const flow = await loadTsModule('src/lib/gameFlow.ts')
 const portraits = await loadTsModule('src/lib/portraits.ts')
+const phaseTiming = await loadTsModule('src/lib/phaseTiming.ts')
 
 function ev(seq, type, phase, data = {}) {
   return {
@@ -173,4 +174,11 @@ test('portraitForPlayer picks stable per-game villager and werewolf variants', (
 
   assert.ok(villagerAcrossGames.size > 1)
   assert.ok(wolfAcrossGames.size > 1)
+})
+
+test('phaseMaxSeconds mirrors backend pacing caps used by the top bar', () => {
+  assert.equal(phaseTiming.phaseMaxSeconds('day_speech'), 180)
+  assert.equal(phaseTiming.phaseMaxSeconds('night_witch'), 60)
+  assert.equal(phaseTiming.phaseMaxSeconds('day_vote'), 120)
+  assert.equal(phaseTiming.phaseMaxSeconds('unknown_future_phase'), 60)
 })

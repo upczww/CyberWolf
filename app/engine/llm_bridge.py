@@ -5,8 +5,10 @@ into a single parameterized function, eliminating ~300 lines of duplication.
 """
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
+from time import monotonic
 from typing import TYPE_CHECKING, Any
 
 from app.domain.events import GameEvent
@@ -21,6 +23,7 @@ from app.services.prompts import (
     resolve_prompt_template,
     split_rendered_template,
 )
+from app.engine.pacing import phase_remaining_seconds
 
 if TYPE_CHECKING:
     from app.engine.session import SessionServices
@@ -75,6 +78,10 @@ async def llm_decide(
             phase.value, tool_name, actor_id,
             services.total_llm_calls, services.llm_settings.max_calls_per_game,
         )
+        return local_args
+
+    remaining = phase_remaining_seconds(services)
+    if remaining is not None and remaining <= 0.25:
         return local_args
 
     # Build prompt
@@ -184,6 +191,9 @@ async def _await_human_action(
     if awaiter is None:
         return local_args
     timeout_seconds = _human_timeout_seconds(tool_name, phase)
+    remaining = phase_remaining_seconds(services)
+    if remaining is not None:
+        timeout_seconds = max(0.1, min(timeout_seconds, remaining))
 
     # Phase narration ("女巫请睁眼", "预言家请睁眼"...) must fire BEFORE we
     # publish awaiting_human and block on the awaiter — otherwise the
@@ -280,6 +290,9 @@ async def llm_death_speech(
         return local_args
     if services.total_llm_calls >= services.llm_settings.max_calls_per_game:
         return local_args
+    remaining = phase_remaining_seconds(services)
+    if remaining is not None and remaining <= 0.25:
+        return local_args
 
     context = build_prompt_context(state, player_id=actor_id)
     user_payload = build_prompt_inputs(
@@ -311,10 +324,41 @@ async def llm_death_speech(
 async def _call_llm(services: "SessionServices", messages: list[dict], tools: list) -> LLMCallResult:
     """Execute a single LLM call with semaphore."""
     services.total_llm_calls += 1
-    if services.llm_semaphore is None:
-        return await services.llm_client.call_with_tools(messages=messages, tools=tools, force_tool=True)
-    async with services.llm_semaphore:
-        return await services.llm_client.call_with_tools(messages=messages, tools=tools, force_tool=True)
+    started = monotonic()
+
+    async def invoke() -> LLMCallResult:
+        if services.llm_semaphore is None:
+            return await services.llm_client.call_with_tools(messages=messages, tools=tools, force_tool=True)
+        async with services.llm_semaphore:
+            return await services.llm_client.call_with_tools(messages=messages, tools=tools, force_tool=True)
+
+    remaining = phase_remaining_seconds(services)
+    if remaining is not None and remaining <= 0.25:
+        return LLMCallResult(
+            success=False,
+            tool_name=None,
+            tool_args=None,
+            content=None,
+            request_payload={},
+            response_payload=None,
+            latency_ms=0,
+            error_message="phase_budget_exhausted",
+        )
+    try:
+        if remaining is not None:
+            return await asyncio.wait_for(invoke(), timeout=remaining)
+        return await invoke()
+    except asyncio.TimeoutError:
+        return LLMCallResult(
+            success=False,
+            tool_name=None,
+            tool_args=None,
+            content=None,
+            request_payload={},
+            response_payload=None,
+            latency_ms=int((monotonic() - started) * 1000),
+            error_message="phase_budget_timeout",
+        )
 
 
 async def _retry_once(

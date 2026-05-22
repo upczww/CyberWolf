@@ -7,11 +7,14 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import secrets
+import sqlite3
 from contextlib import asynccontextmanager
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
@@ -28,6 +31,7 @@ from app.infra.repositories.events import fetch_events
 from app.infra.repositories.snapshots import fetch_latest_snapshot
 
 _log = logging.getLogger(__name__)
+TZ_CN = timezone(timedelta(hours=8))
 
 # Active game sessions: game_id -> (EventBus, asyncio.Task)
 _active_games: dict[str, tuple[EventBus, asyncio.Task]] = {}
@@ -58,6 +62,10 @@ _human_awaiters: dict[str, HumanAwaiter] = {}
 # set; multi-human lobby games carry every seated player. submit_human_
 # action validates req.actor_id is in this set.
 _human_seats: dict[str, set[int]] = {}
+# Per-game per-seat bearer tokens. Personal / multi-human game clients must
+# present the token for their own seat when asking for self-mode data or
+# submitting actions. Pure AI/god games do not populate this map.
+_seat_tokens: dict[str, dict[int, str]] = {}
 
 # ---------------------------------------------------------------------------
 # Lobby room state (in-process — DB is the source of truth, this caches
@@ -136,12 +144,15 @@ class HumanActionRequest(BaseModel):
     actor_id: int
     tool_name: str
     args: dict[str, Any]
+    seat_token: str | None = None
 
 
 class StartGameResponse(BaseModel):
     game_id: str
     config_id: str
     human_seat: int | None = None
+    seat_token: str | None = None
+    seat_tokens: dict[int, str] | None = None
 
 
 class GameSummary(BaseModel):
@@ -206,13 +217,19 @@ async def game_count():
 
 
 @app.get("/api/games/{game_id}")
-async def get_game(game_id: str, event_limit: int = 300, seat: int | None = None):
+async def get_game(
+    game_id: str,
+    event_limit: int = 300,
+    seat: int | None = None,
+    seat_token: str | None = None,
+):
     """Get full game detail.
 
     Optional ``seat=N`` filters role_private / wolf_team events to those whose
     target_ids include seat N — mirrors the WS filter so the human player can
     safely call this endpoint without leaking other players' private info.
     """
+    _require_seat_access(game_id, seat, seat_token)
     paths = _get_paths()
     conn = connect_database(paths.database)
     try:
@@ -287,11 +304,18 @@ async def start_game(req: StartGameRequest):
     event_bus = EventBus()
     game_id_holder: list[str] = []
     human_awaiter = HumanAwaiter() if resolved_seats else None
+    issued_tokens = _issue_seat_tokens(resolved_seats)
 
     def on_started(gid: str) -> None:
         game_id_holder.append(gid)
         if resolved_seats:
             _human_seats[gid] = set(resolved_seats)
+            _seat_tokens[gid] = dict(issued_tokens)
+            conn = connect_database(paths.database)
+            try:
+                _persist_seat_tokens(conn, game_id=gid, seat_tokens=issued_tokens)
+            finally:
+                conn.close()
             if human_awaiter is not None:
                 _human_awaiters[gid] = human_awaiter
 
@@ -303,6 +327,9 @@ async def start_game(req: StartGameRequest):
         targets = event.target_players or set()
         for sub in subscribers:
             seat = sub.seat
+            if seat is not None and scope == EventScope.GOD:
+                # God-only events never reach a seat-bound (personal) client.
+                continue
             if seat is not None and scope in (EventScope.ROLE_PRIVATE, EventScope.WOLF_TEAM):
                 if seat not in targets:
                     continue
@@ -333,7 +360,6 @@ async def start_game(req: StartGameRequest):
             if gid:
                 if gid in _active_games:
                     del _active_games[gid]
-                _human_seats.pop(gid, None)
                 awaiter = _human_awaiters.pop(gid, None)
                 if awaiter is not None:
                     await awaiter.cancel_all()
@@ -351,7 +377,14 @@ async def start_game(req: StartGameRequest):
 
     gid = game_id_holder[0]
     _active_games[gid] = (event_bus, task)
-    return StartGameResponse(game_id=gid, config_id=req.config_id, human_seat=resolved_seat)
+    primary_token = issued_tokens.get(resolved_seat) if resolved_seat is not None else None
+    return StartGameResponse(
+        game_id=gid,
+        config_id=req.config_id,
+        human_seat=resolved_seat,
+        seat_token=primary_token,
+        seat_tokens=issued_tokens or None,
+    )
 
 
 @app.delete("/api/games/{game_id}")
@@ -378,6 +411,7 @@ async def delete_game(game_id: str):
         except Exception:
             pass
     _human_seats.pop(game_id, None)
+    _seat_tokens.pop(game_id, None)
     # 3) Delete DB rows
     paths = _get_paths()
     conn = connect_database(paths.database)
@@ -411,12 +445,14 @@ async def submit_human_action(game_id: str, req: HumanActionRequest):
     expected_seats = _human_seats.get(game_id) or set()
     if expected_seats and req.actor_id not in expected_seats:
         return {"accepted": False, "reason": "actor_mismatch"}
+    if not _authorize_seat_access(game_id, req.actor_id, req.seat_token):
+        return {"accepted": False, "reason": "unauthorized"}
     accepted = await awaiter.submit(actor_id=req.actor_id, tool_name=req.tool_name, args=req.args)
     return {"accepted": accepted, "pending": awaiter.pending_snapshot()}
 
 
 @app.get("/api/games/{game_id}/human_pending")
-async def human_pending(game_id: str, seat: int | None = None):
+async def human_pending(game_id: str, seat: int | None = None, seat_token: str | None = None):
     """Return actions currently awaiting human input (for reconnect).
 
     If ``seat=N`` is provided we only surface the entries whose actor matches
@@ -424,6 +460,7 @@ async def human_pending(game_id: str, seat: int | None = None):
     ``tool_name`` field (e.g. an outstanding ``witch_antidote`` tells you who
     the witch is). Self-mode clients always call this with ``?seat=N``.
     """
+    _require_seat_access(game_id, seat, seat_token)
     awaiter = _human_awaiters.get(game_id)
     if awaiter is None:
         return {"pending": [], "seat": seat}
@@ -466,10 +503,44 @@ class StartRoomRequest(BaseModel):
 def _broadcast_room(room_id: str, payload: dict) -> None:
     subs = _room_ws_subscribers.get(room_id, set())
     for sub in list(subs):
+        outbound = _personalize_room_payload(payload, sub.user_id)
         try:
-            sub.queue.put_nowait(payload)
+            sub.queue.put_nowait(outbound)
         except asyncio.QueueFull:
             pass
+
+
+def _personalize_room_payload(payload: dict, user_id: str | None) -> dict:
+    outbound = dict(payload)
+    if payload.get("type") == "room_started":
+        owners = payload.get("seat_owners") or {}
+        your_seat = None
+        for seat, owner in owners.items():
+            if user_id is not None and owner == user_id:
+                your_seat = int(seat)
+                break
+        outbound["your_seat"] = your_seat
+        outbound["seat_owners"] = {your_seat: user_id} if your_seat is not None and user_id is not None else {}
+        tokens_by_user = outbound.pop("seat_tokens_by_user", {}) or {}
+        if user_id is not None and user_id in tokens_by_user:
+            outbound["seat_token"] = tokens_by_user[user_id]
+    if payload.get("type") == "room_state" and isinstance(payload.get("room"), dict):
+        outbound["room"] = _sanitize_room_for_user(payload["room"], user_id)
+    return outbound
+
+
+def _sanitize_room_for_user(room: dict, user_id: str | None) -> dict:
+    sanitized = dict(room)
+    if sanitized.get("host_user_id") != user_id:
+        sanitized["host_user_id"] = "__host__"
+    seats = []
+    for seat in sanitized.get("seats") or []:
+        item = dict(seat)
+        if item.get("user_id") != user_id:
+            item["user_id"] = "__occupied__" if item.get("user_id") else None
+        seats.append(item)
+    sanitized["seats"] = seats
+    return sanitized
 
 
 def _room_snapshot_payload(room: dict) -> dict:
@@ -493,13 +564,13 @@ async def create_room(req: CreateRoomRequest):
             host_nickname=req.nickname.strip()[:24] or "玩家",
             use_llm=req.use_llm,
         )
-        return {"room": room, "your_seat": 1}
+        return {"room": _sanitize_room_for_user(room, req.user_id), "your_seat": 1}
     finally:
         conn.close()
 
 
 @app.get("/api/rooms/{room_id}")
-async def get_room(room_id: str):
+async def get_room(room_id: str, user_id: str | None = None):
     from app.infra.repositories.rooms import get_room as repo_get_room
     paths = _get_paths()
     conn = connect_database(paths.database)
@@ -507,13 +578,13 @@ async def get_room(room_id: str):
         room = repo_get_room(conn, room_id=room_id)
         if room is None:
             return {"error": "room not found"}
-        return {"room": room}
+        return {"room": _sanitize_room_for_user(room, user_id)}
     finally:
         conn.close()
 
 
 @app.get("/api/rooms/by-token/{invite_token}")
-async def get_room_by_token(invite_token: str):
+async def get_room_by_token(invite_token: str, user_id: str | None = None):
     """Resolve an invite token to a room — used when a recipient clicks
     a share link. Returns the room so the frontend can render the lobby
     (or display "room already started" / "room closed" states)."""
@@ -524,7 +595,7 @@ async def get_room_by_token(invite_token: str):
         room = repo_get_by_token(conn, invite_token=invite_token)
         if room is None:
             return {"error": "invalid invite"}
-        return {"room": room}
+        return {"room": _sanitize_room_for_user(room, user_id)}
     finally:
         conn.close()
 
@@ -549,7 +620,7 @@ async def join_room(room_id: str, req: JoinRoomRequest):
             return {"error": "room is full"}
         room = repo_get_room(conn, room_id=room_id)
         _broadcast_room(room_id, _room_snapshot_payload(room))
-        return {"your_seat": seat["seat_index"], "room": room}
+        return {"your_seat": seat["seat_index"], "room": _sanitize_room_for_user(room, req.user_id)}
     finally:
         conn.close()
 
@@ -575,7 +646,7 @@ async def kick_seat(room_id: str, req: KickRequest):
             return {"error": "seat already empty"}
         room = repo_get_room(conn, room_id=room_id)
         _broadcast_room(room_id, _room_snapshot_payload(room))
-        return {"kicked": req.seat_index, "room": room}
+        return {"kicked": req.seat_index, "room": _sanitize_room_for_user(room, req.host_user_id)}
     finally:
         conn.close()
 
@@ -644,6 +715,7 @@ async def start_room(room_id: str, req: StartRoomRequest):
     if isinstance(started, dict) and started.get("error"):
         return started
     game_id = started.game_id  # type: ignore[union-attr]
+    seat_tokens = started.seat_tokens or {}  # type: ignore[union-attr]
 
     # Stamp the room and tell every connected lobby client to transition.
     conn = connect_database(paths.database)
@@ -655,12 +727,24 @@ async def start_room(room_id: str, req: StartRoomRequest):
     # Map seat_index -> user_id so each lobby client knows whether THEY
     # are seated (and at which seat) once the game opens.
     seat_owners = {s["seat_index"]: s["user_id"] for s in room["seats"] if s["user_id"]}
+    seat_tokens_by_user = {
+        user_id: seat_tokens.get(seat)
+        for seat, user_id in seat_owners.items()
+        if seat_tokens.get(seat) is not None
+    }
     _broadcast_room(room_id, {
         "type": "room_started",
         "game_id": game_id,
         "seat_owners": seat_owners,
+        "seat_tokens_by_user": seat_tokens_by_user,
     })
-    return {"game_id": game_id, "human_seats": human_seats}
+    host_seat = next((seat for seat, user_id in seat_owners.items() if user_id == req.host_user_id), None)
+    return {
+        "game_id": game_id,
+        "human_seats": human_seats,
+        "your_seat": host_seat,
+        "seat_token": seat_tokens.get(host_seat) if host_seat is not None else None,
+    }
 
 
 @app.websocket("/ws/rooms/{room_id}")
@@ -683,7 +767,7 @@ async def room_websocket(websocket: WebSocket, room_id: str):
         finally:
             conn.close()
         if room is not None:
-            await websocket.send_json(_room_snapshot_payload(room))
+            await websocket.send_json(_personalize_room_payload(_room_snapshot_payload(room), user_id))
         # Then stream live updates.
         while True:
             payload = await queue.get()
@@ -710,6 +794,7 @@ async def game_websocket(websocket: WebSocket, game_id: str):
     leaking other players' private info.
     """
     seat_param = websocket.query_params.get("seat")
+    seat_token = websocket.query_params.get("seat_token")
     seat: int | None = None
     if seat_param:
         try:
@@ -717,6 +802,10 @@ async def game_websocket(websocket: WebSocket, game_id: str):
         except ValueError:
             seat = None
     await websocket.accept()
+    if not _authorize_seat_access(game_id, seat, seat_token):
+        await websocket.send_json({"type": "error", "error": "unauthorized"})
+        await websocket.close(code=1008)
+        return
     queue: asyncio.Queue = asyncio.Queue(maxsize=200)
 
     # Register subscriber
@@ -737,6 +826,9 @@ async def game_websocket(websocket: WebSocket, game_id: str):
                 if isinstance(ev.get("data_json"), str):
                     ev["data_json"] = json.loads(ev["data_json"])
                 # Filter private events for seat-bound subscribers
+                if seat is not None and ev.get("scope") == "god":
+                    # God-only events never reach a seat-bound (personal) client.
+                    continue
                 if seat is not None and ev.get("scope") in {"role_private", "wolf_team"}:
                     raw_targets = ev.get("target_ids_json") or "[]"
                     try:
@@ -787,6 +879,62 @@ def _serialize_event(event: GameEvent) -> dict[str, Any]:
     }
 
 
+def _issue_seat_tokens(seats: set[int]) -> dict[int, str]:
+    return {int(seat): secrets.token_urlsafe(32) for seat in seats}
+
+
+def _persist_seat_tokens(conn: sqlite3.Connection, *, game_id: str, seat_tokens: dict[int, str]) -> None:
+    now = datetime.now(TZ_CN).isoformat()
+    conn.executemany(
+        """
+        INSERT OR REPLACE INTO game_seat_tokens (game_id, seat_index, seat_token, created_at)
+        VALUES (?, ?, ?, ?)
+        """,
+        [(game_id, int(seat), token, now) for seat, token in seat_tokens.items()],
+    )
+    conn.commit()
+
+
+def _load_persisted_seat_tokens(game_id: str) -> dict[int, str]:
+    paths = _get_paths()
+    conn = connect_database(paths.database)
+    try:
+        rows = conn.execute(
+            """
+            SELECT seat_index, seat_token
+            FROM game_seat_tokens
+            WHERE game_id = ?
+            """,
+            (game_id,),
+        ).fetchall()
+    except sqlite3.OperationalError:
+        return {}
+    finally:
+        conn.close()
+    return {int(row["seat_index"]): str(row["seat_token"]) for row in rows}
+
+
+def _authorize_seat_access(game_id: str, seat: int | None, seat_token: str | None) -> bool:
+    human_seats = _human_seats.get(game_id) or set()
+    if not human_seats:
+        persisted_tokens = _load_persisted_seat_tokens(game_id)
+        if persisted_tokens:
+            _seat_tokens[game_id] = dict(persisted_tokens)
+            _human_seats[game_id] = set(persisted_tokens)
+            human_seats = set(persisted_tokens)
+    if not human_seats:
+        return True
+    if seat is None or seat not in human_seats:
+        return False
+    expected = (_seat_tokens.get(game_id) or {}).get(seat)
+    return bool(expected and seat_token and secrets.compare_digest(expected, seat_token))
+
+
+def _require_seat_access(game_id: str, seat: int | None, seat_token: str | None) -> None:
+    if not _authorize_seat_access(game_id, seat, seat_token):
+        raise HTTPException(status_code=403, detail="unauthorized seat access")
+
+
 # ---------------------------------------------------------------------------
 # Self-mode information isolation
 # ---------------------------------------------------------------------------
@@ -801,6 +949,22 @@ _PRIVATE_STATE_FIELDS = (
     "night_result",          # engine intermediate state
     "seed",                  # rng seed — knowing it lets you replay AI decisions
 )
+
+# Causes that are private to a night kill — the village only learns WHO
+# died, not HOW. Public-cause deaths (exile / self_destruct / a daytime
+# hunter shot) keep their cause.
+_NIGHT_DEATH_CAUSES = frozenset({"wolf", "poison"})
+
+
+def _mask_night_death_cause(player: dict[str, Any]) -> None:
+    """Hide how a night death occurred (wolf kill / witch poison).
+
+    The frontend derives the displayed cause from public events (which
+    carry no cause for night deaths), so blanking the snapshot field
+    just closes a raw-API leak without changing any visible UI.
+    """
+    if player.get("death_cause") in _NIGHT_DEATH_CAUSES:
+        player["death_cause"] = None
 
 
 def _sanitize_detail_for_seat(detail: dict[str, Any], seat: int | None) -> dict[str, Any]:
@@ -869,6 +1033,7 @@ def _sanitize_detail_for_seat(detail: dict[str, Any], seat: int | None) -> dict[
         if not _visible_role(si, alive):
             mp["role"] = "unknown"
             mp["faction"] = "unknown"
+        _mask_night_death_cause(mp)
         masked_players.append(mp)
     detail["players"] = masked_players
 
@@ -892,6 +1057,7 @@ def _sanitize_detail_for_seat(detail: dict[str, Any], seat: int | None) -> dict[
                     if not _visible_role(ipid, alive):
                         mpl["role"] = "unknown"
                         mpl["faction"] = "unknown"
+                    _mask_night_death_cause(mpl)
                     masked_sp[pid] = mpl
                 new_state["players"] = masked_sp
 
@@ -916,7 +1082,7 @@ def _sanitize_detail_for_seat(detail: dict[str, Any], seat: int | None) -> dict[
                 new_state["pending_skills"] = [
                     s for s in ps
                     if isinstance(s, dict)
-                    and (s.get("actor_id") == seat or s.get("kind") == "sheriff_transfer")
+                    and s.get("actor_id") == seat
                 ]
 
             snapshot["state_json"] = new_state

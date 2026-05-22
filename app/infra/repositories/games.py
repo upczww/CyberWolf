@@ -186,6 +186,7 @@ def delete_game(conn: sqlite3.Connection, *, game_id: str) -> None:
     conn.execute("DELETE FROM state_snapshots WHERE game_id = ?", (game_id,))
     conn.execute("DELETE FROM llm_calls WHERE game_id = ?", (game_id,))
     conn.execute("DELETE FROM game_metrics WHERE game_id = ?", (game_id,))
+    conn.execute("DELETE FROM game_seat_tokens WHERE game_id = ?", (game_id,))
     conn.execute("DELETE FROM game_players WHERE game_id = ?", (game_id,))
     conn.execute("DELETE FROM games WHERE id = ?", (game_id,))
     conn.commit()

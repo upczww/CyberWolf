@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react'
 import { useGameStore } from '../stores/game'
 import { normalizeGameEvent } from '../lib/gameFlow'
 
-export function useGameWS(gameId: string | null, seat: number | null = null) {
+export function useGameWS(gameId: string | null, seat: number | null = null, seatToken: string | null = null) {
   const wsRef = useRef<WebSocket | null>(null)
   const {
     addEvent, setConnected,
@@ -17,15 +17,19 @@ export function useGameWS(gameId: string | null, seat: number | null = null) {
 
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
     const host = window.location.host
-    const query = seat != null ? `?seat=${seat}` : ''
+    const params = new URLSearchParams()
+    if (seat != null) params.set('seat', String(seat))
+    if (seatToken) params.set('seat_token', seatToken)
+    const query = params.toString() ? `?${params.toString()}` : ''
     const ws = new WebSocket(`${protocol}//${host}/ws/games/${gameId}${query}`)
     wsRef.current = ws
 
     ws.onopen = () => {
       setConnected(true)
       // Pull any in-flight awaiting_human state in case we connected after the event was emitted
-      if (seat != null) {
-        fetch(`/api/games/${gameId}/human_pending?seat=${seat}`)
+      if (seat != null && seatToken) {
+        const pendingParams = new URLSearchParams({ seat: String(seat), seat_token: seatToken })
+        fetch(`/api/games/${gameId}/human_pending?${pendingParams.toString()}`)
           .then((r) => r.json())
           .then((data: {
             pending?: Array<{
@@ -81,7 +85,7 @@ export function useGameWS(gameId: string | null, seat: number | null = null) {
       ws.close()
       wsRef.current = null
     }
-  }, [gameId, seat])
+  }, [gameId, seat, seatToken])
 }
 
 function normalizeEvent(raw: any) {

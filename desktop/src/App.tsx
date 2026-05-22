@@ -13,6 +13,7 @@ import {
   clearInviteFromUrl, defaultNicknameFor, getNickname, getOrCreateUserId,
   readInviteFromUrl, setNickname as persistNickname,
 } from './lib/identity'
+import { phaseMaxSeconds } from './lib/phaseTiming'
 import { UNKNOWN_CLOAK, portraitForPlayer, unknownPortraitForSeat } from './lib/portraits'
 import { useGameStore, type AwaitingHumanRequest, type GameEvent, type Player } from './stores/game'
 
@@ -278,6 +279,7 @@ export default function App() {
     connected,
     viewMode,
     humanSeat,
+    humanSeatToken,
     ttsEnabled,
     awaitingHuman,
     setGameId,
@@ -289,6 +291,7 @@ export default function App() {
     setWinner,
     setViewMode,
     setHumanSeat,
+    setHumanSeatToken,
     setTtsEnabled,
     reset,
   } = useGameStore()
@@ -316,7 +319,7 @@ export default function App() {
   const [startError, setStartError] = useState<string | null>(null)
   const [identityRevealed, setIdentityRevealed] = useState(false)
 
-  useGameWS(gameId, viewMode === 'self' ? humanSeat : null)
+  useGameWS(gameId, viewMode === 'self' ? humanSeat : null, viewMode === 'self' ? humanSeatToken : null)
 
   useEffect(() => {
     if (!gameId || gameId === 'demo') return
@@ -343,6 +346,7 @@ export default function App() {
   const visiblePhase = phase || 'setup_game'
   const meta = PHASE_META[visiblePhase] || PHASE_META.day_speech
   const latestEvent = events[events.length - 1] || null
+  const topBarRemaining = usePhaseBudgetRemaining(visiblePhase, events)
   const voteCounts = useMemo(() => buildVoteCounts(events), [events])
   // Tools whose awaiter should NOT promote the actor to "current
   // speaker" — these are silent backend prompts (candidacy yes/no,
@@ -475,7 +479,12 @@ export default function App() {
 
   const loadGameDetail = async (gid: string) => {
     try {
-      const seatParam = viewMode === 'self' && humanSeat != null ? `?seat=${humanSeat}` : ''
+      const params = new URLSearchParams()
+      if (viewMode === 'self' && humanSeat != null && humanSeatToken) {
+        params.set('seat', String(humanSeat))
+        params.set('seat_token', humanSeatToken)
+      }
+      const seatParam = params.toString() ? `?${params.toString()}` : ''
       const detail = await apiGet<any>(`/api/games/${gid}${seatParam}`)
       if (detail.error) return
       setPlayers(detail.players || [])
@@ -506,10 +515,11 @@ export default function App() {
     try {
       const payload: Record<string, unknown> = { config_id: '12p_pre_witch_hunter_idiot', use_llm: useLlm }
       if (mode === 'self') payload.human_join = true
-      const res = await apiPost<{ game_id: string; human_seat?: number | null }>('/api/games/start', payload)
+      const res = await apiPost<{ game_id: string; human_seat?: number | null; seat_token?: string | null }>('/api/games/start', payload)
       reset()
       setViewMode(mode)
       setHumanSeat(mode === 'self' && typeof res.human_seat === 'number' ? res.human_seat : null)
+      setHumanSeatToken(mode === 'self' ? (res.seat_token || null) : null)
       setGameId(res.game_id)
     } catch {
       setStartError('Backend service is unavailable; the real game could not start.')
@@ -543,8 +553,9 @@ export default function App() {
     setReplayMode(true)
     setViewMode('god')
     setHumanSeat(null)
+    setHumanSeatToken(null)
     setGameId(gid)
-  }, [setGameId, setHumanSeat, setViewMode])
+  }, [setGameId, setHumanSeat, setHumanSeatToken, setViewMode])
 
   /** Prompt for a nickname (uses saved one if available) and persist it. */
   const ensureNickname = (): string | null => {
@@ -626,15 +637,16 @@ export default function App() {
   /** Called by LobbyRoom when the host starts the game. The room's
    * room_started WS broadcast carries seat ownership so this user knows
    * which seat (if any) they're playing. */
-  const handleLobbyStarted = useCallback((startedGameId: string, mySeat: number | null) => {
+  const handleLobbyStarted = useCallback((startedGameId: string, mySeat: number | null, mySeatToken: string | null) => {
     setRoom(null)
     setLobbyError(null)
     // Multi-human game is rendered via the existing 'self' personal-mode
     // pipeline — same modal stack, same per-seat awaiting filter.
     setViewMode('self')
     setHumanSeat(mySeat)
+    setHumanSeatToken(mySeatToken)
     setGameId(startedGameId)
-  }, [setGameId, setHumanSeat, setViewMode])
+  }, [setGameId, setHumanSeat, setHumanSeatToken, setViewMode])
 
   // Click handler — replay mode is non-destructive (just navigate
   // back). For a live game we open the confirm dialog and defer the
@@ -751,7 +763,7 @@ export default function App() {
         roomId={roomId}
         round={round || 1}
         meta={meta}
-        remaining={visiblePhase === 'day_speech' ? 60 : visiblePhase === 'night_witch' ? 120 : 45}
+        remaining={topBarRemaining}
         onMenu={resetToLanding}
         onHistory={() => {
           setHistoryOpen(true)
@@ -937,6 +949,34 @@ function TopBar({
       </div>
     </header>
   )
+}
+
+function usePhaseBudgetRemaining(phase: string, events: GameEvent[]): number {
+  const total = phaseMaxSeconds(phase)
+  const startedAt = useMemo(() => {
+    for (let i = events.length - 1; i >= 0; i -= 1) {
+      const ev = events[i]
+      if (ev.event_type !== 'phase_started') continue
+      const eventPhase = String(ev.data?.phase || ev.phase || '')
+      if (eventPhase !== phase) continue
+      const rawTs = ev.created_at
+      if (!rawTs) return null
+      const parsed = Date.parse(rawTs)
+      return Number.isFinite(parsed) ? parsed : null
+    }
+    return null
+  }, [phase, events])
+  const [now, setNow] = useState(() => Date.now())
+
+  useEffect(() => {
+    setNow(Date.now())
+    const id = window.setInterval(() => setNow(Date.now()), 1000)
+    return () => window.clearInterval(id)
+  }, [phase, startedAt])
+
+  if (startedAt == null) return total
+  const elapsed = Math.max(0, (now - startedAt) / 1000)
+  return Math.max(0, Math.ceil(total - elapsed))
 }
 
 function LandingScreen({

@@ -63,6 +63,7 @@ interface GameState {
   // View mode + human player
   viewMode: 'god' | 'observer' | 'self'
   humanSeat: number | null
+  humanSeatToken: string | null
   ttsEnabled: boolean
 
   awaitingHuman: AwaitingHumanRequest | null
@@ -81,6 +82,7 @@ interface GameState {
   setConnected: (connected: boolean) => void
   setViewMode: (mode: 'god' | 'observer' | 'self') => void
   setHumanSeat: (seat: number | null) => void
+  setHumanSeatToken: (token: string | null) => void
   setTtsEnabled: (enabled: boolean) => void
   setAwaitingHuman: (req: AwaitingHumanRequest | null) => void
   clearAwaitingHuman: () => void
@@ -100,6 +102,7 @@ export const useGameStore = create<GameState>((set) => ({
   connected: false,
   viewMode: 'god',
   humanSeat: null,
+  humanSeatToken: null,
   ttsEnabled: false,
   awaitingHuman: null,
 
@@ -124,10 +127,11 @@ export const useGameStore = create<GameState>((set) => ({
   setConnected: (connected) => set({ connected }),
   setViewMode: (viewMode) => set({ viewMode }),
   setHumanSeat: (humanSeat) => set({ humanSeat }),
+  setHumanSeatToken: (humanSeatToken) => set({ humanSeatToken }),
   setTtsEnabled: (ttsEnabled) => set({ ttsEnabled }),
   setAwaitingHuman: (awaitingHuman) => set({ awaitingHuman }),
   clearAwaitingHuman: () => set({ awaitingHuman: null }),
-  reset: () => set({ gameId: null, players: [], events: [], status: null, winner: null, phase: null, round: 1, awaitingHuman: null }),
+  reset: () => set({ gameId: null, players: [], events: [], status: null, winner: null, phase: null, round: 1, awaitingHuman: null, humanSeatToken: null }),
 }))
 
 // Dev hook: expose the store for headless screenshot scripts and debugging.

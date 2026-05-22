@@ -62,9 +62,12 @@ export default function Toolbar({
         payload.human_join = true
         // server picks human_seat at random
       }
-      const res = await apiPost<{ game_id: string; human_seat?: number | null }>('/api/games/start', payload)
+      const res = await apiPost<{ game_id: string; human_seat?: number | null; seat_token?: string | null }>('/api/games/start', payload)
       if (viewMode === 'self' && typeof res.human_seat === 'number') {
         onHumanSeatChange(res.human_seat)
+        useGameStore.getState().setHumanSeatToken(res.seat_token || null)
+      } else {
+        useGameStore.getState().setHumanSeatToken(null)
       }
       onGameStarted(res.game_id)
     } catch (error) {

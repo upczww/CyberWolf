@@ -1,0 +1,397 @@
+{
+  "generated_dir": "C:\\Users\\upczw\\.codex\\generated_images\\019e45a0-6adc-75c3-9e0c-215143615f7d",
+  "canvas": [
+    768,
+    1024
+  ],
+  "target_height_without_distortion": 860,
+  "max_width_without_distortion": 720,
+  "processed": 16,
+  "contact_sheet": "desktop\\public\\assets\\ui\\portraits\\generated_portraits_contact_sheet.png",
+  "portraits": [
+    {
+      "path": "desktop\\public\\assets\\ui\\portraits\\extra\\portrait_elder_male_01.png",
+      "bust_path": "desktop\\public\\assets\\ui\\portraits\\extra\\portrait_elder_male_01_bust.png",
+      "size": [
+        768,
+        1024
+      ],
+      "alpha_bbox": [
+        24,
+        112,
+        744,
+        972
+      ],
+      "alpha_width": 720,
+      "alpha_height": 860,
+      "transparent_corners": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "label": "elder_male",
+      "source": "C:\\Users\\upczw\\.codex\\generated_images\\019e45a0-6adc-75c3-9e0c-215143615f7d\\ig_008e7bea5493d61a016a0dcd36b1b8819a8282e066a15a02e7.png"
+    },
+    {
+      "path": "desktop\\public\\assets\\ui\\portraits\\extra\\portrait_elder_female_01.png",
+      "bust_path": "desktop\\public\\assets\\ui\\portraits\\extra\\portrait_elder_female_01_bust.png",
+      "size": [
+        768,
+        1024
+      ],
+      "alpha_bbox": [
+        24,
+        112,
+        744,
+        972
+      ],
+      "alpha_width": 720,
+      "alpha_height": 860,
+      "transparent_corners": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "label": "elder_female",
+      "source": "C:\\Users\\upczw\\.codex\\generated_images\\019e45a0-6adc-75c3-9e0c-215143615f7d\\ig_008e7bea5493d61a016a0dcd9ad390819aaf68feeda80d5e96.png"
+    },
+    {
+      "path": "desktop\\public\\assets\\ui\\portraits\\roles\\portrait_villager_male_01.png",
+      "bust_path": "desktop\\public\\assets\\ui\\portraits\\roles\\portrait_villager_male_01_bust.png",
+      "size": [
+        768,
+        1024
+      ],
+      "alpha_bbox": [
+        24,
+        112,
+        744,
+        972
+      ],
+      "alpha_width": 720,
+      "alpha_height": 860,
+      "transparent_corners": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "label": "villager_male",
+      "source": "C:\\Users\\upczw\\.codex\\generated_images\\019e45a0-6adc-75c3-9e0c-215143615f7d\\ig_008e7bea5493d61a016a0dcddbfe18819a83f1ab79941db8cc.png"
+    },
+    {
+      "path": "desktop\\public\\assets\\ui\\portraits\\roles\\portrait_villager_female_01.png",
+      "bust_path": "desktop\\public\\assets\\ui\\portraits\\roles\\portrait_villager_female_01_bust.png",
+      "size": [
+        768,
+        1024
+      ],
+      "alpha_bbox": [
+        30,
+        112,
+        737,
+        972
+      ],
+      "alpha_width": 707,
+      "alpha_height": 860,
+      "transparent_corners": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "label": "villager_female",
+      "source": "C:\\Users\\upczw\\.codex\\generated_images\\019e45a0-6adc-75c3-9e0c-215143615f7d\\ig_008e7bea5493d61a016a0dce261a38819a8e27cf9a491ac9fb.png"
+    },
+    {
+      "path": "desktop\\public\\assets\\ui\\portraits\\extra\\portrait_boy_01.png",
+      "bust_path": "desktop\\public\\assets\\ui\\portraits\\extra\\portrait_boy_01_bust.png",
+      "size": [
+        768,
+        1024
+      ],
+      "alpha_bbox": [
+        24,
+        112,
+        744,
+        972
+      ],
+      "alpha_width": 720,
+      "alpha_height": 860,
+      "transparent_corners": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "label": "boy",
+      "source": "C:\\Users\\upczw\\.codex\\generated_images\\019e45a0-6adc-75c3-9e0c-215143615f7d\\ig_008e7bea5493d61a016a0dce6a28c8819a9972a4183e159a5a.png"
+    },
+    {
+      "path": "desktop\\public\\assets\\ui\\portraits\\extra\\portrait_girl_01.png",
+      "bust_path": "desktop\\public\\assets\\ui\\portraits\\extra\\portrait_girl_01_bust.png",
+      "size": [
+        768,
+        1024
+      ],
+      "alpha_bbox": [
+        42,
+        112,
+        725,
+        972
+      ],
+      "alpha_width": 683,
+      "alpha_height": 860,
+      "transparent_corners": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "label": "girl",
+      "source": "C:\\Users\\upczw\\.codex\\generated_images\\019e45a0-6adc-75c3-9e0c-215143615f7d\\ig_008e7bea5493d61a016a0dceb04918819a89f2306c684f6614.png"
+    },
+    {
+      "path": "desktop\\public\\assets\\ui\\portraits\\roles\\portrait_seer_01.png",
+      "bust_path": "desktop\\public\\assets\\ui\\portraits\\roles\\portrait_seer_01_bust.png",
+      "size": [
+        768,
+        1024
+      ],
+      "alpha_bbox": [
+        24,
+        112,
+        744,
+        972
+      ],
+      "alpha_width": 720,
+      "alpha_height": 860,
+      "transparent_corners": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "label": "seer",
+      "source": "C:\\Users\\upczw\\.codex\\generated_images\\019e45a0-6adc-75c3-9e0c-215143615f7d\\ig_008e7bea5493d61a016a0dcefd7a28819abeb1e38ad299c245.png"
+    },
+    {
+      "path": "desktop\\public\\assets\\ui\\portraits\\roles\\portrait_witch_01.png",
+      "bust_path": "desktop\\public\\assets\\ui\\portraits\\roles\\portrait_witch_01_bust.png",
+      "size": [
+        768,
+        1024
+      ],
+      "alpha_bbox": [
+        24,
+        112,
+        744,
+        972
+      ],
+      "alpha_width": 720,
+      "alpha_height": 860,
+      "transparent_corners": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "label": "witch",
+      "source": "C:\\Users\\upczw\\.codex\\generated_images\\019e45a0-6adc-75c3-9e0c-215143615f7d\\ig_008e7bea5493d61a016a0dcf58f6ec819ab1ef65954316f654.png"
+    },
+    {
+      "path": "desktop\\public\\assets\\ui\\portraits\\roles\\portrait_hunter_01.png",
+      "bust_path": "desktop\\public\\assets\\ui\\portraits\\roles\\portrait_hunter_01_bust.png",
+      "size": [
+        768,
+        1024
+      ],
+      "alpha_bbox": [
+        24,
+        112,
+        744,
+        972
+      ],
+      "alpha_width": 720,
+      "alpha_height": 860,
+      "transparent_corners": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "label": "hunter",
+      "source": "C:\\Users\\upczw\\.codex\\generated_images\\019e45a0-6adc-75c3-9e0c-215143615f7d\\ig_008e7bea5493d61a016a0dcf9bec40819a979805d5e332aec3.png"
+    },
+    {
+      "path": "desktop\\public\\assets\\ui\\portraits\\roles\\portrait_guard_01.png",
+      "bust_path": "desktop\\public\\assets\\ui\\portraits\\roles\\portrait_guard_01_bust.png",
+      "size": [
+        768,
+        1024
+      ],
+      "alpha_bbox": [
+        24,
+        112,
+        744,
+        972
+      ],
+      "alpha_width": 720,
+      "alpha_height": 860,
+      "transparent_corners": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "label": "guard",
+      "source": "C:\\Users\\upczw\\.codex\\generated_images\\019e45a0-6adc-75c3-9e0c-215143615f7d\\ig_008e7bea5493d61a016a0dd004f808819a8f5c98a6634418de.png"
+    },
+    {
+      "path": "desktop\\public\\assets\\ui\\portraits\\roles\\portrait_werewolf_01.png",
+      "bust_path": "desktop\\public\\assets\\ui\\portraits\\roles\\portrait_werewolf_01_bust.png",
+      "size": [
+        768,
+        1024
+      ],
+      "alpha_bbox": [
+        24,
+        112,
+        744,
+        972
+      ],
+      "alpha_width": 720,
+      "alpha_height": 860,
+      "transparent_corners": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "label": "werewolf_01",
+      "source": "C:\\Users\\upczw\\.codex\\generated_images\\019e45a0-6adc-75c3-9e0c-215143615f7d\\ig_008e7bea5493d61a016a0dd05a6e24819ab073ec122f139e4a.png"
+    },
+    {
+      "path": "desktop\\public\\assets\\ui\\portraits\\roles\\portrait_werewolf_02.png",
+      "bust_path": "desktop\\public\\assets\\ui\\portraits\\roles\\portrait_werewolf_02_bust.png",
+      "size": [
+        768,
+        1024
+      ],
+      "alpha_bbox": [
+        24,
+        112,
+        744,
+        972
+      ],
+      "alpha_width": 720,
+      "alpha_height": 860,
+      "transparent_corners": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "label": "werewolf_02",
+      "source": "C:\\Users\\upczw\\.codex\\generated_images\\019e45a0-6adc-75c3-9e0c-215143615f7d\\ig_008e7bea5493d61a016a0dd0aa5278819a8977136700360955.png"
+    },
+    {
+      "path": "desktop\\public\\assets\\ui\\portraits\\roles\\portrait_werewolf_03.png",
+      "bust_path": "desktop\\public\\assets\\ui\\portraits\\roles\\portrait_werewolf_03_bust.png",
+      "size": [
+        768,
+        1024
+      ],
+      "alpha_bbox": [
+        24,
+        112,
+        744,
+        972
+      ],
+      "alpha_width": 720,
+      "alpha_height": 860,
+      "transparent_corners": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "label": "werewolf_03",
+      "source": "C:\\Users\\upczw\\.codex\\generated_images\\019e45a0-6adc-75c3-9e0c-215143615f7d\\ig_008e7bea5493d61a016a0dd11f050c819aaf73027d1a982976.png"
+    },
+    {
+      "path": "desktop\\public\\assets\\ui\\portraits\\roles\\portrait_werewolf_04.png",
+      "bust_path": "desktop\\public\\assets\\ui\\portraits\\roles\\portrait_werewolf_04_bust.png",
+      "size": [
+        768,
+        1024
+      ],
+      "alpha_bbox": [
+        24,
+        112,
+        744,
+        972
+      ],
+      "alpha_width": 720,
+      "alpha_height": 860,
+      "transparent_corners": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "label": "werewolf_04",
+      "source": "C:\\Users\\upczw\\.codex\\generated_images\\019e45a0-6adc-75c3-9e0c-215143615f7d\\ig_008e7bea5493d61a016a0dd16a8334819abbccee9600935f31.png"
+    },
+    {
+      "path": "desktop\\public\\assets\\ui\\portraits\\roles\\portrait_werewolf_05.png",
+      "bust_path": "desktop\\public\\assets\\ui\\portraits\\roles\\portrait_werewolf_05_bust.png",
+      "size": [
+        768,
+        1024
+      ],
+      "alpha_bbox": [
+        24,
+        112,
+        744,
+        972
+      ],
+      "alpha_width": 720,
+      "alpha_height": 860,
+      "transparent_corners": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "label": "werewolf_05",
+      "source": "C:\\Users\\upczw\\.codex\\generated_images\\019e45a0-6adc-75c3-9e0c-215143615f7d\\ig_008e7bea5493d61a016a0dd1c95b38819ab614fe47fa134f6b.png"
+    },
+    {
+      "path": "desktop\\public\\assets\\ui\\portraits\\roles\\portrait_werewolf_06.png",
+      "bust_path": "desktop\\public\\assets\\ui\\portraits\\roles\\portrait_werewolf_06_bust.png",
+      "size": [
+        768,
+        1024
+      ],
+      "alpha_bbox": [
+        24,
+        112,
+        744,
+        972
+      ],
+      "alpha_width": 720,
+      "alpha_height": 860,
+      "transparent_corners": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "label": "werewolf_06",
+      "source": "C:\\Users\\upczw\\.codex\\generated_images\\019e45a0-6adc-75c3-9e0c-215143615f7d\\ig_008e7bea5493d61a016a0dd2175fbc819aaa3c18ec28452c8a.png"
+    }
+  ]
+}

@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import logging
 from datetime import datetime, timedelta, timezone
+from time import monotonic
 from typing import TYPE_CHECKING
 
 from app.domain.events import GameEvent
@@ -16,6 +17,7 @@ from app.domain.state import (
 )
 from app.engine.event_helpers import action_source as _action_source, emit_event, emit_narration, emit_speaking_started, make_event
 from app.engine.llm_bridge import llm_decide, llm_speech
+from app.engine.pacing import hold_visible_action, phase_has_time, set_phase_deadline
 from app.engine.registry import phase
 from app.services.decisions import resolve_action, validate_tool_call
 
@@ -118,7 +120,15 @@ async def handle_day_speech(state: GameState, services: SessionServices) -> Phas
                {"order": order, "sheriff_id": state.get("sheriff_id"),
                 "clockwise": direction_clockwise})
 
+    # Re-arm the phase ceiling to fit every speaker's full turn (90s
+    # speech cap + buffer) so no one is truncated in a human game. AI
+    # speakers finish in seconds, so this never slows an AI round.
+    set_phase_deadline(services, 20.0 + len(order) * 95.0)
+
     for player_id in order:
+        if not phase_has_time(services):
+            break
+        visible_started = monotonic()
         role = state["players"][player_id]["role"]
         emit_speaking_started(services, state, events, player_id=player_id)
         proposed_args = await llm_speech(
@@ -166,6 +176,7 @@ async def handle_day_speech(state: GameState, services: SessionServices) -> Phas
         speeches.append({"player_id": player_id, "round": state["round"], "content": content})
         emit_event(services, state, events, EventType.PUBLIC_SPEECH_MADE,
                    {"player_id": player_id, "speech": content})
+        await hold_visible_action(visible_started, services)
 
     players_patch = {
         player_id: {"private_memory": list(state["players"][player_id]["private_memory"])}
@@ -200,6 +211,10 @@ async def handle_day_vote(state: GameState, services: SessionServices) -> PhaseR
     sheriff_id = state.get("sheriff_id")
     voters = [pid for pid, player in state["players"].items() if player["alive"] and player["can_vote"]]
 
+    # Re-arm the ceiling to fit every voter's full turn (120s vote cap +
+    # buffer). Ceiling only — AI voters resolve instantly.
+    set_phase_deadline(services, 20.0 + len(voters) * 130.0)
+
     # --- Round 1 ---
     votes, sd_result = await _collect_day_votes(
         state, services, voters,
@@ -215,6 +230,11 @@ async def handle_day_vote(state: GameState, services: SessionServices) -> PhaseR
 
     if chosen is None and len(tied) >= 2:
         went_to_pk = True
+        # Re-arm for the PK round: each tied seat re-speaks (95s) + the
+        # non-tied voters re-vote (130s each). Fresh ceiling so the
+        # round-1 budget already spent doesn't starve the PK.
+        revote_count = len([v for v in voters if v not in tied])
+        set_phase_deadline(services, 20.0 + len(tied) * 95.0 + revote_count * 130.0)
         # Tied — PK round. Announce + each tied seat speaks again, then
         # voters who weren't tied re-vote among the tied seats only.
         emit_event(services, state, events, EventType.NARRATION,
@@ -224,6 +244,7 @@ async def handle_day_vote(state: GameState, services: SessionServices) -> PhaseR
         # PK speeches
         from app.engine.llm_bridge import llm_speech
         for pid in tied:
+            visible_started = monotonic()
             role = state["players"][pid]["role"]
             emit_speaking_started(services, state, events, player_id=pid)
             speech_args = await llm_speech(
@@ -235,6 +256,9 @@ async def handle_day_vote(state: GameState, services: SessionServices) -> PhaseR
             if speech:
                 emit_event(services, state, events, EventType.PUBLIC_SPEECH_MADE,
                            {"player_id": pid, "speech": speech, "tie_breaker": True})
+            # Same visible-hold as the normal speech loop so AI PK
+            # speeches don't flash past faster than a human can read.
+            await hold_visible_action(visible_started, services)
 
         # Round 2 — only non-tied alive voters; pick among tied seats.
         revote_voters = [v for v in voters if v not in tied]
@@ -309,6 +333,9 @@ async def _collect_day_votes(
             # Surface the tied seat list to the human's vote panel so the
             # candidates grid stays constrained to PK contestants.
             local_args["candidates"] = list(pick_from)
+        if not phase_has_time(services):
+            votes[voter] = local_args["target_id"]
+            continue
         proposed_args = await llm_decide(
             state, services,
             actor_id=voter, role=state["players"][voter]["role"],

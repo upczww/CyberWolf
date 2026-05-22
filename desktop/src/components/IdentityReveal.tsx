@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { portraitForPlayer } from '../lib/portraits'
 import { apiPost } from '../hooks/useApi'
-import type { Player } from '../stores/game'
+import { useGameStore, type Player } from '../stores/game'
 
 interface Props {
   gameId: string
@@ -69,6 +69,7 @@ function metaFor(role: string, faction: string): RoleMeta {
 const STORAGE_KEY_PREFIX = 'lycan-identity-revealed:'
 
 export default function IdentityReveal({ gameId, player, onClose }: Props) {
+  const humanSeatToken = useGameStore((s) => s.humanSeatToken)
   const meta = metaFor(player.role, player.faction)
   const portrait = portraitForPlayer(player, gameId)
   const [closing, setClosing] = useState(false)
@@ -110,6 +111,7 @@ export default function IdentityReveal({ gameId, player, onClose }: Props) {
         actor_id: player.seat_index,
         tool_name: 'confirm_identity',
         args: { confirmed: true },
+        seat_token: humanSeatToken,
       })
     } catch {
       // If the backend awaiter has already timed out and resolved with its

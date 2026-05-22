@@ -28,7 +28,7 @@ const ROLE_CARD_BACK = '/assets/ui/role_intro/role_intro_card_base_neutral.png'
 const SHERIFF_BADGE = '/assets/ui/icons/status/icon_status_sheriff.png'
 
 export default function HumanActionPanel({ request, gameId, players }: Props) {
-  const { clearAwaitingHuman, events } = useGameStore()
+  const { clearAwaitingHuman, events, humanSeatToken } = useGameStore()
   const [remaining, setRemaining] = useState(Math.max(5, Math.floor(request.timeout_seconds || 60)))
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -73,7 +73,7 @@ export default function HumanActionPanel({ request, gameId, players }: Props) {
     try {
       const res = await apiPost<{ accepted: boolean; reason?: string }>(
         `/api/games/${gameId}/human_action`,
-        { actor_id: request.actor_id, tool_name: request.tool_name, args },
+        { actor_id: request.actor_id, tool_name: request.tool_name, args, seat_token: humanSeatToken },
       )
       if (!res.accepted) {
         const reason = res.reason || 'not_pending'
