@@ -408,20 +408,35 @@ def _failure_reason(result: LLMCallResult, expected_tool: str) -> str:
 def _build_cache_friendly_system_and_user(
     user_payload: dict, tool_instruction: str, role_system: str, dynamic_state: str,
 ) -> tuple[list[str], str]:
-    """Build system prompts and user content optimized for LLM prefix cache hits.
+    """Build system prompts ordered stable→volatile for prefix-cache hits.
 
-    Layout:
-      System 1: _COMMON_RULES + public_state + tool_instruction  (shared by ALL 12 players)
-      System 2: role_system                                      (shared by same-role players)
-      User:     dynamic_state (private info)                      (unique per player)
+    Providers (DeepSeek / OpenAI / Zhipu) cache on an exact linear prefix,
+    so anything that changes early invalidates everything after it. We
+    therefore front-load the parts that repeat and push the volatile
+    game state to the end:
+
+      System 1: _COMMON_RULES                   — global; identical for every
+                                                  call of every game.
+      System 2: role_system + tool_instruction  — stable per (role, phase);
+                                                  reused across ROUNDS and by
+                                                  same-role players in a phase.
+      System 3: <public_state>                  — volatile per phase; still
+                                                  shared within a phase by
+                                                  same-role players (it now
+                                                  follows the role split).
+      User:     dynamic_state                   — the per-player ask.
+
+    The previous layout put public_state in System 1 (before role_system),
+    so the only cross-round-cacheable text was _COMMON_RULES; the per-role
+    strategy block was reprocessed every round. Moving public_state behind
+    the static role block lets the long static head cache across rounds.
     """
+    role_block = f"{role_system}\n\n{tool_instruction}" if role_system else tool_instruction
+    system_prompts = [_COMMON_RULES, role_block]
     visible_state = user_payload.get("visible_state")
     if visible_state:
         public_json = json.dumps(visible_state, ensure_ascii=False, sort_keys=True)
-        common_system = f"{_COMMON_RULES}\n\n<public_state>\n{public_json}\n</public_state>\n\n{tool_instruction}"
-    else:
-        common_system = f"{_COMMON_RULES}\n\n{tool_instruction}"
-    system_prompts = [common_system, role_system] if role_system else [common_system]
+        system_prompts.append(f"<public_state>\n{public_json}\n</public_state>")
     return system_prompts, dynamic_state
 
 
