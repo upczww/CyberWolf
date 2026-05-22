@@ -6,10 +6,12 @@ import type { GameEvent } from '../stores/game'
  *
  * Renders two transient banners on top of the in-game UI:
  *   • PhaseFlash    — a centered title when the phase changes
- *                     (e.g. "🐺 狼人请睁眼", "☀ 天亮了").
+ *                     (e.g. 狼人请睁眼 / 天亮了).
  *   • EventFlash    — a centered ticker for major resolutions
- *                     (e.g. "★ 4 号当选警长", "⚖ 平票，进入加赛",
- *                      "☠ 8 号被放逐").
+ *                     (e.g. 4 号当选警长 / 平票进入加赛 / 8 号被放逐).
+ *
+ * Each banner shows a game-art icon (from /assets/ui/icons, resolved by
+ * phase / event_type / cause) rather than an emoji glyph.
  *
  * Both auto-dismiss after a short window. Multiple flashes queue so a fast
  * burst of resolution events still gets shown one-by-one.
@@ -33,19 +35,63 @@ interface Props {
 // EventFlash items pop one at a time from a queue.
 const EVENT_FLASH_MS = 3800
 
-// Backend ``kind`` → frontend glyph default. The engine can override by
-// emitting `data.glyph` explicitly.
-const KIND_GLYPH: Record<string, string> = {
-  info:    '🌙',
-  good:    '🌟',
-  gold:    '★',
-  wolf:    '🐺',
-  neutral: 'ℹ',
+// Progress banners use game-art icons (not emoji). `glyph` holds an
+// asset URL rendered as <img>.
+const ICON = '/assets/ui/icons'
+
+// Phase-intro / in-phase narration → contextual icon. Keyed first on the
+// 遗言 glyph hint, then phase, then tone (kind) as a fallback.
+function narrationIcon(data: Record<string, unknown>): string {
+  const phase = String(data?.phase ?? '')
+  const kind = String(data?.kind ?? 'info')
+  const glyph = String(data?.glyph ?? '')
+  if (glyph === '🪦') return `${ICON}/status/icon_status_last_words.png`
+  switch (phase) {
+    case 'setup_game':        return `${ICON}/actions/icon_action_confirm.png`
+    case 'night_start':       return `${ICON}/status/icon_status_identity_hidden.png`
+    case 'night_wolf':        return `${ICON}/skills/icon_skill_wolf_kill.png`
+    case 'night_seer':        return `${ICON}/skills/icon_skill_seer_check.png`
+    case 'night_witch':       return `${ICON}/skills/icon_skill_witch_heal.png`
+    case 'night_guard':       return `${ICON}/skills/icon_skill_guard_protect.png`
+    case 'night_hunter':      return `${ICON}/skills/icon_skill_hunter_shoot.png`
+    case 'night_idiot_reveal':return `${ICON}/skills/icon_skill_idiot_reveal.png`
+    case 'night_resolve':     return `${ICON}/actions/icon_action_record.png`
+    case 'day_announce':      return kind === 'wolf'
+      ? `${ICON}/status/icon_status_dead.png`
+      : `${ICON}/status/icon_status_saved.png`
+    case 'sheriff_election':  return `${ICON}/actions/icon_action_campaign.png`
+    case 'day_speech':        return `${ICON}/status/icon_status_speaking.png`
+    case 'day_vote':          return `${ICON}/actions/icon_action_vote.png`
+    case 'day_resolve':       return `${ICON}/status/icon_status_voted.png`
+    default:                  return kindIcon(kind)
+  }
+}
+
+function kindIcon(kind: string): string {
+  switch (kind) {
+    case 'gold': return `${ICON}/status/icon_status_sheriff.png`
+    case 'wolf': return `${ICON}/roles/icon_role_werewolf.png`
+    case 'good': return `${ICON}/skills/icon_result_good.png`
+    default:     return '/assets/ui/components/toast_info.png'
+  }
+}
+
+function causeIcon(cause: unknown): string {
+  switch (cause) {
+    case 'wolf':
+    case 'wolf_kill':     return `${ICON}/status/icon_status_knifed.png`
+    case 'poison':        return `${ICON}/status/icon_status_poisoned.png`
+    case 'exile':         return `${ICON}/status/icon_status_exiled.png`
+    case 'hunter':
+    case 'hunter_shot':   return `${ICON}/status/icon_status_shot.png`
+    case 'self_destruct': return `${ICON}/status/icon_status_self_destruct.png`
+    default:              return `${ICON}/status/icon_status_dead.png`
+  }
 }
 
 interface FlashItem {
   id: number
-  glyph: string
+  glyph: string  // asset URL
   text: string
   tone: 'gold' | 'good' | 'wolf' | 'neutral'
 }
@@ -73,10 +119,7 @@ export default function GameProgress({ phase, round, events, humanSeat, winner }
       if (ev.event_type === 'narration' && ev.data?.style === 'intro') {
         const text = String(ev.data?.text || '')
         if (!text) continue
-        const kind = String(ev.data?.kind || 'info')
-        const glyph = typeof ev.data?.glyph === 'string' && ev.data.glyph
-          ? ev.data.glyph
-          : (KIND_GLYPH[kind] || KIND_GLYPH.info)
+        const glyph = narrationIcon(ev.data || {})
         // Big banner — show immediately. The banner stays visible until
         // the NEXT intro narration replaces it (or game ends). No
         // auto-dismiss timer: backend night phases hold for 15-30s and
@@ -121,7 +164,7 @@ export default function GameProgress({ phase, round, events, humanSeat, winner }
     <>
       {phaseFlash && (
         <div className="phase-flash" key={`${phaseFlash.title}-${phaseFlash.sub}`}>
-          <span className="phase-flash-glyph">{phaseFlash.glyph}</span>
+          <img className="phase-flash-glyph" src={phaseFlash.glyph} alt="" />
           <div className="phase-flash-stack">
             <b>{phaseFlash.title}</b>
             <span>{phaseFlash.sub}</span>
@@ -130,7 +173,7 @@ export default function GameProgress({ phase, round, events, humanSeat, winner }
       )}
       {active && (
         <div className={`event-flash tone-${active.tone}`} key={active.id}>
-          <span className="event-flash-glyph">{active.glyph}</span>
+          <img className="event-flash-glyph" src={active.glyph} alt="" />
           <span className="event-flash-text">{active.text}</span>
         </div>
       )}
@@ -154,27 +197,26 @@ function eventToFlash(ev: GameEvent, humanSeat: number | null): FlashItem | null
     const tone = (d.kind === 'wolf' || d.kind === 'good' || d.kind === 'gold' || d.kind === 'neutral')
       ? d.kind as FlashItem['tone']
       : 'neutral'
-    const glyph = typeof d.glyph === 'string' && d.glyph.length > 0
-      ? d.glyph
-      : (tone === 'wolf' ? '🐺' : tone === 'good' ? '🌙' : tone === 'gold' ? '★' : 'ℹ')
-    return { id: nextFlashId(), glyph, text, tone }
+    return { id: nextFlashId(), glyph: narrationIcon(d), text, tone }
   }
   switch (ev.event_type) {
     case 'sheriff_elected': {
       const pid = d.player_id ?? d.target_id
-      if (pid == null) return { id: nextFlashId(), glyph: '★', text: '无人当选警长', tone: 'neutral' }
+      const glyph = `${ICON}/status/icon_status_sheriff.png`
+      if (pid == null) return { id: nextFlashId(), glyph, text: '无人当选警长', tone: 'neutral' }
       const isMe = humanSeat != null && Number(pid) === humanSeat
-      return { id: nextFlashId(), glyph: '★', text: isMe ? `你当选为警长` : `${pid} 号当选警长`, tone: 'gold' }
+      return { id: nextFlashId(), glyph, text: isMe ? `你当选为警长` : `${pid} 号当选警长`, tone: 'gold' }
     }
     case 'sheriff_transferred': {
       const pid = d.target_id ?? d.player_id
-      return { id: nextFlashId(), glyph: '★', text: pid == null ? '警徽撕毁' : `警徽传给 ${pid} 号`, tone: 'gold' }
+      return { id: nextFlashId(), glyph: `${ICON}/status/icon_status_sheriff.png`, text: pid == null ? '警徽撕毁' : `警徽传给 ${pid} 号`, tone: 'gold' }
     }
     case 'vote_resolved': {
       const chosen = d.chosen
-      if (chosen == null) return { id: nextFlashId(), glyph: '⚖', text: '平票，未放逐', tone: 'neutral' }
+      const glyph = `${ICON}/actions/icon_action_vote.png`
+      if (chosen == null) return { id: nextFlashId(), glyph: `${ICON}/status/icon_status_pk.png`, text: '平票，未放逐', tone: 'neutral' }
       const isMe = humanSeat != null && Number(chosen) === humanSeat
-      return { id: nextFlashId(), glyph: '⚖', text: isMe ? '你被投票放逐' : `${chosen} 号被投票放逐`, tone: 'wolf' }
+      return { id: nextFlashId(), glyph, text: isMe ? '你被投票放逐' : `${chosen} 号被投票放逐`, tone: 'wolf' }
     }
     case 'player_died': {
       const pid = d.player_id
@@ -188,24 +230,24 @@ function eventToFlash(ev: GameEvent, humanSeat: number | null): FlashItem | null
       const isMe = humanSeat != null && Number(pid) === humanSeat
       return {
         id: nextFlashId(),
-        glyph: '☠',
+        glyph: causeIcon(cause),
         text: isMe ? `你出局 · ${causeText}` : `${pid ?? '?'} 号出局 · ${causeText}`,
         tone: 'wolf',
       }
     }
     case 'hunter_shot': {
       const target = d.target_id
-      return { id: nextFlashId(), glyph: '🏹', text: target == null ? '猎人未开枪' : `猎人开枪 → ${target} 号`, tone: 'wolf' }
+      return { id: nextFlashId(), glyph: `${ICON}/skills/icon_skill_hunter_shoot.png`, text: target == null ? '猎人未开枪' : `猎人开枪 → ${target} 号`, tone: 'wolf' }
     }
     case 'wolf_self_destruct': {
       const pid = d.player_id
-      return { id: nextFlashId(), glyph: '💥', text: `${pid ?? '?'} 号狼人自爆`, tone: 'wolf' }
+      return { id: nextFlashId(), glyph: `${ICON}/status/icon_status_self_destruct.png`, text: `${pid ?? '?'} 号狼人自爆`, tone: 'wolf' }
     }
     case 'game_ended': {
       const w = d.winner
       return {
         id: nextFlashId(),
-        glyph: w === 'wolf' ? '🐺' : '🌟',
+        glyph: w === 'wolf' ? `${ICON}/status/icon_wolf_win.png` : `${ICON}/status/icon_good_win.png`,
         text: w === 'wolf' ? '狼人阵营胜利' : '好人阵营胜利',
         tone: w === 'wolf' ? 'wolf' : 'good',
       }

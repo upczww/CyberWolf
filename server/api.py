@@ -967,6 +967,21 @@ def _mask_night_death_cause(player: dict[str, Any]) -> None:
         player["death_cause"] = None
 
 
+def _detail_game_ended(detail: dict[str, Any]) -> bool:
+    """True once the game has finished — drives the post-game identity reveal."""
+    game = detail.get("game")
+    if isinstance(game, dict) and str(game.get("status") or "") == "completed":
+        return True
+    snapshot = detail.get("snapshot")
+    state = snapshot.get("state_json") if isinstance(snapshot, dict) else None
+    if isinstance(state, dict):
+        if state.get("ended"):
+            return True
+        if state.get("winner"):
+            return True
+    return False
+
+
 def _sanitize_detail_for_seat(detail: dict[str, Any], seat: int | None) -> dict[str, Any]:
     """Mask other players' identities + private state when serving a self-mode
     client. Returns the same dict (mutated). For seat=None (god / observer
@@ -990,6 +1005,10 @@ def _sanitize_detail_for_seat(detail: dict[str, Any], seat: int | None) -> dict[
     if seat is None:
         return detail
 
+    # Once the game is over, every identity is revealed (standard
+    # post-game reveal). Detect from the snapshot state or game status.
+    game_ended = _detail_game_ended(detail)
+
     players = detail.get("players") or []
     # Locate viewing player to determine faction + role
     my_player: dict[str, Any] | None = None
@@ -1012,6 +1031,9 @@ def _sanitize_detail_for_seat(detail: dict[str, Any], seat: int | None) -> dict[
                 continue
 
     def _visible_role(seat_index: int, alive: bool) -> bool:
+        # Game over → reveal everyone.
+        if game_ended:
+            return True
         # Self + dead + wolf-mates (when viewer is wolf) → role visible
         if seat_index == seat:
             return True

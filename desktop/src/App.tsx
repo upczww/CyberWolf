@@ -326,6 +326,17 @@ export default function App() {
     loadGameDetail(gameId)
   }, [gameId, humanSeat, viewMode])
 
+  // When the game ends, re-fetch detail once so the seat cards pull the
+  // now-unmasked roles — the backend reveals every identity post-game.
+  // (In self/personal mode the initial fetch masked alive seats.)
+  const revealFetchedRef = useRef<string | null>(null)
+  useEffect(() => {
+    if (!gameId || gameId === 'demo' || !winner) return
+    if (revealFetchedRef.current === gameId) return
+    revealFetchedRef.current = gameId
+    loadGameDetail(gameId)
+  }, [winner, gameId])
+
   useEffect(() => {
     const saved = window.localStorage.getItem(AUDIO_PREF_KEY)
     if (saved != null) setTtsEnabled(saved === 'true')

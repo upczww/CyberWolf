@@ -121,6 +121,45 @@ class ServerFlowSecurityTests(unittest.TestCase):
             [{"kind": "hunter_shot", "actor_id": 1}],
         )
 
+    def test_running_game_masks_other_alive_seats(self) -> None:
+        detail = {
+            "players": [
+                {"seat_index": 1, "role": "seer", "faction": "good", "survived": 1},
+                {"seat_index": 2, "role": "wolf", "faction": "wolf", "survived": 1},
+            ],
+            "snapshot": {"state_json": {"ended": False, "winner": None, "players": {}}},
+            "game": {"status": "running"},
+        }
+        sanitized = api._sanitize_detail_for_seat(detail, 1)
+        roles = {p["seat_index"]: p["role"] for p in sanitized["players"]}
+        self.assertEqual(roles, {1: "seer", 2: "unknown"})
+
+    def test_ended_game_reveals_all_identities(self) -> None:
+        detail = {
+            "players": [
+                {"seat_index": 1, "role": "seer", "faction": "good", "survived": 1},
+                {"seat_index": 2, "role": "wolf", "faction": "wolf", "survived": 1},
+            ],
+            "snapshot": {
+                "state_json": {
+                    "ended": True,
+                    "winner": "good",
+                    "players": {
+                        "1": {"role": "seer", "faction": "good", "alive": True},
+                        "2": {"role": "wolf", "faction": "wolf", "alive": True},
+                    },
+                }
+            },
+            "game": {"status": "completed"},
+        }
+        sanitized = api._sanitize_detail_for_seat(detail, 1)
+        roles = {p["seat_index"]: p["role"] for p in sanitized["players"]}
+        self.assertEqual(roles, {1: "seer", 2: "wolf"})
+        snap_roles = {
+            k: v["role"] for k, v in sanitized["snapshot"]["state_json"]["players"].items()
+        }
+        self.assertEqual(snap_roles, {"1": "seer", "2": "wolf"})
+
     def test_insert_events_stamps_seq_and_round_for_live_payloads(self) -> None:
         conn = sqlite3.connect(":memory:")
         conn.execute(
