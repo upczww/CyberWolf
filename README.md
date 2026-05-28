@@ -1,251 +1,222 @@
-# LycanTUI — AI 狼人杀模拟器
+# LycanTUI - AI Werewolf Web Simulator
 
-AI 驱动的狼人杀模拟器。所有玩家均为 AI Agent，由 LLM 或本地随机策略控制。支持配置驱动规则、SQLite 事件溯源持久化、Textual TUI 上帝视角观战。
+LycanTUI is an AI-driven Werewolf simulator. The project now primarily targets a Web UI powered by React + FastAPI, with optional Electron packaging and legacy Textual TUI/CLI tools for debugging, replay, and automation.
 
-## 当前支持的玩法
+All non-human players can be driven by LLM agents or by a local random fallback. The backend owns the game state machine, rules, timing, information isolation, and event persistence; the frontend renders the current player perspective through REST + WebSocket updates.
 
-### 板子配置：12人预女猎白
+## Current Focus
 
-| 阵营 | 角色 | 人数 |
-|------|------|------|
-| 狼人阵营 | 狼人 | 4 |
-| 好人阵营 | 预言家 | 1 |
-| 好人阵营 | 女巫 | 1 |
-| 好人阵营 | 猎人 | 1 |
-| 好人阵营 | 白痴 | 1 |
-| 好人阵营 | 平民 | 4 |
+- **Web-first experience**: React/Vite UI for game setup, god-mode spectating, personal player mode, action panels, event feed, replay, portraits, BGM/SFX hooks, and visual phase progress.
+- **Backend-driven flow**: FastAPI exposes REST endpoints and WebSocket event streams; frontend state follows backend phase/action events rather than local timers.
+- **Personal mode support**: Human seat tokens isolate private information and actions. A player only sees their own private prompts, while wolves share wolf-team information.
+- **God mode support**: Full-board observer view for debugging, spectating, replay, and flow verification.
+- **Config-driven gameplay**: Roles, phases, prompts, tools, and rules are defined by YAML configs and compiled into a runtime game graph.
+- **SQLite persistence**: Games, players, events, snapshots, LLM calls, configs, and metrics are stored for replay and debugging.
 
-### 角色技能
+## Supported Board
 
-- **预言家**：每晚查验一名玩家身份（好人/狼人）
-- **女巫**：拥有一瓶解药（救人）和一瓶毒药（杀人），各一局只能用一次
-- **猎人**：死亡时可开枪带走一名玩家（被毒死不能开枪）
-- **白痴**：被投票放逐时翻牌免死，翻牌后失去投票权
-- **狼人**：每晚选择一名玩家击杀；白天阶段可选择自爆立即进入黑夜
+The main supported config is `12p_pre_witch_hunter_idiot`.
 
-### 游戏流程
+| Faction | Role | Count |
+| --- | --- | ---: |
+| Wolves | Werewolf | 4 |
+| Good | Seer | 1 |
+| Good | Witch | 1 |
+| Good | Hunter | 1 |
+| Good | Idiot | 1 |
+| Good | Villager | 4 |
 
+## Gameplay Flow
+
+```text
+Night:
+  night_start
+  -> wolves choose a kill
+  -> seer checks one target
+  -> witch may use antidote / poison
+  -> hunter status confirmation
+  -> idiot identity confirmation
+  -> night resolve
+  -> pending death skills
+  -> win check
+
+Day:
+  death announcement
+  -> sheriff election on day 1
+  -> public speeches
+  -> vote / optional tie-break revote
+  -> exile resolve
+  -> pending death skills
+  -> win check
+
+Repeat until one faction wins.
 ```
-夜晚：狼人杀人 → 预言家查验 → 女巫用药 → 夜晚结算
-     → 死亡技能结算（猎人开枪、警徽移交） → 检查胜负
-白天：公布死讯 → 警长竞选（仅第一轮）
-     → 白天发言 → 投票放逐 → 放逐结算
-     → 死亡技能结算（猎人开枪、警徽移交） → 检查胜负
-循环直到一方获胜
-```
 
-### 规则细节
+## Rules Highlights
 
-- 警长竞选：第一轮白天前进行，警长投票 1.5 倍权重
-- 警长发言顺序：警长决定从左手/右手边开始，警长最后发言，后续白天交替方向
-- 狼人自爆：竞选/发言/投票阶段狼人可自爆，触发技能结算后进入黑夜
-- 女巫首夜可自救（fallback 模式下必定自救），次夜起不可自救
-- 猎人被毒死不可开枪
-- 猎人开枪带走的目标如果是警长，会触发警徽移交
-- 警长死亡时可移交警徽或撕毁
-- 平票时加赛一轮发言再投，再次平票则无人出局进入黑夜
-- 所有死亡玩家均有遗言机会
-- 胜负判定：屠边局（所有狼人死亡 = 好人胜；神牌全灭或民牌全灭 = 狼人胜）
+- Wolves pick one night kill target and may self-destruct during supported daytime phases.
+- Seer checks one living target per night and receives a private good/wolf result.
+- Witch has one antidote and one poison; each can be used once per game.
+- Hunter can shoot when eligible, but cannot shoot if poisoned.
+- Idiot reveals and survives when exiled, then loses voting power.
+- Sheriff election happens before the first day discussion; sheriff votes count as 1.5.
+- Tied votes trigger an additional speech/vote round; another tie exiles nobody.
+- Dead players may receive last words and pending death skills are resolved in order.
+- Win condition currently supports slaughter-side rules: all wolves dead means good wins; all villagers or all gods dead means wolves win.
 
-### LLM 集成
+## Quick Start - Web UI
 
-支持 OpenAI 兼容接口（DeepSeek、智谱 GLM 等），每个角色由 LLM 驱动决策：
-- 夜间行动（狼人杀人、预言家查验、女巫用药）
-- 白天发言（结构化 JSON 输出 + 内心独白）
-- 投票决策
-- 警长竞选（是否参选 + 竞选发言）
+### Requirements
 
-支持前缀缓存优化（~81% 缓存命中率），LLM 调用达到上限时自动降级为本地策略。
+- Python 3.11+
+- [uv](https://docs.astral.sh/uv/)
+- Node.js 20+ recommended
+- npm
 
-## 快速开始
-
-### 环境要求
-
-- Python >= 3.11
-- [uv](https://docs.astral.sh/uv/) 包管理器
-
-### 安装依赖
+### Install
 
 ```bash
-# 安装 uv（如果还没有）
-curl -LsSf https://astral.sh/uv/install.sh | sh
-
-# 克隆项目
 git clone https://github.com/upczww/LycanTUI.git
 cd LycanTUI
 
-# 安装依赖
 uv sync
+cd desktop
+npm install
 ```
 
-依赖项（自动安装）：
-- `PyYAML` — YAML 配置解析
-- `textual` — 终端 TUI 框架
+### Run In Development
 
-### 配置 LLM（可选）
+Start the backend API server from the repository root:
 
-在项目根目录创建 `.env` 文件：
+```bash
+uv run uvicorn server.api:app --host 127.0.0.1 --port 8766
+```
+
+Start the Web UI in another terminal:
+
+```bash
+cd desktop
+npm run dev
+```
+
+Open the Vite URL shown in the terminal, usually:
+
+```text
+http://127.0.0.1:5173
+```
+
+The dev server proxies API and WebSocket traffic to the FastAPI backend.
+
+### Optional Electron Mode
+
+```bash
+cd desktop
+npm run electron:dev
+```
+
+Electron is a desktop shell around the same Web UI. The Web UI remains the primary interface.
+
+## LLM Configuration
+
+Create `.env` in the repository root if you want LLM-powered agents:
 
 ```dotenv
-# 必填：LLM API 配置
 API_KEY=your_api_key
 API_URL=https://api.deepseek.com/chat/completions
 MODEL_ID=deepseek-chat
 
-# 可选：提供者和行为控制
-LLM_PROVIDER=openai_compatible          # 默认 openai_compatible
+LLM_PROVIDER=openai_compatible
 LLM_ENABLED_PHASES=night_wolf,night_seer,night_witch,sheriff_election,day_speech,day_vote,pending_skills
-LLM_MAX_CALLS_PER_GAME=200              # 单局最大 LLM 调用次数，超限自动降级
-LLM_MAX_CONCURRENCY=1                   # 并发调用数
-LLM_TIMEOUT_SECONDS=50                  # 单次调用超时
-LLM_MAX_RETRIES=5                       # 失败重试次数
-
-# 可选：自定义认证头（适配非标准 API）
-# LLM_API_KEY_HEADER=Authorization
-# LLM_API_KEY_PREFIX=Bearer 
-# LLM_EXTRA_HEADERS_JSON={"X-Custom": "value"}
+LLM_MAX_CALLS_PER_GAME=200
+LLM_MAX_CONCURRENCY=1
+LLM_TIMEOUT_SECONDS=50
+LLM_MAX_RETRIES=5
 ```
 
-不配置 `.env` 或使用 `--no-llm` 参数时，所有决策使用本地随机策略（无需网络）。
+Without `.env`, or when running with `--no-llm`, the engine falls back to local random strategy so games can run offline.
 
-### 启动 TUI
+## Useful Commands
+
+### Web / Desktop
 
 ```bash
-uv run wolf-tui                    # 启动观战界面
-uv run wolf-tui --game-id <id>     # 指定对局
-uv run wolf-tui --lang en          # 英文界面
+cd desktop
+npm run dev          # Start Vite dev server
+npm run build        # Build the Web UI
+npm run test:flow    # Run frontend flow tests
+npm run electron:dev # Optional Electron shell
 ```
 
-启动后按 `s` 开始新对局，支持实时观战和历史回放。
-
-<details>
-<summary>CLI 模式（调试/自动化用）</summary>
+### Backend / Engine
 
 ```bash
-# 纯本地策略（无需 LLM）
+uv run uvicorn server.api:app --port 8766
 uv run wolf-game --config 12p_pre_witch_hunter_idiot --no-llm
-
-# 启用 LLM
 uv run wolf-game --config 12p_pre_witch_hunter_idiot
 ```
 
-直接输出事件流到终端，游戏结束后打印 JSON 摘要。适合 CI、批量测试、管道处理。
-</details>
-
-### TUI 快捷键
-
-| 按键 | 功能 |
-|------|------|
-| `s` | 启动新局 |
-| `r` | 手动刷新 |
-| `n` / `p` | 下一局 / 上一局 |
-| `1`-`9` | 快速跳到最近第 N 局 |
-| `l` | 跳到最新一局 |
-| `f` | 切换事件可见范围（全部/公开/狼队/私有/上帝/系统） |
-| `w` | 快速切换狼队视角 |
-| `t` | 开关语音播报（TTS） |
-| `e` | AI 复盘分析（需要 LLM） |
-| `a` | 切换自动刷新 |
-| `Space` | 暂停/恢复自动滚动 |
-| `PgUp`/`PgDn` | 翻页浏览历史 |
-| `Home`/`End` | 跳到顶部/底部 |
-| `g` | 切换中英文 |
-| `d` | 删除当前对局 |
-| `q` | 退出 |
-
-### TUI 功能
-
-- **实时显示**：狼刀、验人、用药、投票、开枪等操作即时显示
-- **阵营着色**：狼人红色，好人默认色，当前行动角色高亮
-- **存活计数**：标题栏实时显示 `神N 民N 狼N`
-- **投票统计**：票数排名 + 警长 1.5x 权重标注
-- **死因标记**：🔪刀杀 ☠毒杀 🏹枪杀 🗳放逐 💥自爆
-- **技能标记**：🎯被刀目标 💊被救 🧪被毒目标 🔍被验 🎭翻牌
-- **增量刷新**：0.5s 轮询，仅查询新事件，DB 连接复用
-
-### 语音播报（TTS）
-
-按 `t` 开启后，游戏全程语音播报，完全离线（CPU 推理）：
-
-- **主持人旁白**：阶段切换（"天黑请闭眼"）、技能结果、投票结果、胜负宣布
-- **玩家发言**：每人独立音色（12 种），根据角色和场景自动切换情感
-- 基于 ChatTTS，首次启用时加载模型（约 10 秒），后续即时播报
-- 依赖：ChatTTS、sounddevice（自动安装）
-
-### AI 复盘分析
-
-按 `e` 对已结束的对局生成 AI 复盘报告（需要 LLM 配置）：
-
-- **Token 高效**：游戏事件压缩为每轮摘要，~2000-3000 tokens/局
-- **前缀缓存**：固定 system prompt，所有复盘共享缓存命中
-- **输出内容**：总结、转折点、逐轮分析、12 人评分（S/A/B/C/D）、获胜原因
-- 结果直接显示在事件日志底部
-
-## 数据目录
-
-```
-data/
-├── wolf.sqlite3       # SQLite 数据库（事件、快照、LLM 调用日志）
-├── graphs/            # 每局游戏流程图（Mermaid/DOT/PNG）
-└── contexts/          # 每个玩家每阶段的完整上下文快照
-```
-
-## 桌面应用（Electron + React）
-
-除 TUI 外，还提供基于 Electron + React 的桌面 GUI：
+### Legacy TUI
 
 ```bash
-# 1. 启动后端 API server
-uv run uvicorn server.api:app --port 8765
-
-# 2. 启动前端开发服务器
-cd desktop && npm install && npm run dev
-
-# 3.（可选）Electron 桌面模式
-npm run electron:dev
+uv run wolf-tui
+uv run wolf-tui --game-id <id>
+uv run wolf-tui --lang en
 ```
 
-API 端点：
-- `POST /api/games/start` — 开始新局
-- `GET /api/games` — 对局列表
-- `GET /api/games/:id` — 对局详情
-- `DELETE /api/games/:id` — 删除对局
-- `POST /api/games/:id/replay` — AI 复盘
-- `WS /ws/games/:id` — 实时事件流
+The Textual TUI is still useful for direct DB-backed spectating and debugging, but it is no longer the main product surface.
 
-TUI 和桌面应用可同时运行，共享同一个 SQLite 数据库。
+## API Overview
 
-## 技术架构
+Key endpoints used by the Web UI:
 
-```
-app/                            # 游戏引擎
-├── engine/
-│   ├── session.py              # 游戏主循环，阶段调度 + 事件持久化
-│   ├── handlers/               # 阶段处理器（night/day/sheriff/skills/setup）
-│   ├── llm_bridge.py           # 统一 LLM 决策管道
-│   ├── event_helpers.py        # 事件创建/发布快捷方法
-│   ├── bootstrap.py            # 游戏初始化
-│   ├── config_loader.py        # YAML → RuntimeConfig
-│   ├── graph.py                # CompiledGraph
-│   └── rules.py                # 胜负判定
-├── domain/                     # 纯数据类型
-├── services/                   # LLM、TTS、复盘、动作校验、提示词
-├── infra/                      # SQLite 持久化层
-├── ui/                         # Textual TUI
-└── configs/                    # YAML 配置 + 提示词模板
-server/                         # FastAPI WebSocket + REST API
-desktop/                        # Electron + React + Vite 桌面前端
-├── electron/main.js            # Electron 主进程（管理 Python sidecar）
-└── src/                        # React 组件（PlayerRing, EventFeed, ...）
+| Endpoint | Purpose |
+| --- | --- |
+| `POST /api/games/start` | Start a new game |
+| `GET /api/games` | List games |
+| `GET /api/games/{game_id}` | Load game detail and snapshots |
+| `DELETE /api/games/{game_id}` | Delete a game |
+| `GET /api/games/{game_id}/human_pending` | Fetch pending human actions for a seat |
+| `POST /api/games/{game_id}/human_action` | Submit a human action |
+| `POST /api/games/{game_id}/replay` | Generate replay analysis |
+| `WS /ws/games/{game_id}` | Stream history and live game events |
+
+Personal-mode endpoints require a matching `seat` and `seat_token` while a human game is running. Finished games can be observed freely.
+
+## Data Directory
+
+```text
+data/
+  wolf.sqlite3       # SQLite database: games, players, events, snapshots, LLM calls
+  graphs/            # Per-game graph exports
+  contexts/          # Prompt/context snapshots for debugging
 ```
 
-### 设计模式
+## Architecture
 
-- **配置驱动**：YAML 定义角色、流程、规则、提示词、工具，新板子只需新配置
-- **阶段处理器分发**：`PHASE_HANDLERS` dict 映射 Phase → handler，每个返回 PhaseResult
-- **三层动作管线**：ProposedAction → ValidatedAction → ResolvedAction，LLM 输出必须经过校验
-- **信息隔离**：每个玩家只能看到自己视角的信息（公共 + 阵营 + 私有）
-- **事件溯源**：每个阶段边界写入 snapshot + events，TUI/桌面从 DB 读取
-- **实时 live events**：handler 内部 `emit_event` 立即写入 DB + EventBus → WebSocket 广播
-- **双前端共存**：TUI 直接读 DB，桌面通过 WebSocket + REST API 访问
-- **双链路 LLM**：优先 LLM，失败/超限时回退到本地随机策略
+```text
+app/
+  domain/            # Pure role, phase, event, state, and action types
+  engine/            # Async game loop, phase handlers, graph, rules, pacing
+  services/          # LLM provider, decisions, prompts, context isolation, replay
+  infra/             # SQLite, schema, event bus, repositories
+  ui/                # Legacy Textual TUI
+  configs/           # YAML boards and Jinja2 prompt templates
+
+server/
+  api.py             # FastAPI REST + WebSocket API
+  music.py           # BGM generation endpoints
+
+desktop/
+  src/               # React Web UI
+  electron/          # Optional Electron shell
+  public/assets/     # Portraits, icons, UI art, optional audio assets
+```
+
+## Design Principles
+
+- **Backend as source of truth**: Phase transitions, timers, human prompts, validation, and resolution are driven by backend events.
+- **Three-layer action pipeline**: ProposedAction -> ValidatedAction -> ResolvedAction. LLM and human inputs both pass validation.
+- **Information isolation**: Public, wolf-team, role-private, and god scopes are separated before reaching clients.
+- **Event-sourced UI**: Frontend state is rebuilt from snapshots and events, then updated live over WebSocket.
+- **Fallback-safe agents**: LLM calls are optional and bounded; local strategy keeps games playable without network access.
+- **Web-first, TUI-compatible**: The React UI is the primary surface; CLI/TUI remain available for operations and debugging.
